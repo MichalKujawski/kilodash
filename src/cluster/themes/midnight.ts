@@ -1,0 +1,47 @@
+import type { Theme } from './types';
+
+/** Deep black, crisp white numerals, red needle. */
+export const midnight: Theme = {
+  id: 'midnight',
+  name: 'Midnight',
+  colors: {
+    background: '#000000',
+    backgroundGlow: 'rgba(40, 60, 90, 0.22)',
+    dialFace: '#06080b',
+    dialFaceEdge: '#11151b',
+    dialRim: 'rgba(255, 255, 255, 0.16)',
+    tickMajor: '#f2f4f7',
+    tickMinor: 'rgba(242, 244, 247, 0.38)',
+    numeral: '#f2f4f7',
+    numeralDim: 'rgba(242, 244, 247, 0.55)',
+    needle: '#ff3b2f',
+    needleGlow: 'rgba(255, 50, 30, 0.85)',
+    needleHub: '#0b0d10',
+    activeArcStart: 'rgba(255, 60, 40, 0)',
+    activeArcEnd: 'rgba(255, 60, 40, 0.55)',
+    accent: '#ff3b2f',
+    redline: '#e0201a',
+    text: '#f2f4f7',
+    textDim: 'rgba(242, 244, 247, 0.62)',
+    textMuted: 'rgba(242, 244, 247, 0.34)',
+    panel: 'rgba(255, 255, 255, 0.035)',
+    panelBorder: 'rgba(255, 255, 255, 0.08)',
+    barTrack: 'rgba(255, 255, 255, 0.10)',
+    barFill: '#f2f4f7',
+  },
+  fonts: {
+    numeral: '"Inter", system-ui, sans-serif',
+    ui: '"Inter", system-ui, sans-serif',
+    digital: '"Rajdhani", "Inter", system-ui, sans-serif',
+  },
+  glow: 0.8,
+  dial: {
+    needle: 'blade',
+    minorTicks: 4,
+    startDeg: 140,
+    sweepDeg: 260,
+    activeArc: true,
+    filledFace: true,
+  },
+  needlePhysics: { stiffness: 160, damping: 21, maxVelocity: 2.6 },
+};

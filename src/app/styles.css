@@ -1,0 +1,161 @@
+:root {
+  --bg: #050608;
+  --fg: #e9edf2;
+  --dim: rgba(233, 237, 242, 0.55);
+  --line: rgba(255, 255, 255, 0.08);
+  --accent: #ff3b2f;
+  --ok: #22d36b;
+  color-scheme: dark;
+  font-family: Inter, system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(1200px 500px at 50% 30%, rgba(60, 80, 120, 0.12), transparent 70%), var(--bg);
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding: 0 max(16px, env(safe-area-inset-left)) 24px;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 18px 0;
+}
+
+.brand {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.brand-mark {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 3px solid var(--accent);
+  align-self: center;
+}
+
+.brand-name {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  font-size: 18px;
+}
+
+.brand-tag {
+  color: var(--dim);
+  font-size: 13px;
+}
+
+.chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.chip {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 12px;
+  color: var(--dim);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.chip-on {
+  color: var(--ok);
+  border-color: rgba(34, 211, 107, 0.35);
+}
+
+.chip-mono {
+  font-variant-numeric: tabular-nums;
+  min-width: 64px;
+  text-align: center;
+}
+
+.stage {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+}
+
+/* Physical-looking display housing around the cluster. */
+.bezel {
+  width: min(100%, 1600px);
+  padding: clamp(6px, 1vw, 14px);
+  border-radius: clamp(14px, 2.4vw, 34px);
+  background: linear-gradient(180deg, #1a1d22, #0b0c0f 60%);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.08) inset,
+    0 30px 80px rgba(0, 0, 0, 0.7),
+    0 0 0 1px rgba(0, 0, 0, 0.8);
+}
+
+.screen {
+  aspect-ratio: 1920 / 720;
+  width: 100%;
+  border-radius: clamp(8px, 1.6vw, 22px);
+  overflow: hidden;
+  background: #000;
+  position: relative;
+}
+
+.cluster-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.screen-boot {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--dim);
+  font-size: 14px;
+}
+
+.hints {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 22px;
+  justify-content: center;
+  color: var(--dim);
+  font-size: 13px;
+}
+
+.hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+kbd {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--fg);
+}

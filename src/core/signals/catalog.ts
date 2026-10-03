@@ -1,0 +1,193 @@
+import type { SignalDefinition, SignalId } from './types';
+
+/** Canonical signal IDs (COVESA VSS-inspired). */
+export const S = {
+  Speed: 'Vehicle.Speed',
+  EngineSpeed: 'Vehicle.Powertrain.CombustionEngine.Speed',
+  CoolantTemp: 'Vehicle.Powertrain.CombustionEngine.ECT',
+  OilTemp: 'Vehicle.Powertrain.CombustionEngine.EOT',
+  EngineLoad: 'Vehicle.OBD.EngineLoad',
+  EngineRunning: 'Vehicle.Powertrain.CombustionEngine.IsRunning',
+  Throttle: 'Vehicle.OBD.ThrottlePosition',
+  MAF: 'Vehicle.OBD.MAF',
+  MAP: 'Vehicle.OBD.MAP',
+  IntakeTemp: 'Vehicle.OBD.IntakeAirTemp',
+  FuelLevel: 'Vehicle.Powertrain.FuelSystem.Level',
+  /** Engine fuel rate, L/h (OBD PID 5E). */
+  FuelRate: 'Vehicle.OBD.FuelRate',
+  /** L/100 km (derived). */
+  InstantConsumption: 'Vehicle.Powertrain.FuelSystem.InstantConsumption',
+  /** L/100 km since trip reset (derived). */
+  AverageConsumption: 'Vehicle.Powertrain.FuelSystem.AverageConsumption',
+  /** Remaining range, km (derived). */
+  Range: 'Vehicle.Powertrain.Range',
+  /** km since trip reset (derived). */
+  TripDistance: 'Vehicle.TripMeterReading',
+  /** km/h since trip reset (derived). */
+  AverageSpeed: 'Vehicle.AverageSpeed',
+  /** s since trip reset (derived). */
+  TripDuration: 'Vehicle.TripDuration',
+  Gear: 'Vehicle.Powertrain.Transmission.CurrentGear',
+  /** VSS semantics: 127 = Drive (automatic mode), 126 = Park, 1..n = manual gear selection. */
+  SelectedGear: 'Vehicle.Powertrain.Transmission.SelectedGear',
+  AmbientTemp: 'Vehicle.Exterior.AirTemperature',
+  BatteryVoltage: 'Vehicle.LowVoltageBattery.CurrentVoltage',
+  Odometer: 'Vehicle.TraveledDistance',
+  AccelLongitudinal: 'Vehicle.Acceleration.Longitudinal',
+  BrakePedal: 'Vehicle.Chassis.Brake.PedalPosition',
+  IndicatorLeft: 'Vehicle.Body.Lights.DirectionIndicator.Left.IsSignaling',
+  IndicatorRight: 'Vehicle.Body.Lights.DirectionIndicator.Right.IsSignaling',
+  ShiftRequest: 'Vehicle.Powertrain.Transmission.IsShiftRecommended',
+} as const satisfies Record<string, SignalId>;
+
+const defs: SignalDefinition[] = [
+  { id: S.Speed, nameKey: 'signal.speed', unit: 'km/h', min: 0, max: 300, expectedHz: 10 },
+  { id: S.EngineSpeed, nameKey: 'signal.rpm', unit: 'rpm', min: 0, max: 9000, expectedHz: 10 },
+  {
+    id: S.CoolantTemp,
+    nameKey: 'signal.coolant',
+    unit: 'celsius',
+    min: -40,
+    max: 150,
+    normal: [80, 105],
+    warning: { high: 110 },
+    critical: { high: 118 },
+    expectedHz: 1,
+  },
+  {
+    id: S.OilTemp,
+    nameKey: 'signal.oilTemp',
+    unit: 'celsius',
+    min: -40,
+    max: 160,
+    normal: [90, 120],
+    warning: { high: 130 },
+    critical: { high: 140 },
+    expectedHz: 1,
+  },
+  { id: S.EngineLoad, nameKey: 'signal.load', unit: 'percent', min: 0, max: 100, expectedHz: 4 },
+  {
+    id: S.EngineRunning,
+    nameKey: 'signal.engineRunning',
+    unit: 'bool',
+    min: 0,
+    max: 1,
+    expectedHz: 1,
+  },
+  { id: S.Throttle, nameKey: 'signal.throttle', unit: 'percent', min: 0, max: 100, expectedHz: 10 },
+  { id: S.MAF, nameKey: 'signal.maf', unit: 'g/s', min: 0, max: 655, expectedHz: 4 },
+  { id: S.MAP, nameKey: 'signal.map', unit: 'kPa', min: 0, max: 255, expectedHz: 4 },
+  {
+    id: S.IntakeTemp,
+    nameKey: 'signal.intakeTemp',
+    unit: 'celsius',
+    min: -40,
+    max: 215,
+    expectedHz: 1,
+  },
+  {
+    id: S.FuelLevel,
+    nameKey: 'signal.fuel',
+    unit: 'percent',
+    min: 0,
+    max: 100,
+    warning: { low: 12 },
+    critical: { low: 5 },
+    expectedHz: 0.5,
+  },
+  { id: S.FuelRate, nameKey: 'signal.fuelRate', unit: 'L/h', min: 0, max: 120, expectedHz: 4 },
+  {
+    id: S.InstantConsumption,
+    nameKey: 'signal.instantConsumption',
+    unit: 'L/100km',
+    min: 0,
+    max: 30,
+    expectedHz: 4,
+  },
+  {
+    id: S.AverageConsumption,
+    nameKey: 'signal.avgConsumption',
+    unit: 'L/100km',
+    min: 0,
+    max: 30,
+    expectedHz: 1,
+  },
+  { id: S.Range, nameKey: 'signal.range', unit: 'km', min: 0, max: 2000, expectedHz: 1 },
+  {
+    id: S.TripDistance,
+    nameKey: 'signal.tripDistance',
+    unit: 'km',
+    min: 0,
+    max: 1e5,
+    expectedHz: 1,
+  },
+  { id: S.AverageSpeed, nameKey: 'signal.avgSpeed', unit: 'km/h', min: 0, max: 300, expectedHz: 1 },
+  {
+    id: S.TripDuration,
+    nameKey: 'signal.tripDuration',
+    unit: 's',
+    min: 0,
+    max: 1e6,
+    expectedHz: 1,
+  },
+  { id: S.Gear, nameKey: 'signal.gear', unit: 'gear', min: -1, max: 10, expectedHz: 5 },
+  {
+    id: S.SelectedGear,
+    nameKey: 'signal.selectedGear',
+    unit: 'enum',
+    min: -1,
+    max: 127,
+    expectedHz: 5,
+  },
+  {
+    id: S.AmbientTemp,
+    nameKey: 'signal.ambient',
+    unit: 'celsius',
+    min: -40,
+    max: 60,
+    expectedHz: 0.5,
+  },
+  {
+    id: S.BatteryVoltage,
+    nameKey: 'signal.voltage',
+    unit: 'V',
+    min: 0,
+    max: 16,
+    normal: [12.2, 14.8],
+    warning: { low: 11.8, high: 15.2 },
+    expectedHz: 1,
+  },
+  { id: S.Odometer, nameKey: 'signal.odometer', unit: 'km', min: 0, max: 1e7, expectedHz: 1 },
+  {
+    id: S.AccelLongitudinal,
+    nameKey: 'signal.accelLon',
+    unit: 'g',
+    min: -2,
+    max: 2,
+    expectedHz: 20,
+  },
+  { id: S.BrakePedal, nameKey: 'signal.brake', unit: 'percent', min: 0, max: 100, expectedHz: 10 },
+  {
+    id: S.IndicatorLeft,
+    nameKey: 'signal.indicatorLeft',
+    unit: 'bool',
+    min: 0,
+    max: 1,
+    expectedHz: 2,
+  },
+  {
+    id: S.IndicatorRight,
+    nameKey: 'signal.indicatorRight',
+    unit: 'bool',
+    min: 0,
+    max: 1,
+    expectedHz: 2,
+  },
+  { id: S.ShiftRequest, nameKey: 'signal.shiftUp', unit: 'bool', min: 0, max: 1, expectedHz: 5 },
+];
+
+export const SIGNALS: ReadonlyMap<SignalId, SignalDefinition> = new Map(defs.map((d) => [d.id, d]));
+
+export function signalDef(id: SignalId): SignalDefinition | undefined {
+  return SIGNALS.get(id);
+}
