@@ -20,6 +20,7 @@ export type Unit =
   | 's'
   | 'g'
   | 'kW'
+  | 'deg'
   | 'gear'
   | 'bool'
   | 'enum';
