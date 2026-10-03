@@ -1,0 +1,39 @@
+{
+  "id": "ev-2023",
+  "name": "2023 Compact EV",
+  "year": 2023,
+  "description": "150 kW single motor, 58 kWh battery. State of charge, power and battery temperature via manufacturer signalset; no tachometer.",
+  "fuelType": "electric",
+  "transmission": "single-speed",
+  "drive": "rwd",
+  "massKg": 1750,
+  "dragCoefficient": 0.27,
+  "frontalAreaM2": 2.3,
+  "rollingResistance": 0.009,
+  "wheelRadiusM": 0.34,
+  "wheelbaseM": 2.77,
+  "steeringRatio": 14,
+  "electric": {
+    "batteryKWh": 58,
+    "motorPowerKW": 150,
+    "motorTorqueNm": 310,
+    "regenPowerKW": 100
+  },
+  "gearRatios": [1],
+  "finalDrive": 9.1,
+  "drivetrainEfficiency": 0.94,
+  "shiftTimeS": 0,
+  "tankL": 0,
+  "speedoMaxKmh": 180,
+  "tachoMaxRpm": 0,
+  "tpms": true,
+  "obdPids": ["01", "0D", "42", "46", "A6"],
+  "manufacturerSignals": [
+    "Vehicle.Powertrain.TractionBattery.StateOfCharge.Current",
+    "Vehicle.Powertrain.TractionBattery.CurrentPower",
+    "Vehicle.Powertrain.TractionBattery.Temperature.Average",
+    "Vehicle.Powertrain.Range",
+    "Vehicle.Powertrain.Transmission.SelectedGear"
+  ],
+  "vin": "SIMEV23E1PB012345"
+}

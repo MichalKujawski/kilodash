@@ -155,7 +155,10 @@ export class Carousel implements Widget {
       b.globalCompositeOperation = 'source-over';
     }
 
+    // Make room for the start-up logo.
+    ctx.globalAlpha = 1 - f.runtime.logoAlpha;
     ctx.drawImage(this.buffer, x, y, w, h);
+    ctx.globalAlpha = 1;
 
     // Page indicator dots.
     const t = f.theme;

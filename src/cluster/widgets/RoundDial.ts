@@ -224,7 +224,8 @@ export class RoundDial implements Widget {
     const raw = available ? f.store.predicted(p.signal, f.now) : p.min;
 
     this.spring.config = t.needlePhysics;
-    const frac = clamp(this.spring.update(clamp(this.frac(raw), 0, 1), f.dt), -0.01, 1.015);
+    const target = f.runtime.sweep ?? clamp(this.frac(raw), 0, 1);
+    const frac = clamp(this.spring.update(target, f.dt), -0.01, 1.015);
     const speed = f.dt > 0 ? Math.abs(frac - this.lastFrac) / f.dt : 0;
     this.sweepSpeed += (speed - this.sweepSpeed) * Math.min(1, f.dt * 8);
     this.lastFrac = frac;

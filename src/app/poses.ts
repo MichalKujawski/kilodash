@@ -12,6 +12,7 @@ const hold = (targetKmh: number, aggression = 0.6): AutoDriver =>
  * (`?pose=highway`). Uses the fixed default seed, so runs are deterministic.
  */
 export function applyPose(src: SimulatorSource, pose: Pose): void {
+  src.attract = false;
   switch (pose) {
     case 'idle':
       src.autodriver = hold(0);

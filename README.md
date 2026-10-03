@@ -4,7 +4,7 @@ An adaptive, themeable virtual instrument cluster (digital cockpit) for the brow
 from a pluggable data-source layer: a physics simulator today, a real ELM327 OBD-II adapter
 and a Raspberry Pi CAN-bus bridge on the roadmap.
 
-> **Status: Milestone 1.5 (visual realism).** The classic layout, the Midnight theme and the
+> **Status: Milestone 2 (simulator, scenarios, telltales, alerts).** The classic layout, the Midnight theme and the
 > physics simulator work. See the [roadmap](#roadmap).
 
 ![Highway cruise](docs/screenshots/highway.png)
@@ -22,9 +22,12 @@ npm test           # unit tests (Vitest)
 npm run test:e2e   # browser smoke test (Playwright)
 ```
 
-Keyboard: `W` throttle, `S` brake, `Q`/`E` paddle shifts, `,`/`.` indicators, `←`/`→` centre
-pages (map, car, trip, efficiency), `P` toggles the autopilot. The autopilot takes over again 8 s
-after your last input.
+Keyboard: `W`/`S` throttle/brake, `Q`/`E` paddle shifts, `,`/`.` indicators, `H` high beam,
+`Space` hazard lights, `C` cruise control, `F` fog light, `K` ignition, `1`–`6` scenarios (city,
+highway, mountain, track, night, cold start), `N` night mode (auto/on/off), `M` mute, `G` engine
+sound, `←`/`→` centre pages, `Enter` acknowledges an alert, and `P` toggles the autopilot. The
+autopilot takes over again 8 s after your last input. In attract mode it cycles through the
+scenarios.
 
 URL options: `?kiosk=1` shows only the cluster (for a real screen), `?lowpower=1` turns off bloom,
 glass and blur, `?pose=idle|city|highway|redline|night` puts the simulator into a reproducible
@@ -67,6 +70,17 @@ flowchart LR
   three-level tick hierarchy, face, hub ring, and a filled redline band that glows as the needle
   approaches. Emissive elements feed a bloom pass, and a glass reflection and dither noise sit on
   top. Every one of these is a theme token, and low-power mode turns them off.
+- **Ignition choreography.** At start-up the logo is revealed, the needles sweep to the stops and
+  back, and every warning lamp lights for about 1.5 s as a bulb check. At shut-down a trip summary
+  card is shown. Night mode dims the display automatically when it gets dark outside.
+- **Alerts are data-driven.** Each rule has thresholds with hysteresis, a minimum duration and a
+  severity. A priority queue drives the popup cards, which recommend an action. Chimes are
+  synthesized with Web Audio (no sample files), and the flasher relay tick stays in phase with the
+  arrows. Telltale colours and positions never change with the theme.
+- **Six vehicle profiles** (petrol hatchback, diesel estate, sports coupé, EV, hybrid SUV and a
+  full-sensor dev car) each expose a different set of supported PIDs. ICE, EV (with regen) and
+  power-split hybrid powertrains share one chassis model with lateral g, gradients,
+  traction control and ABS, and tyre pressures.
 - **Layouts and themes are data.** A layout slot lists candidate widgets in order, and the first
   one whose signals the car provides (or that can be derived) wins. A car with no fuel-level
   PID gets no fake fuel gauge.

@@ -1,11 +1,11 @@
-import { approach, clamp, createRng, interpTable, lerp, SmoothNoise } from '../../math';
-import { FUEL_CONSTANTS } from '../../derived/fuel';
+import { approach, clamp, createRng, SmoothNoise } from '../../math';
+import { describeDtc, type DtcInfo } from '../../obd/dtc';
 import type { VehicleProfile } from './profile';
+import { createPowertrain, type Powertrain } from './powertrain';
 
-const G = 9.81;
+export const G = 9.81;
 const AIR_DENSITY_KG_M3 = 1.2;
-const AIR_DENSITY_G_L = 1.19;
-const BARO_KPA = 101;
+export const BARO_KPA = 101;
 
 export interface DriverInputs {
   /** 0..1 */
@@ -14,23 +14,54 @@ export interface DriverInputs {
   brake: number;
   leftIndicator: boolean;
   rightIndicator: boolean;
+  /** Road curvature being followed, 1/m (positive = right-hand bend). */
+  curvature: number;
+  /** Road gradient as rise/run (negative = downhill). */
+  gradient: number;
 }
 
 export type DriveMode = 'auto' | 'manual';
 
-interface Shift {
-  to: number;
-  t: number;
+export type FaultKind =
+  'overheat' | 'lowFuel' | 'checkEngine' | 'doorOpen' | 'lowTire' | 'alternator';
+
+export const FAULTS: FaultKind[] = [
+  'overheat',
+  'lowFuel',
+  'checkEngine',
+  'doorOpen',
+  'lowTire',
+  'alternator',
+];
+
+/** 0 OFF, 1 ACC, 2 ON, 3 START (cranking), matching VSS LowVoltageSystemState order. */
+export type IgnitionLevel = 0 | 1 | 2 | 3;
+
+export interface BodyState {
+  /** Driver's light switch: auto low beam follows ambient light when false. */
+  lowBeamForced: boolean;
+  lowBeam: boolean;
+  highBeam: boolean;
+  fog: boolean;
+  hazard: boolean;
+  /** FL, FR, RL, RR. */
+  doors: [boolean, boolean, boolean, boolean];
+  trunk: boolean;
+  seatbelt: boolean;
+  parkingBrake: boolean;
 }
 
 /** Complete simulated vehicle state. Units are SI unless suffixed. */
 export interface VehicleState {
   timeS: number;
+  ignition: IgnitionLevel;
+  /** Drive-ready (ICE running or EV "READY"). */
+  ready: boolean;
+  engineRunning: boolean;
   speedMs: number;
   rpm: number;
   /** 0 = neutral, 1..n forward gears. */
   gear: number;
-  /** True while drive torque is fully transmitted (clutch closed / converter locked). */
   coupled: boolean;
   throttle: number;
   brake: number;
@@ -38,75 +69,143 @@ export interface VehicleState {
   oilC: number;
   intakeC: number;
   ambientC: number;
+  /** 0..100 % ambient light. */
+  lightIntensity: number;
   fuelL: number;
   odometerKm: number;
+  runTimeS: number;
   accelG: number;
+  latG: number;
+  steeringDeg: number;
   mapKPa: number;
+  baroKPa: number;
+  boostKPa: number;
   mafGs: number;
   loadPct: number;
   fuelRateLh: number;
   voltage: number;
-  engineRunning: boolean;
   shiftRecommended: boolean;
+  tcs: boolean;
+  abs: boolean;
+  /** Traction battery state of charge, %. */
+  soc: number;
+  /** Traction power, kW (negative = regen). */
+  powerKW: number;
+  batteryTempC: number;
+  /** Tyre pressures FL, FR, RL, RR, kPa. */
+  tires: [number, number, number, number];
+  cruiseActive: boolean;
+  cruiseSetKmh: number;
+  mil: boolean;
 }
 
+export interface Environment {
+  ambientC: number;
+  lightIntensity: number;
+  /** Tyre-road friction coefficient (1 dry, ~0.4 icy). */
+  grip: number;
+}
+
+const TIRE_BASE: [number, number, number, number] = [238, 238, 236, 237];
+
 /**
- * Deterministic longitudinal vehicle model: engine with torque curve, idle control,
- * rev limiter and engine braking; gearbox with automatic shift logic and launch slip;
- * aero/rolling/brake forces; thermal, fuel and electrical models.
+ * Deterministic vehicle model. Shared chassis/body/thermal/electrical logic lives
+ * here; propulsion is delegated to an ICE, EV or hybrid `Powertrain`.
  *
  * Pure and timer-free: call `step(dt)` at a fixed rate (100 Hz recommended).
  */
 export class VehicleSimulator {
   readonly profile: VehicleProfile;
   readonly state: VehicleState;
+  readonly body: BodyState;
+  readonly faults = new Set<FaultKind>();
   readonly inputs: DriverInputs = {
     throttle: 0,
     brake: 0,
     leftIndicator: false,
     rightIndicator: false,
+    curvature: 0,
+    gradient: 0,
   };
+  readonly env: Environment;
   mode: DriveMode = 'auto';
   /** Multiplies thermal rates so warm-up is watchable in a demo. */
   warmupScale = 6;
+  readonly powertrain: Powertrain;
+  readonly rng: () => number;
 
-  private shift: Shift | null = null;
-  private shiftCooldown = 0;
-  private limiterCut = 0;
-  private boostKPa = 0;
-  private idleNoise: SmoothNoise;
-  private voltNoise: SmoothNoise;
+  private crankT = 0;
+  private curvature = 0;
+  private gradient = 0;
   private accelFiltered = 0;
-  private windup = 0;
+  private tcsHold = 0;
+  private absHold = 0;
+  private cruiseIntegral = 0;
+  private voltNoise: SmoothNoise;
+  private tireWarm = 0;
 
-  constructor(profile: VehicleProfile, seed = 1, ambientC = 14) {
+  constructor(profile: VehicleProfile, seed = 1, env: Partial<Environment> = {}) {
     this.profile = profile;
-    const rng = createRng(seed);
-    this.idleNoise = new SmoothNoise(rng, 3);
-    this.voltNoise = new SmoothNoise(rng, 0.7);
+    this.rng = createRng(seed);
+    this.voltNoise = new SmoothNoise(this.rng, 0.7);
+    this.env = { ambientC: 14, lightIntensity: 85, grip: 1, ...env };
+    const e = profile.engine;
     this.state = {
       timeS: 0,
+      ignition: 2,
+      ready: true,
+      engineRunning: !!e,
       speedMs: 0,
-      rpm: profile.engine.idleRpm,
+      rpm: e?.idleRpm ?? 0,
       gear: 1,
       coupled: false,
       throttle: 0,
       brake: 0,
       coolantC: 62,
       oilC: 55,
-      intakeC: ambientC + 8,
-      ambientC,
+      intakeC: this.env.ambientC + 8,
+      ambientC: this.env.ambientC,
+      lightIntensity: this.env.lightIntensity,
       fuelL: profile.tankL * 0.72,
       odometerKm: 48_213.4,
+      runTimeS: 0,
       accelG: 0,
+      latG: 0,
+      steeringDeg: 0,
       mapKPa: 35,
+      baroKPa: BARO_KPA,
+      boostKPa: 0,
       mafGs: 3,
       loadPct: 20,
       fuelRateLh: 0.8,
       voltage: 14.2,
-      engineRunning: true,
       shiftRecommended: false,
+      tcs: false,
+      abs: false,
+      soc: 78,
+      powerKW: 0,
+      batteryTempC: 24,
+      tires: [...TIRE_BASE],
+      cruiseActive: false,
+      cruiseSetKmh: 0,
+      mil: false,
     };
+    this.body = {
+      lowBeamForced: false,
+      lowBeam: false,
+      highBeam: false,
+      fog: false,
+      hazard: false,
+      doors: [false, false, false, false],
+      trunk: false,
+      seatbelt: true,
+      parkingBrake: false,
+    };
+    this.powertrain = createPowertrain(this);
+  }
+
+  get isElectric(): boolean {
+    return !this.profile.engine;
   }
 
   get gearCount(): number {
@@ -117,210 +216,247 @@ export class VehicleSimulator {
     return this.state.speedMs * 3.6;
   }
 
+  // --- Driver controls -------------------------------------------------------
+
   shiftUp(): void {
-    this.mode = 'manual';
-    this.requestShift(this.targetGear() + 1);
+    this.powertrain.shift?.(1);
   }
 
   shiftDown(): void {
-    this.mode = 'manual';
-    const to = this.targetGear() - 1;
-    // Refuse a downshift that would over-rev the engine, like a real DCT.
-    if (to >= 1 && this.coupledRpm(to) < this.profile.engine.limiterRpm - 200)
-      this.requestShift(to);
+    this.powertrain.shift?.(-1);
   }
 
   setMode(mode: DriveMode): void {
     this.mode = mode;
   }
 
+  /** Turn the key to OFF / ACC / ON. Anything below ON stops the engine. */
+  setIgnition(level: 0 | 1 | 2): void {
+    const s = this.state;
+    s.ignition = level;
+    if (level < 2) {
+      s.engineRunning = false;
+      s.ready = false;
+      s.cruiseActive = false;
+    }
+  }
+
+  /** Crank the engine (ICE/hybrid) or switch to READY (EV). */
+  start(): void {
+    const s = this.state;
+    if (s.ignition < 2) s.ignition = 2;
+    if (s.ready) return;
+    if (this.isElectric) {
+      s.ready = true;
+      return;
+    }
+    s.ignition = 3;
+    this.crankT = 0;
+  }
+
+  setCruise(active: boolean, setKmh = this.speedKmh): void {
+    const s = this.state;
+    s.cruiseActive = active && s.ready && setKmh > 30;
+    if (s.cruiseActive) {
+      s.cruiseSetKmh = Math.round(setKmh);
+      this.cruiseIntegral = s.throttle;
+    }
+  }
+
+  injectFault(kind: FaultKind): void {
+    this.faults.add(kind);
+    if (kind === 'lowFuel') {
+      this.state.fuelL = Math.min(this.state.fuelL, this.profile.tankL * 0.07);
+      this.state.soc = Math.min(this.state.soc, 7);
+    }
+    if (kind === 'doorOpen') this.body.doors[0] = true;
+  }
+
+  clearFault(kind: FaultKind): void {
+    this.faults.delete(kind);
+    if (kind === 'doorOpen') this.body.doors[0] = false;
+    if (kind === 'lowTire') this.state.tires[3] = TIRE_BASE[3];
+  }
+
+  refuel(): void {
+    this.state.fuelL = this.profile.tankL;
+    this.state.soc = Math.max(this.state.soc, 95);
+    this.faults.delete('lowFuel');
+  }
+
+  /** Stored diagnostic trouble codes derived from active faults. */
+  dtcs(): DtcInfo[] {
+    const codes: string[] = [];
+    if (this.faults.has('checkEngine')) codes.push('P0301', 'P0420');
+    if (this.faults.has('overheat')) codes.push('P0217');
+    if (this.faults.has('alternator')) codes.push('P0562', 'P0620');
+    if (this.faults.has('lowTire') && this.profile.tpms) codes.push('C0750');
+    return codes.map(describeDtc);
+  }
+
+  // --- Simulation ------------------------------------------------------------
+
   step(dt: number): void {
     const s = this.state;
     const p = this.profile;
-    const e = p.engine;
     s.timeS += dt;
+    s.ambientC = this.env.ambientC;
+    s.lightIntensity += (this.env.lightIntensity - s.lightIntensity) * approach(dt, 3);
 
-    // --- Pedals (actuator lag) ---
-    s.throttle += (clamp(this.inputs.throttle, 0, 1) - s.throttle) * approach(dt, 0.08);
-    s.brake += (clamp(this.inputs.brake, 0, 1) - s.brake) * approach(dt, 0.05);
+    this.updateIgnition(dt);
+    this.updatePedals(dt);
 
-    // --- Engine control: idle governor, overrun fuel cut, rev limiter ---
-    const idleTarget = e.idleRpm + this.idleNoise.next(dt) * 12;
-    const idleThrottle = clamp(0.035 + (idleTarget - s.rpm) * 0.0004, 0, 0.2);
-    const pedalOff = s.throttle < 0.02;
-    const fuelCut = pedalOff && s.coupled && s.rpm > e.idleRpm + 350;
-    let effThrottle = fuelCut ? 0 : Math.max(s.throttle, pedalOff ? idleThrottle : 0);
+    // --- Propulsion ---
+    let drive = this.powertrain.update(dt);
+    const regenBrakeN = this.powertrain.regenBrakeN;
 
-    if (s.rpm >= e.limiterRpm) this.limiterCut = 0.07;
-    if (this.limiterCut > 0) {
-      this.limiterCut -= dt;
-      effThrottle = 0;
+    // --- Traction control: limit force to what the driven tyres can transmit ---
+    const mg = p.massKg * G;
+    const transfer = clamp(this.accelFiltered, -0.8, 0.8) * 0.12;
+    const share = p.drive === 'awd' ? 1 : p.drive === 'rwd' ? 0.48 + transfer : 0.6 - transfer;
+    const maxTraction = this.env.grip * mg * share;
+    if (drive > maxTraction) {
+      drive = maxTraction * 0.92;
+      this.tcsHold = 0.35;
     }
-    if (this.shift && this.shift.t < p.shiftTimeS * 0.6) effThrottle *= 0.15; // torque cut
-
-    // Turbo spools with rpm and throttle, lagging behind.
-    // Boost only builds at high load (wastegate open at part throttle).
-    const boostTarget =
-      e.maxBoostKPa * clamp((effThrottle - 0.3) / 0.55, 0, 1) * clamp((s.rpm - 1200) / 1800, 0, 1);
-    this.boostKPa +=
-      (boostTarget - this.boostKPa) * approach(dt, boostTarget > this.boostKPa ? 0.5 : 0.2);
-    const boostRatio = e.maxBoostKPa > 0 ? 0.45 + 0.55 * (this.boostKPa / e.maxBoostKPa) : 1;
-
-    // Friction mean effective pressure ~1–1.6 bar across the rev range.
-    const friction = (5 + s.rpm * 0.0022) * e.displacementL;
-    const fullTorque = interpTable(e.torqueCurve, s.rpm);
-    const engineTorque = fullTorque * effThrottle * (e.maxBoostKPa > 0 ? boostRatio : 1) - friction;
-
-    // --- Gearbox ---
-    if (this.shift) {
-      this.shift.t += dt;
-      if (this.shift.t >= p.shiftTimeS) {
-        s.gear = this.shift.to;
-        this.shift = null;
-        this.shiftCooldown = 0.9;
-      }
-    }
-    this.shiftCooldown = Math.max(0, this.shiftCooldown - dt);
-
-    const gear = this.shift ? this.shift.to : s.gear;
-    const ratio = gear > 0 ? p.gearRatios[gear - 1]! * p.finalDrive : 0;
-    const coupledRpm = this.coupledRpm(gear);
-    let driveTorque = 0; // at the wheels, Nm
-
-    if (gear === 0 || !s.engineRunning) {
-      s.coupled = false;
-    } else if (this.shift) {
-      // Clutches swap: engine rpm chases the new gear's rpm (gives the downshift blip).
-      s.coupled = false;
-      s.rpm += (Math.max(coupledRpm, e.idleRpm) - s.rpm) * approach(dt, p.shiftTimeS / 3);
-      driveTorque = Math.max(0, engineTorque) * ratio * 0.3;
-    } else if (s.coupled) {
-      if (coupledRpm < e.idleRpm * 0.92) s.coupled = false;
-      else {
-        // Driveline compliance: torque winds up the shafts slightly, so a limiter
-        // cut makes the needle bounce instead of sitting dead still.
-        this.windup += (engineTorque * 0.35 - this.windup) * approach(dt, 0.045);
-        s.rpm = coupledRpm + this.windup;
-        driveTorque = engineTorque * ratio;
-      }
-    }
-
-    if (!s.coupled && !this.shift && gear > 0 && s.engineRunning) {
-      // Launch / creep: slipping clutch or torque converter holds engine near a
-      // throttle-dependent stall speed and transmits torque to the wheels.
-      const stallRpm = lerp(e.idleRpm, p.transmission === 'automatic' ? 2400 : 3200, s.throttle);
-      s.rpm += (Math.max(stallRpm, e.idleRpm) - s.rpm) * approach(dt, 0.18);
-      const multiplication =
-        p.transmission === 'automatic' ? lerp(1.9, 1.0, clamp(coupledRpm / s.rpm, 0, 1)) : 1;
-      const creep = p.transmission === 'manual' ? 0 : 35;
-      driveTorque = (Math.max(0, engineTorque) * multiplication + creep) * ratio;
-      if (coupledRpm >= s.rpm - 30 && s.speedMs > 0.5) s.coupled = true;
-    }
-
-    if (!s.coupled && !this.shift && (gear === 0 || !s.engineRunning)) {
-      const target = s.engineRunning ? lerp(idleTarget, e.limiterRpm, effThrottle) : 0;
-      s.rpm += (target - s.rpm) * approach(dt, 0.25);
-    }
+    this.tcsHold = Math.max(0, this.tcsHold - dt);
+    s.tcs = this.tcsHold > 0;
 
     // --- Longitudinal dynamics ---
     const v = s.speedMs;
-    const driveForce = (driveTorque * p.drivetrainEfficiency) / p.wheelRadiusM;
+    this.gradient += (this.inputs.gradient - this.gradient) * approach(dt, 1.5);
     const aero = 0.5 * AIR_DENSITY_KG_M3 * p.dragCoefficient * p.frontalAreaM2 * v * v;
-    const rolling = v > 0.05 ? p.rollingResistance * p.massKg * G : 0;
-    const brakeForce = s.brake * p.massKg * G * 1.05;
-    const effMass = p.massKg * (1.04 + 0.0025 * ratio * ratio * 0.08);
+    const rolling = v > 0.05 ? p.rollingResistance * mg : 0;
+    const slope = mg * this.gradient;
+    const gearRatio = p.gearRatios[s.gear - 1];
+    const ratio = s.gear > 0 && gearRatio ? gearRatio * p.finalDrive : 0;
+    const effMass = p.massKg * (1.04 + 0.0002 * ratio * ratio);
 
-    let force = driveForce - aero - rolling;
-    if (v <= 0.01 && force < 0) force = 0; // no rolling backwards
-    let accel = force / effMass;
-    let newV = v + accel * dt;
-    // Brakes oppose motion but never reverse it.
+    let force = drive - aero - rolling - slope;
+    if (v <= 0.01 && force < 0) force = 0; // brakes / creep hold the car at standstill
+
+    let brakeForce = Math.max(0, s.brake * mg * 1.05 - regenBrakeN);
+    if (s.ignition < 2 || this.body.parkingBrake) {
+      if (v < 0.5) brakeForce = Math.max(brakeForce, mg);
+      force = Math.min(force, 0);
+    }
+    const maxBrake = this.env.grip * mg * 0.98;
+    if (brakeForce + regenBrakeN > maxBrake && v > 1) {
+      brakeForce = Math.max(0, maxBrake - regenBrakeN);
+      this.absHold = 0.25;
+    }
+    this.absHold = Math.max(0, this.absHold - dt);
+    s.abs = this.absHold > 0;
+
+    let newV = v + (force / effMass) * dt;
     const brakeDv = (brakeForce / effMass) * dt;
     newV = newV > brakeDv ? newV - brakeDv : 0;
-    accel = (newV - v) / dt;
+    const accel = (newV - v) / dt;
     s.speedMs = newV;
     this.accelFiltered += (accel / G - this.accelFiltered) * approach(dt, 0.12);
     s.accelG = this.accelFiltered;
     s.odometerKm += (newV * dt) / 1000;
 
-    // --- Automatic shift logic ---
-    if (this.mode === 'auto') this.autoShift();
-    else if (!this.shift && s.gear > 1 && this.coupledRpm(s.gear) < e.idleRpm * 0.95) {
-      this.requestShift(s.gear - 1); // keep from stalling in manual mode
-    }
-    s.shiftRecommended =
-      this.mode === 'manual' &&
-      !this.shift &&
-      s.gear < this.gearCount &&
-      s.rpm > e.redlineRpm - 400;
+    // --- Lateral: follow road curvature within the grip circle ---
+    this.curvature += (this.inputs.curvature - this.curvature) * approach(dt, 0.7);
+    const latMax = this.env.grip * 0.98;
+    s.latG = clamp((newV * newV * this.curvature) / G, -latMax, latMax);
+    s.steeringDeg = (Math.atan(p.wheelbaseM * this.curvature) * p.steeringRatio * 180) / Math.PI;
 
-    // --- Air, fuel, load ---
-    s.mapKPa = s.engineRunning
-      ? clamp(BARO_KPA * lerp(0.28, 1, effThrottle) + this.boostKPa, 18, 255)
-      : BARO_KPA;
-    s.mafGs = s.engineRunning
-      ? ((e.displacementL * s.rpm) / 120) * 0.88 * AIR_DENSITY_G_L * (s.mapKPa / BARO_KPA)
-      : 0;
-    s.loadPct = s.engineRunning ? clamp(effThrottle * 100 * (0.85 + 0.15 * boostRatio), 0, 100) : 0;
-    const fuelKind = FUEL_CONSTANTS[p.fuelType === 'diesel' ? 'diesel' : 'petrol'];
-    const lambda = p.fuelType === 'diesel' ? lerp(3.5, 1.25, effThrottle) : 1;
-    s.fuelRateLh =
-      fuelCut || !s.engineRunning
-        ? 0
-        : (s.mafGs * 3600) / (fuelKind.afr * lambda * fuelKind.densityGL);
-    s.fuelL = Math.max(0, s.fuelL - (s.fuelRateLh / 3600) * dt);
-
-    // --- Thermals (accelerated by warmupScale) ---
-    const tdt = dt * this.warmupScale;
-    const heat = 0.04 + s.loadPct / 100 + s.rpm / 20000;
-    if (s.coolantC < 88) s.coolantC += heat * 0.12 * tdt;
-    else s.coolantC += (89 + heat * 4 - s.coolantC) * approach(tdt, 25);
-    const oilTarget = s.coolantC + (s.coolantC > 75 ? 6 + heat * 12 : -6);
-    s.oilC += (oilTarget - s.oilC) * approach(tdt, 45);
-    const intakeTarget = s.ambientC + 18 - Math.min(v, 30) * 0.4 + this.boostKPa * 0.12;
-    s.intakeC += (intakeTarget - s.intakeC) * approach(dt, 8);
-
-    // --- Electrical ---
-    s.voltage = s.engineRunning ? 14.15 + this.voltNoise.next(dt) * 0.06 : 12.4;
+    this.powertrain.afterStep?.(dt);
+    this.updateThermals(dt);
+    this.updateBody(dt);
   }
 
-  private targetGear(): number {
-    return this.shift ? this.shift.to : this.state.gear;
-  }
-
-  private coupledRpm(gear: number): number {
-    if (gear <= 0) return 0;
-    const p = this.profile;
-    const wheelRpm = (this.state.speedMs / (2 * Math.PI * p.wheelRadiusM)) * 60;
-    return wheelRpm * p.gearRatios[gear - 1]! * p.finalDrive;
-  }
-
-  private requestShift(to: number): void {
-    if (to < 1 || to > this.gearCount || to === this.targetGear()) return;
-    this.shift = { to, t: 0 };
-  }
-
-  private autoShift(): void {
+  private updateIgnition(dt: number): void {
     const s = this.state;
-    const e = this.profile.engine;
-    if (this.shift || this.shiftCooldown > 0) return;
-    const t = s.throttle;
-    const upRpm = lerp(1750, e.redlineRpm - 150, Math.pow(t, 1.8));
-    const downRpm = lerp(1100, e.redlineRpm * 0.5, Math.pow(t, 1.6));
-
-    if (s.coupled && s.rpm > upRpm && s.gear < this.gearCount) {
-      // Only upshift if the next gear does not lug the engine.
-      if (this.coupledRpm(s.gear + 1) > e.idleRpm * 1.25) this.requestShift(s.gear + 1);
-      return;
-    }
-    if (s.gear > 1) {
-      const lower = this.coupledRpm(s.gear - 1);
-      const kickdown = t > 0.85 && lower < e.redlineRpm - 700;
-      if ((s.rpm < downRpm || kickdown) && lower < e.redlineRpm - 400) {
-        this.requestShift(s.gear - 1);
-      } else if (s.speedMs < 1.5) {
-        this.requestShift(1);
+    if (s.ignition === 3) {
+      this.crankT += dt;
+      const crankTime = s.coolantC < 30 ? 1.3 : 0.8;
+      if (this.crankT >= crankTime) {
+        s.ignition = 2;
+        s.engineRunning = true;
+        s.ready = true;
+        s.runTimeS = 0;
+        this.powertrain.onStart?.();
       }
     }
+    if (s.engineRunning) s.runTimeS += dt;
+  }
+
+  private updatePedals(dt: number): void {
+    const s = this.state;
+    let throttle = clamp(this.inputs.throttle, 0, 1);
+    const brake = clamp(this.inputs.brake, 0, 1);
+
+    if (s.cruiseActive) {
+      if (brake > 0.05 || !s.ready) s.cruiseActive = false;
+      else {
+        const err = s.cruiseSetKmh - this.speedKmh;
+        this.cruiseIntegral = clamp(this.cruiseIntegral + err * dt * 0.01, 0, 0.8);
+        throttle = Math.max(throttle, clamp(this.cruiseIntegral + err * 0.05, 0, 0.9));
+      }
+    }
+    if (!s.ready) throttle = 0;
+    s.throttle += (throttle - s.throttle) * approach(dt, 0.08);
+    s.brake += (brake - s.brake) * approach(dt, 0.05);
+  }
+
+  private updateThermals(dt: number): void {
+    const s = this.state;
+    const tdt = dt * this.warmupScale;
+    if (s.engineRunning) {
+      const heat = 0.04 + s.loadPct / 100 + s.rpm / 20000;
+      const overheat = this.faults.has('overheat');
+      if (s.coolantC < 88 && !overheat) s.coolantC += heat * 0.12 * tdt;
+      else {
+        const target = overheat ? 128 : 89 + heat * 4;
+        s.coolantC += (target - s.coolantC) * approach(tdt, overheat ? 40 : 25);
+      }
+    } else {
+      s.coolantC += (s.ambientC - s.coolantC) * approach(tdt, 900);
+    }
+    const oilTarget = s.engineRunning
+      ? s.coolantC + (s.coolantC > 75 ? 6 + s.loadPct * 0.12 : -6)
+      : s.coolantC;
+    s.oilC += (oilTarget - s.oilC) * approach(tdt, 45);
+    const intakeTarget = s.ambientC + 18 - Math.min(s.speedMs, 30) * 0.4 + s.boostKPa * 0.12;
+    s.intakeC += (intakeTarget - s.intakeC) * approach(dt, 8);
+    // Traction battery warms with throughput.
+    const batTarget = s.ambientC + 8 + Math.abs(s.powerKW) * 0.12;
+    s.batteryTempC += (batTarget - s.batteryTempC) * approach(tdt, 400);
+  }
+
+  private updateBody(dt: number): void {
+    const s = this.state;
+    const b = this.body;
+    const on = s.ignition >= 2;
+
+    // Lights: automatic low beam in the dark; high beam needs low beam.
+    b.lowBeam = on && (b.lowBeamForced || s.lightIntensity < 40);
+    if (!b.lowBeam) b.highBeam = false;
+
+    // Electrical system.
+    const alternatorOk = !this.faults.has('alternator');
+    let volts: number;
+    if (s.ignition === 3) volts = 10.3 + this.voltNoise.next(dt) * 0.3;
+    else if (s.ready) {
+      volts = alternatorOk ? 14.15 + this.voltNoise.next(dt) * 0.06 : 11.9 - s.runTimeS * 0.0004;
+    } else if (on) volts = 12.3;
+    else volts = 12.5;
+    s.voltage += (volts - s.voltage) * approach(dt, s.ignition === 3 ? 0.05 : 0.4);
+
+    // Tyres warm up with speed (+~12 kPa); the TPMS fault leaks the rear-right tyre.
+    this.tireWarm += (Math.min(s.speedMs / 30, 1) - this.tireWarm) * approach(dt, 240);
+    for (let i = 0; i < 4; i++) {
+      if (i === 3 && this.faults.has('lowTire')) {
+        s.tires[3] = Math.max(150, s.tires[3] - dt * 2.5);
+        continue;
+      }
+      const target = TIRE_BASE[i]! + this.tireWarm * 12;
+      s.tires[i] = s.tires[i]! + (target - s.tires[i]!) * approach(dt, 30);
+    }
+
+    s.mil = this.faults.has('checkEngine') || this.faults.has('overheat');
   }
 }

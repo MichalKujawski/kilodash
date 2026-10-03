@@ -1,0 +1,43 @@
+{
+  "id": "hatchback-2008",
+  "name": "2008 Compact Hatchback",
+  "year": 2008,
+  "description": "1.4 L petrol, 5-speed manual. Basic OBD only: no fuel level, no gear.",
+  "fuelType": "petrol",
+  "transmission": "manual",
+  "drive": "fwd",
+  "massKg": 1120,
+  "dragCoefficient": 0.33,
+  "frontalAreaM2": 2.1,
+  "rollingResistance": 0.013,
+  "wheelRadiusM": 0.3,
+  "wheelbaseM": 2.5,
+  "steeringRatio": 15.5,
+  "engine": {
+    "displacementL": 1.4,
+    "cylinders": 4,
+    "idleRpm": 850,
+    "redlineRpm": 6500,
+    "limiterRpm": 6700,
+    "maxBoostKPa": 0,
+    "torqueCurve": [
+      [0, 70],
+      [1000, 95],
+      [2500, 118],
+      [4000, 126],
+      [5000, 122],
+      [6000, 110],
+      [7000, 90]
+    ]
+  },
+  "gearRatios": [3.42, 1.95, 1.28, 0.97, 0.76],
+  "finalDrive": 4.06,
+  "drivetrainEfficiency": 0.9,
+  "shiftTimeS": 0.55,
+  "tankL": 45,
+  "speedoMaxKmh": 220,
+  "tachoMaxRpm": 8000,
+  "tpms": false,
+  "obdPids": ["01", "04", "05", "0C", "0D", "0F", "11", "1C"],
+  "vin": "SIMHB08A2CL000123"
+}

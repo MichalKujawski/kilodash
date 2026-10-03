@@ -43,6 +43,7 @@ export class DerivedEngine {
     if (available.has(S.Speed)) out.push(S.TripDistance, S.AverageSpeed, S.TripDuration);
     if (hasFuel && available.has(S.Speed)) out.push(S.InstantConsumption, S.AverageConsumption);
     if (available.has(S.FuelLevel)) out.push(S.Range);
+    if (available.has(S.MAP) && available.has(S.BarometricPressure)) out.push(S.Boost);
     return out;
   }
 
@@ -65,7 +66,10 @@ export class DerivedEngine {
     if (!st.has(S.Speed)) return;
     const speed = st.value(S.Speed);
     const rate = this.fuelRateLh();
-    const running = !st.has(S.EngineRunning) || st.value(S.EngineRunning) > 0;
+    // Drive time counts while the ignition is on (hybrids drive with the engine off).
+    const running = st.has(S.Ignition)
+      ? st.value(S.Ignition) >= 2
+      : !st.has(S.EngineRunning) || st.value(S.EngineRunning) > 0;
 
     if (running) this.trip.durationS += dt;
     this.trip.distanceKm += (speed * dt) / 3600;
@@ -90,7 +94,11 @@ export class DerivedEngine {
       }
     }
 
-    if (st.has(S.FuelLevel)) {
+    if (st.has(S.MAP) && st.has(S.BarometricPressure)) {
+      put(S.Boost, st.value(S.MAP) - st.value(S.BarometricPressure));
+    }
+
+    if (st.has(S.FuelLevel) && this.options.tankL > 0) {
       const litres = (st.value(S.FuelLevel) / 100) * this.options.tankL;
       // Smooth the consumption used for range so the number doesn't jump around.
       const basis = avg ?? DEFAULT_CONSUMPTION_L100;

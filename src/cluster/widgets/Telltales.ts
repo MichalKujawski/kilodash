@@ -23,6 +23,7 @@ export interface TelltalesProps {
  * the convention colour with bloom. Positions and colours never change with theme.
  */
 export class Telltales implements Widget {
+  readonly layer = 'overlay' as const;
   private fades = new Map<string, Fade>();
 
   constructor(
@@ -40,12 +41,18 @@ export class Telltales implements Widget {
     for (const it of this.props.items) {
       const def = TELLTALE_BY_ID.get(it.id);
       if (!def) continue;
-      const active = evaluate(def.when, f.store);
+      // Bulb check lights every warning lamp (not the indicators) at start-up.
+      const selfTest = f.runtime.selfTest && def.blink !== 'flasher';
+      const active = selfTest || evaluate(def.when, f.store);
       let on = active;
       if (def.blink === 'flasher') on = f.flasher.lit(def.id, active, f.now);
-      else if (def.blink === 'warning' && active) on = Math.floor(f.now / 330) % 2 === 0;
+      else if (def.blink === 'warning' && active && !selfTest)
+        on = Math.floor(f.now / 330) % 2 === 0;
       // Flasher lamps switch hard like a relay; others fade in quickly.
       const fade = this.fades.get(it.id)!;
+      // With the ignition off only the hazard flashers can light.
+      const powered = f.runtime.phase === 'boot' || f.runtime.phase === 'on';
+      if (!powered && def.blink !== 'flasher') on = false;
       const a = def.blink === 'flasher' ? (on ? 1 : 0) : fade.update(on, f.dt);
       if (a <= 0.001) continue;
       lit.push(def.id);

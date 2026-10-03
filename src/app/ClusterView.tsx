@@ -41,6 +41,8 @@ export function ClusterView({
     if (!canvas) return;
     const r = new ClusterRenderer(canvas, session.store, theme, {
       lowPower,
+      flasher: session.flasher,
+      alerts: session.alerts,
       onFps: (f, ms) => onFpsRef.current?.(f, ms),
     });
     rendererRef.current = r;

@@ -1,22 +1,25 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ClusterRenderer } from '@/cluster/renderer/ClusterRenderer';
 import type { ClusterKey } from '@/cluster/renderer/types';
 import { classic } from '@/cluster/layouts/classic';
 import { DEFAULT_THEME } from '@/cluster/themes';
 import { S } from '@/core/signals/catalog';
 import { DEFAULT_PROFILE } from '@/profiles';
+import { AudioEngine } from './audio/AudioEngine';
+import { useClusterAudio } from './audio/useClusterAudio';
 import { ClusterView } from './ClusterView';
+import { DevPanel } from './DevPanel';
 import { applyPose, poseFromUrl } from './poses';
 import { ClusterSession } from './session';
 import { useKeyboardDriving } from './useKeyboardDriving';
 import { usePoll } from './useSignal';
 
 const KEYS: [string, string][] = [
-  ['W', 'Throttle'],
-  ['S', 'Brake'],
+  ['W / S', 'Throttle / brake'],
   ['Q / E', 'Paddles'],
   [', / .', 'Indicators'],
   ['← / →', 'Pages'],
+  ['Enter', 'OK'],
   ['P', 'Autopilot'],
 ];
 
@@ -32,21 +35,34 @@ const ARROWS: Record<string, ClusterKey> = {
 const params = new URLSearchParams(window.location.search);
 const KIOSK = params.get('kiosk') === '1';
 const LOW_POWER = params.get('lowpower') === '1';
+const POSE = poseFromUrl();
 
 export function App() {
   const [session, setSession] = useState<ClusterSession | null>(null);
+  const [renderer, setRenderer] = useState<ClusterRenderer | null>(null);
   const [fps, setFps] = useState(0);
   const [frameMs, setFrameMs] = useState(0);
+  const [sound, setSound] = useState({ muted: false, engine: false });
   const rendererRef = useRef<ClusterRenderer | null>(null);
+  const audio = useMemo(() => new AudioEngine(), []);
   const profile = DEFAULT_PROFILE;
 
   useEffect(() => {
-    const s = new ClusterSession(profile);
+    const s = new ClusterSession(
+      profile,
+      POSE ? {} : { startOff: true, attract: true, scenario: 'city' },
+    );
     let live = true;
     void s.start().then(() => {
       if (!live) return;
-      const pose = poseFromUrl();
-      if (pose) applyPose(s.source, pose);
+      if (POSE) applyPose(s.source, POSE);
+      // Scripting hook for tests and visual review (dev builds or ?debug).
+      if (import.meta.env.DEV || params.has('debug')) {
+        (window as unknown as { __oc?: unknown }).__oc = {
+          session: s,
+          renderer: () => rendererRef.current,
+        };
+      }
       setSession(s);
     });
     return () => {
@@ -56,7 +72,25 @@ export function App() {
     };
   }, [profile]);
 
-  useKeyboardDriving(session?.source);
+  useEffect(() => {
+    audio.setMuted(sound.muted);
+    audio.setEngineSound(sound.engine);
+  }, [audio, sound]);
+
+  useClusterAudio(session, audio);
+  useKeyboardDriving(session?.source, {
+    onAnyKey: () => audio.unlock(),
+    toggleMute: () => setSound((s) => ({ ...s, muted: !s.muted })),
+    toggleEngineSound: () => setSound((s) => ({ ...s, engine: !s.engine })),
+    cycleNight: () => rendererRef.current?.cycleNightMode(),
+  });
+
+  // Browsers only allow audio after a user gesture.
+  useEffect(() => {
+    const unlock = (): void => audio.unlock();
+    window.addEventListener('pointerdown', unlock);
+    return () => window.removeEventListener('pointerdown', unlock);
+  }, [audio]);
 
   // Steering-wheel navigation keys go into the cluster.
   useEffect(() => {
@@ -75,6 +109,7 @@ export function App() {
 
   const onRenderer = useCallback((r: ClusterRenderer | null) => {
     rendererRef.current = r;
+    setRenderer(r);
   }, []);
 
   const cluster = session ? (
@@ -83,9 +118,9 @@ export function App() {
       layout={classic}
       theme={DEFAULT_THEME}
       onFps={onFps}
-      lowPower={LOW_POWER}
       onRenderer={onRenderer}
       parallax={!KIOSK}
+      lowPower={LOW_POWER}
     />
   ) : null;
 
@@ -120,6 +155,9 @@ export function App() {
             </span>
           ))}
         </section>
+        {session && (
+          <DevPanel session={session} renderer={renderer} sound={sound} onSound={setSound} />
+        )}
       </main>
     </div>
   );

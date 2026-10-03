@@ -1,7 +1,9 @@
+import type { AlertEngine } from '@/core/alerts/AlertEngine';
 import type { Flasher } from '@/core/alerts/flasher';
 import type { SignalStore } from '@/core/signals/store';
 import type { SignalId } from '@/core/signals/types';
 import type { Theme } from '../themes/types';
+import type { ClusterRuntime } from './startup';
 
 export const LOGICAL_WIDTH = 1920;
 export const LOGICAL_HEIGHT = 720;
@@ -35,6 +37,9 @@ export interface FrameContext {
   /** False when decorative motion must pause (driving lockout, later HMI rules). */
   decorativeMotion: boolean;
   flasher: Flasher;
+  /** Start-up / shut-down choreography state. */
+  runtime: ClusterRuntime;
+  alerts: AlertEngine | null;
 }
 
 export interface StaticContext {
@@ -59,6 +64,11 @@ export interface Widget {
   drawStatic?(ctx: CanvasRenderingContext2D, sc: StaticContext): void;
   /** Dynamic parts, every frame. */
   draw(ctx: CanvasRenderingContext2D, frame: FrameContext): void;
+  /**
+   * 'content' widgets fade with the ignition choreography; 'overlay' widgets
+   * (telltales) stay at full strength for the bulb check.
+   */
+  readonly layer?: 'content' | 'overlay';
   /** Handle a navigation key; return true if consumed. */
   onInput?(key: ClusterKey): boolean;
 }

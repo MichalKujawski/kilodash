@@ -1,8 +1,12 @@
+import type { AlertEngine } from '@/core/alerts/AlertEngine';
 import { Flasher } from '@/core/alerts/flasher';
 import { S } from '@/core/signals/catalog';
 import type { SignalStore } from '@/core/signals/store';
 import type { LayoutDefinition } from '../layouts/types';
 import type { Theme } from '../themes/types';
+import { AlertPopup } from '../widgets/system/AlertPopup';
+import { StartupOverlay } from '../widgets/system/StartupOverlay';
+import { StartupSequence } from './startup';
 import { maskPath, maskPolygon } from './mask';
 import {
   LOGICAL_HEIGHT as H,
@@ -19,7 +23,15 @@ export interface RendererOptions {
   glass?: boolean;
   /** Called about twice a second with the measured frame rate. */
   onFps?: (fps: number, frameMs: number) => void;
+  /** Share a flasher so audio ticks stay in phase with the arrows. */
+  flasher?: Flasher;
+  alerts?: AlertEngine | null;
 }
+
+export type NightMode = 'auto' | 'on' | 'off';
+
+/** Display brightness at night (dimmed to avoid glare). */
+const NIGHT_BRIGHTNESS = 0.68;
 
 /** Emissive layer resolution relative to the main canvas; low res = cheap, soft bloom. */
 const BLOOM_SCALE = 0.25;
@@ -38,10 +50,12 @@ function canvas2d(): [HTMLCanvasElement, CanvasRenderingContext2D] {
  * Composition per frame:
  *  1. static layer (background glows, dial faces, ticks) — cached
  *  2. breathing ambient glow
- *  3. widgets (dynamic), which also paint emissive shapes into the bloom layer
- *  4. bloom: emissive layer blurred and added
- *  5. glass reflection + dither noise — cached, optional parallax offset
- *  6. display mask: true black outside, soft vignette edge — cached
+ *  3. content widgets (dynamic), which also paint emissive shapes into the bloom
+ *     layer; faded by the ignition choreography
+ *  4. overlay widgets (telltales, start-up logo, alert popups) at full strength
+ *  5. bloom: emissive layer blurred and added; night dimming
+ *  6. glass reflection + dither noise — cached, optional parallax offset
+ *  7. display mask: true black outside, soft vignette edge — cached
  */
 export class ClusterRenderer {
   private ctx: CanvasRenderingContext2D;
@@ -64,7 +78,13 @@ export class ClusterRenderer {
   private fpsSince = 0;
   private glassOffset = { x: 0, y: 0 };
   private breathT = 0;
-  readonly flasher = new Flasher();
+  readonly flasher: Flasher;
+  readonly startup = new StartupSequence();
+  alerts: AlertEngine | null;
+  private system: Widget[] = [];
+  nightMode: NightMode = 'auto';
+  /** User brightness setting 0.3..1. */
+  userBrightness = 1;
   lowPower: boolean;
   glass: boolean;
   /** Global brightness multiplier (night mode dims the display). */
@@ -85,6 +105,8 @@ export class ClusterRenderer {
     if (!ctx) throw new Error('Canvas 2D not supported');
     this.ctx = ctx;
     this.lowPower = options.lowPower ?? false;
+    this.flasher = options.flasher ?? new Flasher();
+    this.alerts = options.alerts ?? null;
     this.glass = options.glass ?? true;
     this.staticLayer = canvas2d();
     this.overlayLayer = canvas2d();
@@ -109,7 +131,13 @@ export class ClusterRenderer {
   setLayout(layout: LayoutDefinition, widgets: Widget[]): void {
     this.layout = layout;
     this.widgets = widgets;
+    this.system = [new StartupOverlay(), new AlertPopup(layout.alertRect)];
     this.invalidate();
+  }
+
+  cycleNightMode(): NightMode {
+    this.nightMode = this.nightMode === 'auto' ? 'on' : this.nightMode === 'on' ? 'off' : 'auto';
+    return this.nightMode;
   }
 
   setLowPower(on: boolean): void {
@@ -129,7 +157,7 @@ export class ClusterRenderer {
 
   /** Route a steering-wheel key to the first widget that consumes it. */
   input(key: ClusterKey): boolean {
-    for (const w of this.widgets) if (w.onInput?.(key)) return true;
+    for (const w of [...this.system, ...this.widgets]) if (w.onInput?.(key)) return true;
     return false;
   }
 
@@ -344,6 +372,7 @@ export class ClusterRenderer {
       ectx.setTransform(s, 0, 0, s, 0, 0);
     }
 
+    const runtime = this.startup.update(this.store, dt);
     const frame: FrameContext = {
       now,
       dt,
@@ -354,16 +383,40 @@ export class ClusterRenderer {
       emissive: bloomOn ? ectx : null,
       decorativeMotion: this.decorativeMotion,
       flasher: this.flasher,
+      runtime,
+      alerts: this.alerts,
     };
     this.mark('base');
-    for (const w of this.widgets) {
+    const drawAll = (list: Widget[]): void => {
+      for (const w of list) {
+        ctx.save();
+        if (bloomOn) ectx.save();
+        w.draw(ctx, frame);
+        ctx.restore();
+        if (bloomOn) ectx.restore();
+        this.mark(w.constructor.name);
+      }
+    };
+    drawAll(this.widgets.filter((w) => w.layer !== 'overlay'));
+
+    // Ignition choreography: fade the content (and its glow) without touching overlays.
+    if (runtime.contentAlpha < 1) {
+      const k = 1 - runtime.contentAlpha;
       ctx.save();
-      if (bloomOn) ectx.save();
-      w.draw(ctx, frame);
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.fillStyle = `rgba(0,0,0,${k})`;
+      ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
       ctx.restore();
-      if (bloomOn) ectx.restore();
-      this.mark(w.constructor.name);
+      if (bloomOn) {
+        ectx.save();
+        ectx.setTransform(1, 0, 0, 1, 0, 0);
+        ectx.globalCompositeOperation = 'destination-out';
+        ectx.fillStyle = `rgba(0,0,0,${k})`;
+        ectx.fillRect(0, 0, ec.width, ec.height);
+        ectx.restore();
+      }
     }
+    drawAll([...this.widgets.filter((w) => w.layer === 'overlay'), ...this.system]);
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     if (bloomOn) {
@@ -381,7 +434,11 @@ export class ClusterRenderer {
     }
 
     this.mark('bloom');
-    if (this.brightness < 1) {
+    const dark = this.store.has(S.LightIntensity) && this.store.value(S.LightIntensity) < 20;
+    const night = this.nightMode === 'on' || (this.nightMode === 'auto' && dark);
+    const targetBrightness = (night ? NIGHT_BRIGHTNESS : 1) * this.userBrightness;
+    this.brightness += (targetBrightness - this.brightness) * Math.min(1, dt * 1.5);
+    if (this.brightness < 0.999) {
       ctx.fillStyle = `rgba(0,0,0,${1 - this.brightness})`;
       ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     }

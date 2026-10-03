@@ -1,0 +1,70 @@
+{
+  "id": "hybrid-suv-2019",
+  "name": "2019 Hybrid SUV",
+  "year": 2019,
+  "description": "2.5 L petrol + 88 kW motor, power-split eCVT. Engine starts and stops on its own.",
+  "fuelType": "hybrid",
+  "transmission": "ecvt",
+  "drive": "awd",
+  "massKg": 1720,
+  "dragCoefficient": 0.33,
+  "frontalAreaM2": 2.6,
+  "rollingResistance": 0.011,
+  "wheelRadiusM": 0.36,
+  "wheelbaseM": 2.69,
+  "steeringRatio": 14.5,
+  "engine": {
+    "displacementL": 2.5,
+    "cylinders": 4,
+    "idleRpm": 1000,
+    "redlineRpm": 5200,
+    "limiterRpm": 5500,
+    "maxBoostKPa": 0,
+    "torqueCurve": [
+      [0, 120],
+      [1500, 190],
+      [3600, 221],
+      [4800, 215],
+      [5700, 190]
+    ]
+  },
+  "electric": {
+    "batteryKWh": 1.6,
+    "motorPowerKW": 88,
+    "motorTorqueNm": 202,
+    "regenPowerKW": 30,
+    "evMaxKmh": 50
+  },
+  "gearRatios": [1],
+  "finalDrive": 3.6,
+  "drivetrainEfficiency": 0.9,
+  "shiftTimeS": 0,
+  "tankL": 55,
+  "speedoMaxKmh": 200,
+  "tachoMaxRpm": 6000,
+  "tpms": true,
+  "obdPids": [
+    "01",
+    "04",
+    "05",
+    "0C",
+    "0D",
+    "0F",
+    "10",
+    "11",
+    "1C",
+    "1F",
+    "2F",
+    "33",
+    "42",
+    "46",
+    "51",
+    "5B",
+    "A6"
+  ],
+  "manufacturerSignals": [
+    "Vehicle.Powertrain.TractionBattery.CurrentPower",
+    "Vehicle.Powertrain.Transmission.SelectedGear"
+  ],
+  "vin": "SIMHY19H4KC045678"
+}

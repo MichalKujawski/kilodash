@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_PROFILE } from '@/profiles';
+import { DEFAULT_PROFILE, profileById } from '@/profiles';
 import { VehicleSimulator } from './vehicle';
 
 const DT = 0.01;
@@ -48,7 +48,7 @@ describe('VehicleSimulator', () => {
     expect(sim.state.gear).toBeGreaterThanOrEqual(5);
     expect(sim.speedKmh).toBeGreaterThan(190);
     expect(sim.speedKmh).toBeLessThan(260);
-    expect(maxRpm).toBeLessThan(DEFAULT_PROFILE.engine.limiterRpm + 300);
+    expect(maxRpm).toBeLessThan(DEFAULT_PROFILE.engine!.limiterRpm + 300);
   });
 
   it('bounces on the rev limiter in manual mode', () => {
@@ -59,7 +59,7 @@ describe('VehicleSimulator', () => {
     run(sim, 6, (s) => rpms.push(s.state.rpm));
     const tail = rpms.slice(-200);
     const spread = Math.max(...tail) - Math.min(...tail);
-    expect(Math.max(...tail)).toBeGreaterThan(DEFAULT_PROFILE.engine.limiterRpm - 100);
+    expect(Math.max(...tail)).toBeGreaterThan(DEFAULT_PROFILE.engine!.limiterRpm - 100);
     expect(spread).toBeGreaterThan(40);
   });
 
@@ -100,5 +100,110 @@ describe('VehicleSimulator', () => {
     run(a, 10);
     run(b, 10);
     expect(a.state).toEqual(b.state);
+  });
+});
+
+describe('VehicleSimulator: ignition, faults, chassis', () => {
+  it('cranks with a voltage dip, then idles high when cold', () => {
+    const sim = new VehicleSimulator(DEFAULT_PROFILE, 1, { ambientC: -5 });
+    sim.state.coolantC = -5;
+    sim.setIgnition(0);
+    run(sim, 1);
+    expect(sim.state.rpm).toBeLessThan(50);
+    sim.start();
+    let minVolts = 99;
+    let crankRpm = 0;
+    run(sim, 0.6, (s) => {
+      minVolts = Math.min(minVolts, s.state.voltage);
+      crankRpm = Math.max(crankRpm, s.state.rpm);
+    });
+    expect(sim.state.ignition).toBe(3);
+    expect(minVolts).toBeLessThan(11);
+    expect(crankRpm).toBeLessThan(400);
+    sim.inputs.brake = 1;
+    run(sim, 6);
+    expect(sim.state.engineRunning).toBe(true);
+    expect(sim.state.rpm).toBeGreaterThan(DEFAULT_PROFILE.engine!.idleRpm + 150);
+  });
+
+  it('engages traction control on a hard launch on ice and ABS on hard braking', () => {
+    const sim = new VehicleSimulator(DEFAULT_PROFILE, 1, { grip: 0.35 });
+    sim.inputs.throttle = 1;
+    let tcs = false;
+    run(sim, 3, (s) => (tcs ||= s.state.tcs));
+    expect(tcs).toBe(true);
+    sim.inputs.throttle = 0;
+    sim.inputs.brake = 1;
+    let abs = false;
+    run(sim, 1, (s) => (abs ||= s.state.abs));
+    expect(abs).toBe(true);
+  });
+
+  it('produces lateral g from road curvature, limited by grip', () => {
+    const sim = new VehicleSimulator(DEFAULT_PROFILE);
+    sim.inputs.throttle = 0.5;
+    run(sim, 8);
+    sim.inputs.curvature = 1 / 50;
+    run(sim, 3);
+    expect(sim.state.latG).toBeGreaterThan(0.3);
+    expect(sim.state.latG).toBeLessThanOrEqual(0.98);
+    expect(sim.state.steeringDeg).toBeGreaterThan(20);
+  });
+
+  it('turns faults into DTCs, lamps and symptoms', () => {
+    const sim = new VehicleSimulator(DEFAULT_PROFILE);
+    sim.injectFault('checkEngine');
+    sim.injectFault('lowTire');
+    run(sim, 30);
+    expect(sim.dtcs().map((d) => d.code)).toEqual(['P0301', 'P0420', 'C0750']);
+    expect(sim.state.mil).toBe(true);
+    expect(sim.state.tires[3]).toBeLessThan(190);
+    sim.clearFault('checkEngine');
+    run(sim, 0.1);
+    expect(sim.state.mil).toBe(false);
+  });
+
+  it('overheats when the cooling fault is injected', () => {
+    const sim = new VehicleSimulator(DEFAULT_PROFILE);
+    sim.injectFault('overheat');
+    sim.inputs.throttle = 0.3;
+    run(sim, 120);
+    expect(sim.state.coolantC).toBeGreaterThan(118);
+  });
+});
+
+describe('Electric and hybrid powertrains', () => {
+  it('EV: accelerates, regenerates when lifting off, drains and recovers charge', () => {
+    const ev = profileById('ev-2023');
+    const sim = new VehicleSimulator(ev);
+    expect(sim.isElectric).toBe(true);
+    const soc0 = sim.state.soc;
+    sim.inputs.throttle = 1;
+    let t = 0;
+    while (sim.speedKmh < 100 && t < 15) {
+      sim.step(DT);
+      t += DT;
+    }
+    expect(t).toBeLessThan(10);
+    expect(sim.state.powerKW).toBeGreaterThan(100);
+    expect(sim.state.soc).toBeLessThan(soc0);
+    sim.inputs.throttle = 0;
+    run(sim, 1);
+    expect(sim.state.powerKW).toBeLessThan(0);
+    expect(sim.state.rpm).toBeGreaterThan(0);
+  });
+
+  it('hybrid: drives away on electric power, starts the engine under load', () => {
+    const hy = profileById('hybrid-suv-2019');
+    const sim = new VehicleSimulator(hy);
+    sim.state.coolantC = 80;
+    sim.inputs.throttle = 0.15;
+    run(sim, 4);
+    expect(sim.speedKmh).toBeGreaterThan(5);
+    expect(sim.state.engineRunning).toBe(false);
+    sim.inputs.throttle = 1;
+    run(sim, 3);
+    expect(sim.state.engineRunning).toBe(true);
+    expect(sim.state.fuelRateLh).toBeGreaterThan(1);
   });
 });

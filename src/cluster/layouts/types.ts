@@ -41,4 +41,6 @@ export interface LayoutDefinition {
   /** Soft light pools behind dials. */
   ambient: AmbientGlow[];
   slots: LayoutSlot[];
+  /** Where alert popups appear (usually over the centre content). */
+  alertRect: Rect;
 }
