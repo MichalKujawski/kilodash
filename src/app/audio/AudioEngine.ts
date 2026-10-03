@@ -18,6 +18,7 @@ export class AudioEngine {
   } | null = null;
   muted = false;
   engineSound = false;
+  chimeStyle: 'bell' | 'digital' | 'soft' = 'bell';
 
   get ready(): boolean {
     return this.ctx !== null && this.ctx.state === 'running';
@@ -39,6 +40,10 @@ export class AudioEngine {
       for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
     }
     void this.ctx.resume();
+  }
+
+  setChimeStyle(style: 'bell' | 'digital' | 'soft'): void {
+    this.chimeStyle = style;
   }
 
   setEngineSound(on: boolean): void {
@@ -105,10 +110,18 @@ export class AudioEngine {
     const ctx = this.ctx;
     if (!ctx || !this.master || !this.ready) return;
     const t = ctx.currentTime + 0.01;
-    if (severity === 'info') this.tone(1046, t, 1.1, 'sine', 0.35, 0.25);
+    // Themes pick a voice: soft sine bells, classic bells, or square-ish digital beeps.
+    const wave: OscillatorType = this.chimeStyle === 'digital' ? 'square' : 'sine';
+    const level = this.chimeStyle === 'soft' ? 0.6 : this.chimeStyle === 'digital' ? 0.35 : 1;
+    if (this.chimeStyle === 'digital' && severity !== 'critical') {
+      this.tone(1568, t, 0.09, wave, 0.25 * level);
+      if (severity === 'warning') this.tone(1568, t + 0.14, 0.09, wave, 0.25 * level);
+      return;
+    }
+    if (severity === 'info') this.tone(1046, t, 1.1, 'sine', 0.35 * level, 0.25);
     else if (severity === 'warning') {
-      this.tone(880, t, 0.7, 'sine', 0.4, 0.3);
-      this.tone(659, t + 0.32, 0.9, 'sine', 0.4, 0.3);
+      this.tone(880, t, 0.7, 'sine', 0.4 * level, 0.3);
+      this.tone(659, t + 0.32, 0.9, 'sine', 0.4 * level, 0.3);
     } else {
       for (let i = 0; i < 3; i++) this.tone(1175, t + i * 0.2, 0.14, 'triangle', 0.45);
     }

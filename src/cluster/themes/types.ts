@@ -2,6 +2,9 @@ import type { SpringConfig } from '@/core/smoothing/spring';
 
 export type NeedleStyle = 'blade' | 'line' | 'arrow';
 
+/** Background behind everything: static kinds are cached, animated kinds move. */
+export type BackdropKind = 'solid' | 'gradient' | 'carbon' | 'grid' | 'particles';
+
 /** Text hierarchy and accents. Primary text is never pure white. */
 export interface ThemeText {
   primary: string;
@@ -20,6 +23,8 @@ export interface TickToken {
 
 /** Layered round gauge construction (outside → inside). */
 export interface DialTokens {
+  /** 'needle': classic pointer; 'segments': lit LCD-style bar segments along the scale. */
+  mode: 'needle' | 'segments';
   /** Start angle in degrees (0 = 3 o'clock, clockwise). */
   startDeg: number;
   sweepDeg: number;
@@ -34,6 +39,8 @@ export interface DialTokens {
   };
   tickBand: {
     width: number;
+    /** Band runs all the way round (true) or only along the scale (false). */
+    full: boolean;
     inner: string;
     outer: string;
     /** Inner shadow colour at the band's inner edge. */
@@ -51,6 +58,9 @@ export interface DialTokens {
     fill: string;
     ring: string;
     shadow: string;
+    /** Readouts inside the hub. */
+    text: string;
+    textSecondary: string;
   };
   ticks: {
     major: TickToken;
@@ -58,6 +68,7 @@ export interface DialTokens {
     minor: TickToken;
     /** Minor intervals per major interval (mid tick sits halfway when even). */
     minorPerMajor: number;
+    cap: 'butt' | 'round';
   };
   numerals: {
     /** Cap height ≈ size × 0.7; size as a fraction of radius. */
@@ -70,6 +81,9 @@ export interface DialTokens {
     litRangeDeg: number;
     /** Distance from the outer edge as a fraction of radius. */
     inset: number;
+    /** 'radial' numerals turn with the scale; 'upright' stay level. */
+    orientation: 'upright' | 'radial';
+    italic: boolean;
   };
   redline: {
     band: string;
@@ -86,6 +100,17 @@ export interface DialTokens {
     /** Translucent wedge trailing the needle, degrees. */
     afterglowDeg: number;
     afterglow: string;
+    /** Counterweight tail past the pivot, as a fraction of radius (0 = none). */
+    tail: number;
+    /** Centre cap colour for small-hub dials. */
+    cap: string;
+  };
+  /** Segmented mode only. */
+  segments: {
+    count: number;
+    on: string;
+    /** Unlit segments (LCD ghosting). */
+    ghost: string;
   };
 }
 
@@ -130,6 +155,15 @@ export interface Theme {
     primary: string;
     /** Dial numerals. */
     numerals: string;
+    /** Large readouts: a font family, or 'segment' for procedural 7-segment digits. */
+    readout: string;
+    /** Google Fonts css2 family specs to load on demand, e.g. "Orbitron:wght@500;700". */
+    load?: string[];
+  };
+  backdrop: {
+    kind: BackdropKind;
+    /** Kind-specific colours, e.g. gradient stops or grid line colour. */
+    colors: string[];
   };
   dial: DialTokens;
   /** Small arc gauges (fuel, coolant). */
@@ -159,6 +193,13 @@ export interface Theme {
   };
   effects: EffectTokens;
   needlePhysics: SpringConfig;
+  sounds: {
+    chime: 'bell' | 'digital' | 'soft';
+  };
+  /** Light themes name a dark theme to switch to at night. */
+  nightVariant?: string;
+  /** Author / origin note for exported themes. */
+  author?: string;
 }
 
 /**

@@ -14,8 +14,11 @@ export const midnight: Theme = {
   fonts: {
     primary: '"Barlow Semi Condensed", "Barlow", "Inter", system-ui, sans-serif',
     numerals: '"Barlow Semi Condensed", "Barlow", "Inter", system-ui, sans-serif',
+    readout: '"Barlow Semi Condensed", "Barlow", "Inter", system-ui, sans-serif',
   },
+  backdrop: { kind: 'solid', colors: [] },
   dial: {
+    mode: 'needle',
     startDeg: 140,
     sweepDeg: 260,
     bezel: {
@@ -26,6 +29,7 @@ export const midnight: Theme = {
     },
     tickBand: {
       width: 0.14,
+      full: false,
       inner: '#0d0f12',
       outer: '#191c21',
       shadow: 'rgba(0, 0, 0, 0.7)',
@@ -36,12 +40,15 @@ export const midnight: Theme = {
       fill: '#020203',
       ring: 'rgba(255, 255, 255, 0.13)',
       shadow: 'rgba(0, 0, 0, 0.85)',
+      text: 'rgba(240, 243, 247, 0.94)',
+      textSecondary: 'rgba(232, 236, 242, 0.60)',
     },
     ticks: {
       major: { length: 0.09, width: 3.4, color: 'rgba(240, 243, 247, 0.92)' },
       mid: { length: 0.06, width: 2.2, color: 'rgba(240, 243, 247, 0.62)' },
       minor: { length: 0.035, width: 1.4, color: 'rgba(240, 243, 247, 0.34)' },
       minorPerMajor: 4,
+      cap: 'butt',
     },
     numerals: {
       size: 0.105,
@@ -50,6 +57,8 @@ export const midnight: Theme = {
       lit: 'rgba(250, 251, 252, 0.98)',
       litRangeDeg: 26,
       inset: 0.29,
+      orientation: 'upright',
+      italic: false,
     },
     redline: { band: 'rgba(200, 20, 14, 0.85)', glow: 'rgba(255, 40, 20, 0.9)' },
     needle: {
@@ -61,17 +70,17 @@ export const midnight: Theme = {
       glow: 'rgba(255, 50, 30, 1)',
       afterglowDeg: 22,
       afterglow: 'rgba(255, 50, 30, 0.32)',
+      tail: 0,
+      cap: '#1a1c20',
     },
+    segments: { count: 60, on: '#ff3326', ghost: 'rgba(255,255,255,0.05)' },
   },
   sideGauge: {
     track: 'rgba(255, 255, 255, 0.10)',
     fill: 'rgba(240, 243, 247, 0.85)',
     marker: 'rgba(240, 243, 247, 0.5)',
   },
-  panel: {
-    surface: 'rgba(255, 255, 255, 0.025)',
-    divider: 'rgba(255, 255, 255, 0.06)',
-  },
+  panel: { surface: 'rgba(255, 255, 255, 0.025)', divider: 'rgba(255, 255, 255, 0.06)' },
   map: {
     ground: '#05070a',
     block: '#0c1015',
@@ -102,4 +111,5 @@ export const midnight: Theme = {
     ambientBreath: 0.03,
   },
   needlePhysics: { stiffness: 160, damping: 21, maxVelocity: 2.6 },
+  sounds: { chime: 'bell' },
 };

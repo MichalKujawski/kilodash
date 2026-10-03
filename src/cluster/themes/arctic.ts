@@ -1,0 +1,96 @@
+import { midnight } from './midnight';
+import type { Theme } from './types';
+
+const INTER = '"Inter", system-ui, sans-serif';
+
+/** Light, frosted, icy-blue accents for daytime. Switches to Midnight at night. */
+export const arctic: Theme = {
+  ...midnight,
+  id: 'arctic',
+  name: 'Arctic',
+  background: '#e7edf3',
+  nightVariant: 'midnight',
+  text: {
+    primary: 'rgba(12, 26, 42, 0.94)',
+    secondary: 'rgba(12, 26, 42, 0.62)',
+    tertiary: 'rgba(12, 26, 42, 0.42)',
+    accent: '#1f8bff',
+  },
+  fonts: { primary: INTER, numerals: INTER, readout: INTER },
+  backdrop: { kind: 'gradient', colors: ['#f3f7fb', '#d5dfe9'] },
+  dial: {
+    ...midnight.dial,
+    bezel: { width: 0.016, dark: '#b9c6d3', light: '#ffffff', highlight: 'rgba(255, 255, 255, 1)' },
+    tickBand: {
+      width: 0.13,
+      full: false,
+      inner: 'rgba(255, 255, 255, 0.7)',
+      outer: 'rgba(235, 242, 249, 0.9)',
+      shadow: 'rgba(80, 110, 140, 0.18)',
+    },
+    face: { center: '#f7fafc', edge: '#e3ebf2', texture: 0 },
+    hub: {
+      radius: 0.5,
+      fill: 'rgba(255, 255, 255, 0.85)',
+      ring: 'rgba(31, 139, 255, 0.35)',
+      shadow: 'rgba(80, 110, 140, 0.2)',
+      text: 'rgba(12, 26, 42, 0.94)',
+      textSecondary: 'rgba(12, 26, 42, 0.55)',
+    },
+    ticks: {
+      major: { length: 0.085, width: 3, color: 'rgba(12, 26, 42, 0.85)' },
+      mid: { length: 0.055, width: 2, color: 'rgba(12, 26, 42, 0.5)' },
+      minor: { length: 0.035, width: 1.2, color: 'rgba(12, 26, 42, 0.3)' },
+      minorPerMajor: 4,
+      cap: 'round',
+    },
+    numerals: {
+      ...midnight.dial.numerals,
+      weight: 500,
+      size: 0.095,
+      color: 'rgba(12, 26, 42, 0.6)',
+      lit: '#0b5fc0',
+    },
+    redline: { band: 'rgba(222, 52, 40, 0.75)', glow: 'rgba(222, 52, 40, 0.5)' },
+    needle: {
+      ...midnight.dial.needle,
+      color: '#1f8bff',
+      core: '#d6ebff',
+      glow: 'rgba(31, 139, 255, 0.6)',
+      afterglow: 'rgba(31, 139, 255, 0.18)',
+    },
+    segments: { count: 60, on: '#1f8bff', ghost: 'rgba(12,26,42,0.06)' },
+  },
+  sideGauge: { track: 'rgba(12, 26, 42, 0.12)', fill: '#1f8bff', marker: '#0c1a2a' },
+  panel: { surface: 'rgba(255, 255, 255, 0.5)', divider: 'rgba(12, 26, 42, 0.08)' },
+  map: {
+    ground: '#e6ecf2',
+    block: '#d4dde6',
+    park: '#cfe3d4',
+    water: '#bcd7ef',
+    road: '#ffffff',
+    roadMajor: '#ffffff',
+    roadEdge: '#c3ced9',
+    route: '#1f8bff',
+    routeGlow: 'rgba(31, 139, 255, 0.35)',
+    vehicle: '#0c1a2a',
+    label: 'rgba(12, 26, 42, 0.6)',
+  },
+  chart: { good: '#13a36f', neutral: '#0c1a2a', bad: '#de3428' },
+  car: {
+    paintDark: '#cfd8e1',
+    paintLight: '#ffffff',
+    glass: '#9fb2c4',
+    outline: 'rgba(12, 26, 42, 0.35)',
+  },
+  effects: {
+    ...midnight.effects,
+    bloom: 0.2,
+    glass: 0.05,
+    dither: 0.012,
+    vignette: 22,
+    ambient: 'rgba(255, 255, 255, 0.5)',
+  },
+  needlePhysics: { stiffness: 150, damping: 22, maxVelocity: 2.4 },
+  sounds: { chime: 'soft' },
+};

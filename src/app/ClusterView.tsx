@@ -14,6 +14,8 @@ interface Props {
   /** Move the glass reflection a few px with the pointer (website only). */
   parallax?: boolean;
   lowPower?: boolean;
+  /** Cross-fade theme changes (off while editing a theme live). */
+  animateTheme?: boolean;
 }
 
 /** Hosts the cluster canvas. The renderer runs its own rAF loop outside React. */
@@ -25,8 +27,10 @@ export function ClusterView({
   onRenderer,
   parallax,
   lowPower,
+  animateTheme = true,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const animateRef = useRef(animateTheme);
   const rendererRef = useRef<ClusterRenderer | null>(null);
   const onFpsRef = useRef(onFps);
   const onRendererRef = useRef(onRenderer);
@@ -34,7 +38,8 @@ export function ClusterView({
   useEffect(() => {
     onFpsRef.current = onFps;
     onRendererRef.current = onRenderer;
-  }, [onFps, onRenderer]);
+    animateRef.current = animateTheme;
+  }, [onFps, onRenderer, animateTheme]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -62,7 +67,7 @@ export function ClusterView({
   }, [session]);
 
   useEffect(() => {
-    rendererRef.current?.setTheme(theme);
+    rendererRef.current?.setTheme(theme, animateRef.current);
   }, [theme]);
 
   useEffect(() => {

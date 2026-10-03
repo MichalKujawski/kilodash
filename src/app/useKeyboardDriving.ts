@@ -15,6 +15,7 @@ export interface ExtraKeyActions {
   cycleNight?: () => void;
   toggleMute?: () => void;
   toggleEngineSound?: () => void;
+  cycleTheme?: () => void;
   /** Any key press (used to unlock audio). */
   onAnyKey?: () => void;
 }
@@ -66,6 +67,7 @@ export function useKeyboardDriving(
       else if (k === 'n') x.cycleNight?.();
       else if (k === 'm') x.toggleMute?.();
       else if (k === 'g') x.toggleEngineSound?.();
+      else if (k === 't') x.cycleTheme?.();
       else if (/^[1-6]$/.test(k)) source.setScenario(SCENARIO_KEYS[Number(k) - 1]!);
       else return;
       e.preventDefault();

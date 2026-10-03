@@ -2,13 +2,21 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ClusterRenderer } from '@/cluster/renderer/ClusterRenderer';
 import type { ClusterKey } from '@/cluster/renderer/types';
 import { classic } from '@/cluster/layouts/classic';
-import { DEFAULT_THEME } from '@/cluster/themes';
+import { DEFAULT_THEME, THEMES, THEME_BY_ID } from '@/cluster/themes';
+import type { Theme } from '@/cluster/themes/types';
 import { S } from '@/core/signals/catalog';
 import { DEFAULT_PROFILE } from '@/profiles';
 import { AudioEngine } from './audio/AudioEngine';
 import { useClusterAudio } from './audio/useClusterAudio';
 import { ClusterView } from './ClusterView';
 import { DevPanel } from './DevPanel';
+import { ThemeEditor } from './ThemeEditor';
+import {
+  loadSelectedThemeId,
+  loadUserThemes,
+  saveSelectedThemeId,
+  saveUserThemes,
+} from './themeStore';
 import { applyPose, poseFromUrl } from './poses';
 import { ClusterSession } from './session';
 import { useKeyboardDriving } from './useKeyboardDriving';
@@ -36,6 +44,10 @@ const params = new URLSearchParams(window.location.search);
 const KIOSK = params.get('kiosk') === '1';
 const LOW_POWER = params.get('lowpower') === '1';
 const POSE = poseFromUrl();
+function initialTheme(userThemes: Theme[]): Theme {
+  const id = params.get('theme') ?? loadSelectedThemeId() ?? '';
+  return THEME_BY_ID.get(id) ?? userThemes.find((t) => t.id === id) ?? DEFAULT_THEME;
+}
 
 export function App() {
   const [session, setSession] = useState<ClusterSession | null>(null);
@@ -43,6 +55,37 @@ export function App() {
   const [fps, setFps] = useState(0);
   const [frameMs, setFrameMs] = useState(0);
   const [sound, setSound] = useState({ muted: false, engine: false });
+  const [userThemes, setUserThemes] = useState<Theme[]>(() => loadUserThemes());
+  const [theme, setThemeState] = useState<Theme>(() => initialTheme(userThemes));
+  const [animateTheme, setAnimateTheme] = useState(true);
+  const [editing, setEditing] = useState(false);
+  const allThemes = useMemo(() => [...THEMES, ...userThemes], [userThemes]);
+  const setTheme = useCallback((next: Theme | ((cur: Theme) => Theme), animate = true) => {
+    setAnimateTheme(animate);
+    setThemeState((cur) => {
+      const t = typeof next === 'function' ? next(cur) : next;
+      saveSelectedThemeId(t.id);
+      return t;
+    });
+  }, []);
+  const saveTheme = useCallback((t: Theme) => {
+    setUserThemes((list) => {
+      const next = [...list.filter((x) => x.id !== t.id), t];
+      saveUserThemes(next);
+      return next;
+    });
+  }, []);
+  const deleteTheme = useCallback(
+    (id: string) => {
+      setUserThemes((list) => {
+        const next = list.filter((x) => x.id !== id);
+        saveUserThemes(next);
+        return next;
+      });
+      setTheme(DEFAULT_THEME);
+    },
+    [setTheme],
+  );
   const rendererRef = useRef<ClusterRenderer | null>(null);
   const audio = useMemo(() => new AudioEngine(), []);
   const profile = DEFAULT_PROFILE;
@@ -73,6 +116,10 @@ export function App() {
   }, [profile]);
 
   useEffect(() => {
+    audio.setChimeStyle(theme.sounds.chime);
+  }, [audio, theme]);
+
+  useEffect(() => {
     audio.setMuted(sound.muted);
     audio.setEngineSound(sound.engine);
   }, [audio, sound]);
@@ -83,6 +130,12 @@ export function App() {
     toggleMute: () => setSound((s) => ({ ...s, muted: !s.muted })),
     toggleEngineSound: () => setSound((s) => ({ ...s, engine: !s.engine })),
     cycleNight: () => rendererRef.current?.cycleNightMode(),
+    cycleTheme: () =>
+      setTheme(
+        (cur) =>
+          allThemes[(allThemes.findIndex((t) => t.id === cur.id) + 1) % allThemes.length] ??
+          DEFAULT_THEME,
+      ),
   });
 
   // Browsers only allow audio after a user gesture.
@@ -116,11 +169,12 @@ export function App() {
     <ClusterView
       session={session}
       layout={classic}
-      theme={DEFAULT_THEME}
+      theme={theme}
       onFps={onFps}
       onRenderer={onRenderer}
       parallax={!KIOSK}
       lowPower={LOW_POWER}
+      animateTheme={animateTheme}
     />
   ) : null;
 
@@ -158,6 +212,36 @@ export function App() {
         {session && (
           <DevPanel session={session} renderer={renderer} sound={sound} onSound={setSound} />
         )}
+
+        <section className="theme-chooser" aria-label="Themes">
+          <div className="dev-row">
+            <span className="dev-label">Theme</span>
+            {allThemes.map((t) => (
+              <button
+                key={t.id}
+                className={`pill ${t.id === theme.id ? 'pill-on' : ''}`}
+                onClick={() => setTheme(t)}
+              >
+                <span className="swatch" style={{ background: t.dial.needle.color }} aria-hidden />
+                {t.name}
+              </button>
+            ))}
+            <button
+              className={`pill ${editing ? 'pill-on' : ''}`}
+              onClick={() => setEditing((e) => !e)}
+            >
+              Theme editor
+            </button>
+          </div>
+          {editing && (
+            <ThemeEditor
+              theme={theme}
+              onChange={(t) => setTheme(t, false)}
+              onSave={saveTheme}
+              onDelete={deleteTheme}
+            />
+          )}
+        </section>
       </main>
     </div>
   );

@@ -3,6 +3,7 @@ import { S } from '@/core/signals/catalog';
 import type { SignalId } from '@/core/signals/types';
 import { ReadoutValue, Spring } from '@/core/smoothing/spring';
 import { annulus, DEG, Fade, font, label, polar, tabular, text } from '../renderer/draw';
+import { canSegment, drawSegments } from '../renderer/segments';
 import type { FrameContext, Rect, StaticContext, Widget, WidgetFactory } from '../renderer/types';
 import type { DialTokens, Theme } from '../themes/types';
 import { SAFETY_COLORS } from '../themes/types';
@@ -31,13 +32,48 @@ interface Geometry {
   bandInner: number;
   hub: number;
   numeralR: number;
+  /** Small-hub dials (classic analogue) put readouts in a window below the pivot. */
+  compact: boolean;
+}
+
+/** Draw readout text with the theme's readout face (a font, or 7-segment digits). */
+export function readoutText(
+  ctx: CanvasRenderingContext2D,
+  f: FrameContext,
+  str: string,
+  x: number,
+  y: number,
+  size: number,
+  color: string,
+  align: 'left' | 'center' | 'right' = 'center',
+): number {
+  const t = f.theme;
+  if (t.fonts.readout === 'segment' && canSegment(str)) {
+    return drawSegments(
+      ctx,
+      str,
+      x,
+      y,
+      size * 0.72,
+      color,
+      t.dial.segments.ghost,
+      align,
+      f.emissive,
+    );
+  }
+  const family = t.fonts.readout === 'segment' ? t.fonts.numerals : t.fonts.readout;
+  ctx.font = font(500, size, family);
+  ctx.fillStyle = color;
+  ctx.textBaseline = 'alphabetic';
+  return tabular(ctx, str, x, y, align);
 }
 
 /**
  * Round gauge built in layers like a physical dial: metallic bezel ring, tick band
  * with three-level tick hierarchy, face, hub ring, filled redline band; plus a
  * tapered emissive needle with an afterglow sweep and numerals that brighten as
- * the needle passes.
+ * the needle passes. Themes can switch it to an LCD segment bar, radial or
+ * italic numerals, rounded ticks, or a classic small-hub needle with a tail.
  */
 export class RoundDial implements Widget {
   private spring = new Spring(0);
@@ -66,6 +102,7 @@ export class RoundDial implements Widget {
       bandInner,
       hub: r * d.hub.radius,
       numeralR: r * (1 - d.numerals.inset),
+      compact: d.hub.radius < 0.3,
     };
   }
 
@@ -88,14 +125,39 @@ export class RoundDial implements Widget {
     return out;
   }
 
+  private drawNumeral(
+    ctx: CanvasRenderingContext2D,
+    t: Theme,
+    txt: string,
+    deg: number,
+    g: Geometry,
+  ): void {
+    const d = t.dial;
+    const size = Math.round(g.r * d.numerals.size);
+    ctx.font = `${d.numerals.italic ? 'italic ' : ''}${d.numerals.weight} ${size}px ${t.fonts.numerals}`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const [x, y] = polar(g.cx, g.cy, g.numeralR, deg);
+    if (d.numerals.orientation === 'radial') {
+      ctx.save();
+      ctx.translate(x, y);
+      // Keep numerals readable: flip the ones in the lower half.
+      const a = deg + 90;
+      const n = ((a % 360) + 360) % 360;
+      ctx.rotate((n > 90 && n < 270 ? a + 180 : a) * DEG);
+      ctx.fillText(txt, 0, 1);
+      ctx.restore();
+    } else ctx.fillText(txt, x, y + 1);
+  }
+
   drawStatic(ctx: CanvasRenderingContext2D, sc: StaticContext): void {
     const t = sc.theme;
     const d = t.dial;
     const g = this.geometry(d);
     const { cx, cy, r } = g;
     const p = this.props;
-    const a0 = d.startDeg;
-    const a1 = d.startDeg + d.sweepDeg;
+    const a0 = d.tickBand.full ? 0 : d.startDeg;
+    const a1 = d.tickBand.full ? 360 : d.startDeg + d.sweepDeg;
 
     // Face: darkest in the middle, optional faint concentric texture.
     const face = ctx.createRadialGradient(cx, cy, 0, cx, cy, g.bandOuter);
@@ -115,14 +177,13 @@ export class RoundDial implements Widget {
       }
     }
 
-    // Tick band along the scale, slightly lighter than the face.
+    // Tick band, slightly lighter than the face, with an inner shadow.
     const band = ctx.createRadialGradient(cx, cy, g.bandInner, cx, cy, g.bandOuter);
     band.addColorStop(0, d.tickBand.inner);
     band.addColorStop(1, d.tickBand.outer);
     ctx.fillStyle = band;
     annulus(ctx, cx, cy, g.bandInner, g.bandOuter, a0, a1);
     ctx.fill();
-    // Inner shadow on the band's inner edge gives it depth.
     const shade = ctx.createRadialGradient(cx, cy, g.bandInner, cx, cy, g.bandInner + 10);
     shade.addColorStop(0, d.tickBand.shadow);
     shade.addColorStop(1, 'rgba(0,0,0,0)');
@@ -130,29 +191,42 @@ export class RoundDial implements Widget {
     annulus(ctx, cx, cy, g.bandInner, g.bandInner + 10, a0, a1);
     ctx.fill();
 
-    // Redline: a filled band segment inside the tick band.
-    if (p.redFrom !== undefined) {
+    const segmented = d.mode === 'segments';
+    // Redline: a filled band segment inside the tick band (segment dials colour their bars instead).
+    if (p.redFrom !== undefined && !segmented) {
       const ra = this.deg(this.frac(p.redFrom), d);
       ctx.fillStyle = d.redline.band;
-      annulus(ctx, cx, cy, g.bandOuter - r * d.tickBand.width * 0.42, g.bandOuter, ra, a1);
+      annulus(
+        ctx,
+        cx,
+        cy,
+        g.bandOuter - r * d.tickBand.width * 0.42,
+        g.bandOuter,
+        ra,
+        d.startDeg + d.sweepDeg,
+      );
       ctx.fill();
     }
+    if (segmented) this.drawSegmentBars(ctx, null, g, d, -1);
 
     // Ticks: major / mid / minor, from the bezel inward.
     const per = Math.max(1, d.ticks.minorPerMajor);
     const step = p.majorStep / per;
     const count = Math.round((p.max - p.min) / step);
-    ctx.lineCap = 'butt';
+    ctx.lineCap = d.ticks.cap;
+    const tickOuter = segmented ? g.bandInner - 4 : g.bandOuter;
     for (let i = 0; i <= count; i++) {
       const v = p.min + i * step;
       const isMajor = i % per === 0;
       const isMid = !isMajor && per % 2 === 0 && i % (per / 2) === 0;
       const tok = isMajor ? d.ticks.major : isMid ? d.ticks.mid : d.ticks.minor;
+      if (tok.length <= 0 || tok.width <= 0) continue;
       const deg = this.deg(this.frac(v), d);
       const inRed = p.redFrom !== undefined && v >= p.redFrom;
-      const [x0, y0] = polar(cx, cy, g.bandOuter, deg);
-      const [x1, y1] = polar(cx, cy, g.bandOuter - r * tok.length, deg);
-      ctx.strokeStyle = inRed && isMajor ? 'rgba(255,235,230,0.95)' : tok.color;
+      const inset = d.ticks.cap === 'round' ? tok.width / 2 + 1 : 0;
+      const [x0, y0] = polar(cx, cy, tickOuter - inset, deg);
+      const [x1, y1] = polar(cx, cy, tickOuter - r * tok.length - inset, deg);
+      ctx.strokeStyle = inRed && isMajor && !segmented ? 'rgba(255,235,230,0.95)' : tok.color;
       ctx.lineWidth = tok.width;
       ctx.beginPath();
       ctx.moveTo(x0, y0);
@@ -161,56 +235,109 @@ export class RoundDial implements Widget {
     }
 
     // Numerals (dim base; the lit overlay is drawn per frame near the needle).
-    const size = Math.round(r * d.numerals.size);
-    ctx.font = font(d.numerals.weight, size, t.fonts.numerals);
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
     for (const n of this.numerals()) {
-      const [x, y] = polar(cx, cy, g.numeralR, this.deg(this.frac(n.value), d));
       const inRed = p.redFrom !== undefined && n.value >= p.redFrom;
       ctx.fillStyle = inRed ? SAFETY_COLORS.danger : d.numerals.color;
-      ctx.fillText(n.text, x, y + 1);
+      this.drawNumeral(ctx, t, n.text, this.deg(this.frac(n.value), d), g);
     }
 
     // Hub ring with soft inner shadow; hides the needle pivot.
-    ctx.fillStyle = d.hub.fill;
-    ctx.beginPath();
-    ctx.arc(cx, cy, g.hub, 0, Math.PI * 2);
-    ctx.fill();
-    const hubShade = ctx.createRadialGradient(cx, cy, g.hub - 16, cx, cy, g.hub);
-    hubShade.addColorStop(0, 'rgba(0,0,0,0)');
-    hubShade.addColorStop(1, d.hub.shadow);
-    ctx.fillStyle = hubShade;
-    ctx.fill();
-    ctx.strokeStyle = d.hub.ring;
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
+    if (!g.compact) {
+      ctx.fillStyle = d.hub.fill;
+      ctx.beginPath();
+      ctx.arc(cx, cy, g.hub, 0, Math.PI * 2);
+      ctx.fill();
+      const hubShade = ctx.createRadialGradient(cx, cy, g.hub - 16, cx, cy, g.hub);
+      hubShade.addColorStop(0, 'rgba(0,0,0,0)');
+      hubShade.addColorStop(1, d.hub.shadow);
+      ctx.fillStyle = hubShade;
+      ctx.fill();
+      ctx.strokeStyle = d.hub.ring;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    } else {
+      // Analogue dial: a recessed readout window below the pivot.
+      ctx.fillStyle = 'rgba(0,0,0,0.08)';
+      ctx.beginPath();
+      ctx.roundRect(cx - r * 0.24, cy + r * 0.3, r * 0.48, r * 0.24, 8);
+      ctx.fill();
+    }
 
     // Bezel: metallic gradient around the circumference plus a top-left specular.
     const bw = r * d.bezel.width;
-    const metal = ctx.createConicGradient(-Math.PI / 2, cx, cy);
-    [d.bezel.dark, d.bezel.light, d.bezel.dark, d.bezel.light, d.bezel.dark].forEach((col, i) =>
-      metal.addColorStop(i / 4, col),
-    );
-    ctx.strokeStyle = metal;
-    ctx.lineWidth = bw;
-    ctx.beginPath();
-    ctx.arc(cx, cy, r - bw / 2, 0, Math.PI * 2);
-    ctx.stroke();
-    const spec = ctx.createConicGradient(190 * DEG, cx, cy);
-    spec.addColorStop(0, 'rgba(255,255,255,0)');
-    spec.addColorStop(40 / 360, d.bezel.highlight);
-    spec.addColorStop(80 / 360, 'rgba(255,255,255,0)');
-    spec.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.strokeStyle = spec;
-    ctx.lineWidth = Math.max(1, bw * 0.35);
-    ctx.beginPath();
-    ctx.arc(cx, cy, r - bw * 0.25, 190 * DEG, 270 * DEG);
-    ctx.stroke();
+    if (bw > 0.5) {
+      const metal = ctx.createConicGradient(-Math.PI / 2, cx, cy);
+      [d.bezel.dark, d.bezel.light, d.bezel.dark, d.bezel.light, d.bezel.dark].forEach((col, i) =>
+        metal.addColorStop(i / 4, col),
+      );
+      ctx.strokeStyle = metal;
+      ctx.lineWidth = bw;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r - bw / 2, 0, Math.PI * 2);
+      ctx.stroke();
+      const spec = ctx.createConicGradient(190 * DEG, cx, cy);
+      spec.addColorStop(0, 'rgba(255,255,255,0)');
+      spec.addColorStop(40 / 360, d.bezel.highlight);
+      spec.addColorStop(80 / 360, 'rgba(255,255,255,0)');
+      spec.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.strokeStyle = spec;
+      ctx.lineWidth = Math.max(1, bw * 0.35);
+      ctx.beginPath();
+      ctx.arc(cx, cy, r - bw * 0.25, 190 * DEG, 270 * DEG);
+      ctx.stroke();
+    }
 
-    // Unit label in the bottom gap (readout dials show it under the digits instead).
-    if (p.center !== 'readout')
-      label(ctx, p.unitLabel, cx, cy + r * 0.72, 16, t.fonts.primary, t.text.tertiary, 'center');
+    // Unit label (readout dials show it under the digits instead).
+    if (p.center !== 'readout' || g.compact) {
+      const y = g.compact ? cy - r * 0.32 : cy + r * 0.72;
+      label(
+        ctx,
+        p.unitLabel,
+        cx,
+        y,
+        16,
+        t.fonts.primary,
+        g.compact ? d.hub.textSecondary : t.text.tertiary,
+        'center',
+      );
+    }
+  }
+
+  /** LCD bar segments along the scale; `frac < 0` draws the unlit ghosts only. */
+  private drawSegmentBars(
+    ctx: CanvasRenderingContext2D,
+    em: CanvasRenderingContext2D | null,
+    g: Geometry,
+    d: DialTokens,
+    frac: number,
+  ): void {
+    const p = this.props;
+    const n = d.segments.count;
+    const span = d.sweepDeg / n;
+    const redFrac = p.redFrom !== undefined ? this.frac(p.redFrom) : 2;
+    const r0 = g.bandInner + 3;
+    const r1 = g.bandOuter - 3;
+    for (let i = 0; i < n; i++) {
+      const lit = frac >= 0 && (i + 0.5) / n <= frac;
+      if (frac >= 0 && !lit) continue;
+      const red = i / n >= redFrac;
+      const a = d.startDeg + i * span;
+      ctx.fillStyle =
+        frac < 0
+          ? red
+            ? 'rgba(255,60,30,0.10)'
+            : d.segments.ghost
+          : red
+            ? d.redline.glow
+            : d.segments.on;
+      annulus(ctx, g.cx, g.cy, r0, r1, a + span * 0.14, a + span * 0.86);
+      ctx.fill();
+      if (lit && em) {
+        em.fillStyle = ctx.fillStyle;
+        annulus(em, g.cx, g.cy, r0, r1, a + span * 0.14, a + span * 0.86);
+        em.fill();
+      }
+    }
   }
 
   draw(ctx: CanvasRenderingContext2D, f: FrameContext): void {
@@ -232,11 +359,12 @@ export class RoundDial implements Widget {
     const deg = this.deg(frac, d);
     // Never freeze silently: a stale needle is dimmed.
     const live = quality === 'live' || quality === 'estimated';
-    const alpha = live ? 1 : 0.3;
+    const alpha = live || f.runtime.sweep !== null ? 1 : 0.3;
     const em = f.emissive;
+    const segmented = d.mode === 'segments';
 
     // Redline glow intensifies as the needle approaches.
-    if (p.redFrom !== undefined) {
+    if (p.redFrom !== undefined && !segmented) {
       const near = clamp(1 - (this.frac(p.redFrom) - frac) / 0.12, 0, 1);
       if (near > 0) {
         const ra = this.deg(this.frac(p.redFrom), d);
@@ -252,50 +380,47 @@ export class RoundDial implements Widget {
     }
 
     // Numerals brighten as the needle passes.
-    const size = Math.round(r * d.numerals.size);
-    ctx.font = font(d.numerals.weight, size, t.fonts.numerals);
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
     for (const n of this.numerals()) {
       const nd = this.deg(this.frac(n.value), d);
       const k = 1 - Math.abs(nd - deg) / d.numerals.litRangeDeg;
       if (k <= 0) continue;
       const inRed = p.redFrom !== undefined && n.value >= p.redFrom;
-      const [x, y] = polar(cx, cy, g.numeralR, nd);
       ctx.globalAlpha = k * alpha;
       ctx.fillStyle = inRed ? '#ff6a5c' : d.numerals.lit;
-      ctx.fillText(n.text, x, y + 1);
+      this.drawNumeral(ctx, t, n.text, nd, g);
       if (em) {
         em.globalAlpha = k * 0.35;
-        em.font = ctx.font;
-        em.textAlign = 'center';
-        em.textBaseline = 'middle';
         em.fillStyle = d.numerals.lit;
-        em.fillText(n.text, x, y + 1);
+        this.drawNumeral(em, t, n.text, nd, g);
         em.globalAlpha = 1;
       }
     }
     ctx.globalAlpha = 1;
 
-    // Afterglow: translucent wedge trailing the needle, stronger while sweeping.
-    if (frac > 0.003) {
-      const span = Math.min(
-        d.needle.afterglowDeg * (0.6 + Math.min(this.sweepSpeed * 3, 1.2)),
-        deg - d.startDeg,
-      );
-      const from = deg - span;
-      const grad = ctx.createConicGradient(from * DEG, cx, cy);
-      grad.addColorStop(0, 'rgba(0,0,0,0)');
-      grad.addColorStop(Math.max(0.0001, span / 360), d.needle.afterglow);
-      grad.addColorStop(Math.min(1, span / 360 + 0.0001), 'rgba(0,0,0,0)');
+    if (segmented) {
       ctx.globalAlpha = alpha;
-      ctx.fillStyle = grad;
-      annulus(ctx, cx, cy, g.hub, g.bandOuter, from, deg);
-      ctx.fill();
+      this.drawSegmentBars(ctx, em, g, d, frac);
       ctx.globalAlpha = 1;
+    } else {
+      // Afterglow: translucent wedge trailing the needle, stronger while sweeping.
+      if (frac > 0.003 && d.needle.afterglowDeg > 0) {
+        const span = Math.min(
+          d.needle.afterglowDeg * (0.6 + Math.min(this.sweepSpeed * 3, 1.2)),
+          deg - d.startDeg,
+        );
+        const from = deg - span;
+        const grad = ctx.createConicGradient(from * DEG, cx, cy);
+        grad.addColorStop(0, 'rgba(0,0,0,0)');
+        grad.addColorStop(Math.max(0.0001, span / 360), d.needle.afterglow);
+        grad.addColorStop(Math.min(1, span / 360 + 0.0001), 'rgba(0,0,0,0)');
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = grad;
+        annulus(ctx, cx, cy, g.compact ? r * 0.2 : g.hub, g.bandOuter, from, deg);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+      this.drawNeedle(ctx, em, g, deg, t, alpha);
     }
-
-    this.drawNeedle(ctx, em, g, deg, t, alpha);
 
     if (p.center === 'readout') this.drawReadout(ctx, f, g, raw, available);
     else if (p.center === 'gear') this.drawGear(ctx, f, g);
@@ -309,10 +434,10 @@ export class RoundDial implements Widget {
     widen = 0,
   ): void {
     const n = t.dial.needle;
-    const inner = g.hub - 2;
+    const inner = g.compact ? -g.r * n.tail : g.hub - 2;
     const tip = g.bandInner + (g.bandOuter - g.bandInner) * 0.25;
-    const baseW = (n.style === 'line' ? 1.6 : n.baseWidth / 2) + widen;
-    const tipW = (n.style === 'line' ? 1.6 : n.tipWidth / 2) + widen;
+    const baseW = (n.style === 'line' ? n.baseWidth / 3 : n.baseWidth / 2) + widen;
+    const tipW = (n.style === 'line' ? n.tipWidth / 2 : n.tipWidth / 2) + widen;
     const [bx, by] = polar(g.cx, g.cy, inner, deg);
     const [tx, ty] = polar(g.cx, g.cy, tip, deg);
     const nx = Math.cos((deg + 90) * DEG);
@@ -336,11 +461,20 @@ export class RoundDial implements Widget {
   ): void {
     const n = t.dial.needle;
     ctx.globalAlpha = alpha;
+    if (g.compact) {
+      // Drop shadow under a physical needle.
+      ctx.save();
+      ctx.translate(3, 5);
+      ctx.fillStyle = 'rgba(0,0,0,0.22)';
+      this.needlePath(ctx, g, deg, t);
+      ctx.fill();
+      ctx.restore();
+    }
     ctx.fillStyle = n.color;
     this.needlePath(ctx, g, deg, t);
     ctx.fill();
     // Bright core line gives the blade an emissive centre.
-    const [bx, by] = polar(g.cx, g.cy, g.hub + 6, deg);
+    const [bx, by] = polar(g.cx, g.cy, g.compact ? 0 : g.hub + 6, deg);
     const [tx, ty] = polar(g.cx, g.cy, g.bandInner, deg);
     ctx.strokeStyle = n.core;
     ctx.lineWidth = 1;
@@ -348,6 +482,25 @@ export class RoundDial implements Widget {
     ctx.moveTo(bx, by);
     ctx.lineTo(tx, ty);
     ctx.stroke();
+    if (g.compact) {
+      // Chrome centre cap.
+      const capR = g.hub;
+      const cap = ctx.createRadialGradient(
+        g.cx - capR * 0.3,
+        g.cy - capR * 0.4,
+        1,
+        g.cx,
+        g.cy,
+        capR,
+      );
+      cap.addColorStop(0, '#ffffff');
+      cap.addColorStop(0.5, n.cap);
+      cap.addColorStop(1, t.dial.hub.fill);
+      ctx.fillStyle = cap;
+      ctx.beginPath();
+      ctx.arc(g.cx, g.cy, capR, 0, Math.PI * 2);
+      ctx.fill();
+    }
     ctx.globalAlpha = 1;
     if (em) {
       em.globalAlpha = alpha;
@@ -365,55 +518,71 @@ export class RoundDial implements Widget {
     raw: number,
     ok: boolean,
   ): void {
-    const t = f.theme;
+    const d = f.theme.dial;
     const shown = this.readout.update(raw, f.dt);
-    ctx.font = font(500, 128, t.fonts.primary);
-    ctx.fillStyle = t.text.primary;
-    ctx.textBaseline = 'alphabetic';
-    tabular(ctx, ok ? String(Math.max(0, Math.round(shown))) : '--', g.cx, g.cy + 40, 'center');
+    const str = ok ? String(Math.max(0, Math.round(shown))) : '--';
+    if (g.compact) {
+      readoutText(ctx, f, str, g.cx, g.cy + g.r * 0.5, 50, d.hub.text);
+      label(
+        ctx,
+        this.props.unitLabel,
+        g.cx,
+        g.cy - g.r * 0.32,
+        16,
+        f.theme.fonts.primary,
+        d.hub.textSecondary,
+        'center',
+      );
+      return;
+    }
+    readoutText(ctx, f, str, g.cx, g.cy + 40, 128, d.hub.text);
     label(
       ctx,
       this.props.unitLabel,
       g.cx,
       g.cy + 76,
       17,
-      t.fonts.primary,
-      t.text.secondary,
+      f.theme.fonts.primary,
+      d.hub.textSecondary,
       'center',
     );
   }
 
   private drawGear(ctx: CanvasRenderingContext2D, f: FrameContext, g: Geometry): void {
     const t = f.theme;
+    const d = t.dial;
     const st = f.store;
     const { cx, cy, r } = g;
 
-    // Mode and READY labels fade in with the engine.
+    // READY fades in with the engine.
     const running = !st.has(S.EngineRunning) || st.value(S.EngineRunning) > 0;
     const auto = !st.has(S.SelectedGear) || st.value(S.SelectedGear) === 127;
-    const ready = this.readyFade.update(running, f.dt);
+    const ready = this.readyFade.update(running && f.runtime.phase === 'on', f.dt);
     ctx.globalAlpha = ready * 0.9;
-    label(ctx, 'Ready', cx, cy + r * 0.6, 14, t.fonts.primary, SAFETY_COLORS.info, 'center');
+    label(
+      ctx,
+      'Ready',
+      cx,
+      cy + r * (g.compact ? 0.66 : 0.6),
+      14,
+      t.fonts.primary,
+      SAFETY_COLORS.info,
+      'center',
+    );
     ctx.globalAlpha = 1;
 
+    const gearY = g.compact ? cy + r * 0.5 : cy + 38;
+    const big = g.compact ? 54 : 108;
     if (!st.has(S.Gear)) {
-      text(ctx, auto ? 'D' : 'M', cx, cy + 36, {
-        font: font(500, 104, t.fonts.primary),
-        color: t.text.primary,
-        align: 'center',
-      });
+      readoutText(ctx, f, auto ? 'D' : 'M', cx, gearY, big, d.hub.text);
       return;
     }
     const gear = Math.round(st.value(S.Gear));
     const gearText = gear < 0 ? 'R' : gear === 0 ? 'N' : String(gear);
-    text(ctx, gearText, cx + 14, cy + 38, {
-      font: font(500, 108, t.fonts.primary),
-      color: t.text.primary,
-      align: 'center',
-    });
-    text(ctx, auto ? 'D' : 'M', cx - 46, cy - 12, {
-      font: font(500, 34, t.fonts.primary),
-      color: t.text.secondary,
+    readoutText(ctx, f, gearText, cx + big * 0.13, gearY, big, d.hub.text);
+    text(ctx, auto ? 'D' : 'M', cx - big * 0.43, gearY - big * 0.46, {
+      font: font(500, Math.round(big * 0.31), t.fonts.primary),
+      color: d.hub.textSecondary,
       align: 'center',
     });
 
@@ -421,7 +590,7 @@ export class RoundDial implements Widget {
     const shift = st.value(S.ShiftRequest) > 0;
     this.shiftFlash = shift ? this.shiftFlash + f.dt : 0;
     if (shift && Math.floor(this.shiftFlash * 8) % 2 === 0) {
-      const y = cy - 74;
+      const y = gearY - big * 1.04;
       for (const c of f.emissive ? [ctx, f.emissive] : [ctx]) {
         c.fillStyle = SAFETY_COLORS.caution;
         c.beginPath();

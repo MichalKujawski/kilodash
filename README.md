@@ -4,7 +4,7 @@ An adaptive, themeable virtual instrument cluster (digital cockpit) for the brow
 from a pluggable data-source layer: a physics simulator today, a real ELM327 OBD-II adapter
 and a Raspberry Pi CAN-bus bridge on the roadmap.
 
-> **Status: Milestone 2 (simulator, scenarios, telltales, alerts).** The classic layout, the Midnight theme and the
+> **Status: Milestone 3 (theme system).** The classic layout, the Midnight theme and the
 > physics simulator work. See the [roadmap](#roadmap).
 
 ![Highway cruise](docs/screenshots/highway.png)
@@ -25,7 +25,7 @@ npm run test:e2e   # browser smoke test (Playwright)
 Keyboard: `W`/`S` throttle/brake, `Q`/`E` paddle shifts, `,`/`.` indicators, `H` high beam,
 `Space` hazard lights, `C` cruise control, `F` fog light, `K` ignition, `1`–`6` scenarios (city,
 highway, mountain, track, night, cold start), `N` night mode (auto/on/off), `M` mute, `G` engine
-sound, `←`/`→` centre pages, `Enter` acknowledges an alert, and `P` toggles the autopilot. The
+sound, `T` cycles themes, `←`/`→` centre pages, `Enter` acknowledges an alert, and `P` toggles the autopilot. The
 autopilot takes over again 8 s after your last input. In attract mode it cycles through the
 scenarios.
 
@@ -81,6 +81,9 @@ flowchart LR
   full-sensor dev car) each expose a different set of supported PIDs. ICE, EV (with regen) and
   power-split hybrid powertrains share one chassis model with lateral g, gradients,
   traction control and ABS, and tyre pressures.
+- **Seven themes** (Midnight, Neon Grid, Racing, Analog Heritage, Arctic, Eco/EV, Retro LCD)
+  change everything from dial construction to backdrop, fonts, needle physics and chime voice. Theme
+  switches cross-fade, and a live theme editor exports and imports JSON. See [docs/THEMES.md](docs/THEMES.md).
 - **Layouts and themes are data.** A layout slot lists candidate widgets in order, and the first
   one whose signals the car provides (or that can be derived) wins. A car with no fuel-level
   PID gets no fake fuel gauge.

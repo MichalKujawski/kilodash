@@ -3,7 +3,10 @@ import { Flasher } from '@/core/alerts/flasher';
 import { S } from '@/core/signals/catalog';
 import type { SignalStore } from '@/core/signals/store';
 import type { LayoutDefinition } from '../layouts/types';
+import { THEME_BY_ID } from '../themes';
+import { ensureThemeFonts } from '../themes/fonts';
 import type { Theme } from '../themes/types';
+import { AnimatedBackdrop, paintStaticBackdrop } from './backdrop';
 import { AlertPopup } from '../widgets/system/AlertPopup';
 import { StartupOverlay } from '../widgets/system/StartupOverlay';
 import { StartupSequence } from './startup';
@@ -32,6 +35,7 @@ export type NightMode = 'auto' | 'on' | 'off';
 
 /** Display brightness at night (dimmed to avoid glare). */
 const NIGHT_BRIGHTNESS = 0.68;
+const THEME_FADE_S = 0.7;
 
 /** Emissive layer resolution relative to the main canvas; low res = cheap, soft bloom. */
 const BLOOM_SCALE = 0.25;
@@ -80,6 +84,12 @@ export class ClusterRenderer {
   private breathT = 0;
   readonly flasher: Flasher;
   readonly startup = new StartupSequence();
+  private baseTheme: Theme;
+  private fadeLayer: [HTMLCanvasElement, CanvasRenderingContext2D];
+  /** Seconds into a theme cross-fade; Infinity when idle. */
+  private fadeT = Infinity;
+  private backdrop = new AnimatedBackdrop();
+  private onFontsLoaded: (() => void) | null = null;
   alerts: AlertEngine | null;
   private system: Widget[] = [];
   nightMode: NightMode = 'auto';
@@ -107,6 +117,8 @@ export class ClusterRenderer {
     this.lowPower = options.lowPower ?? false;
     this.flasher = options.flasher ?? new Flasher();
     this.alerts = options.alerts ?? null;
+    this.baseTheme = theme;
+    this.fadeLayer = canvas2d();
     this.glass = options.glass ?? true;
     this.staticLayer = canvas2d();
     this.overlayLayer = canvas2d();
@@ -117,12 +129,42 @@ export class ClusterRenderer {
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(canvas);
     this.resize();
-    // Canvas text uses web fonts only once they are loaded; redraw static text then.
+    // Canvas text uses web fonts only once they are loaded; redraw static text whenever
+    // any font finishes loading (theme fonts load on demand).
     void document.fonts?.ready.then(() => this.invalidate());
+    this.onFontsLoaded = () => this.invalidate();
+    document.fonts?.addEventListener('loadingdone', this.onFontsLoaded);
     void this.loadFonts(theme);
   }
 
-  setTheme(theme: Theme): void {
+  /** Switch theme with an animated cross-fade (no flicker: the old frame fades out over the new). */
+  setTheme(theme: Theme, animate = true): void {
+    this.baseTheme = theme;
+    this.applyTheme(this.effectiveTheme(), animate);
+  }
+
+  get currentTheme(): Theme {
+    return this.theme;
+  }
+
+  private effectiveTheme(): Theme {
+    const night = this.isNight();
+    const variant =
+      night && this.baseTheme.nightVariant
+        ? THEME_BY_ID.get(this.baseTheme.nightVariant)
+        : undefined;
+    return variant ?? this.baseTheme;
+  }
+
+  private applyTheme(theme: Theme, animate: boolean): void {
+    if (theme === this.theme) return;
+    if (animate && this.canvas.width > 1 && this.raf) {
+      const [c, ctx] = this.fadeLayer;
+      c.width = this.canvas.width;
+      c.height = this.canvas.height;
+      ctx.drawImage(this.canvas, 0, 0);
+      this.fadeT = 0;
+    }
     this.theme = theme;
     this.invalidate();
     void this.loadFonts(theme);
@@ -184,16 +226,17 @@ export class ClusterRenderer {
   destroy(): void {
     this.stop();
     this.resizeObserver.disconnect();
+    if (this.onFontsLoaded) document.fonts?.removeEventListener('loadingdone', this.onFontsLoaded);
   }
 
   private async loadFonts(theme: Theme): Promise<void> {
-    if (!document.fonts) return;
-    const families = [theme.fonts.primary, theme.fonts.numerals];
-    const loads = families.flatMap((f) =>
-      [400, 500, 600].map((w) => document.fonts.load(`${w} 32px ${f}`)),
-    );
-    await Promise.allSettled(loads);
-    this.invalidate();
+    await ensureThemeFonts(theme);
+    if (theme === this.theme) this.invalidate();
+  }
+
+  private isNight(): boolean {
+    const dark = this.store.has(S.LightIntensity) && this.store.value(S.LightIntensity) < 20;
+    return this.nightMode === 'on' || (this.nightMode === 'auto' && dark);
   }
 
   private resize(): void {
@@ -227,8 +270,9 @@ export class ClusterRenderer {
     const t = this.theme;
     ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0);
     ctx.globalAlpha = 1;
-    ctx.fillStyle = t.background;
-    ctx.fillRect(0, 0, W, H);
+    ctx.clearRect(0, 0, W, H);
+    // Animated backdrops are painted per frame underneath this layer.
+    if (!this.backdrop.isAnimated(t)) paintStaticBackdrop(ctx, t);
     for (const g of this.layout?.ambient ?? []) this.paintAmbient(ctx, g.x, g.y, g.r, 1);
 
     const sc: StaticContext = { theme: t, pxScale: this.scale, lowPower: this.lowPower };
@@ -341,6 +385,8 @@ export class ClusterRenderer {
     this.markT = performance.now();
     const dt = Math.min((now - this.lastFrame) / 1000, 0.1);
     this.lastFrame = now;
+    // Light themes hand over to their night variant when it gets dark.
+    this.applyTheme(this.effectiveTheme(), true);
     if (this.staticDirty) this.renderStatic();
 
     const ctx = this.ctx;
@@ -350,6 +396,14 @@ export class ClusterRenderer {
     ctx.globalCompositeOperation = 'source-over';
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    if (this.backdrop.isAnimated(theme)) {
+      // Animated backdrop sits under the static layer, which is then drawn with
+      // its background cut away (see renderStatic).
+      ctx.setTransform(this.scale, 0, 0, this.scale, this.offsetX, this.offsetY);
+      paintStaticBackdrop(ctx, theme);
+      this.backdrop.draw(ctx, theme, dt, this.store.value(S.Speed), this.decorativeMotion);
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+    }
     ctx.drawImage(this.staticLayer[0], this.offsetX, this.offsetY);
     ctx.setTransform(this.scale, 0, 0, this.scale, this.offsetX, this.offsetY);
 
@@ -434,9 +488,7 @@ export class ClusterRenderer {
     }
 
     this.mark('bloom');
-    const dark = this.store.has(S.LightIntensity) && this.store.value(S.LightIntensity) < 20;
-    const night = this.nightMode === 'on' || (this.nightMode === 'auto' && dark);
-    const targetBrightness = (night ? NIGHT_BRIGHTNESS : 1) * this.userBrightness;
+    const targetBrightness = (this.isNight() ? NIGHT_BRIGHTNESS : 1) * this.userBrightness;
     this.brightness += (targetBrightness - this.brightness) * Math.min(1, dt * 1.5);
     if (this.brightness < 0.999) {
       ctx.fillStyle = `rgba(0,0,0,${1 - this.brightness})`;
@@ -459,6 +511,16 @@ export class ClusterRenderer {
       ctx.drawImage(this.overlayLayer[0], this.offsetX, this.offsetY);
     }
     this.mark('overlay');
+
+    // Theme cross-fade: the previous look dissolves over the new one.
+    if (this.fadeT < THEME_FADE_S) {
+      this.fadeT += dt;
+      const k = Math.min(1, this.fadeT / THEME_FADE_S);
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.globalAlpha = 1 - k * k * (3 - 2 * k);
+      ctx.drawImage(this.fadeLayer[0], 0, 0);
+      ctx.globalAlpha = 1;
+    }
 
     this.fpsFrames++;
     if (now - this.fpsSince >= 500) {

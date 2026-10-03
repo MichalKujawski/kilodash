@@ -1,0 +1,100 @@
+import { midnight } from './midnight';
+import type { Theme } from './types';
+
+const NUNITO = '"Nunito", "Inter", system-ui, sans-serif';
+
+/** Teal and green, soft rounded shapes, gentle needle, drifting particles. */
+export const eco: Theme = {
+  ...midnight,
+  id: 'eco',
+  name: 'Eco / EV',
+  background: '#010706',
+  text: {
+    primary: 'rgba(230, 255, 248, 0.94)',
+    secondary: 'rgba(150, 230, 210, 0.66)',
+    tertiary: 'rgba(150, 230, 210, 0.42)',
+    accent: '#2ee6a6',
+  },
+  fonts: { primary: NUNITO, numerals: NUNITO, readout: NUNITO, load: ['Nunito:wght@400;600;700'] },
+  backdrop: { kind: 'particles', colors: ['rgba(46, 230, 166, 0.5)', 'rgba(0, 180, 200, 0.35)'] },
+  dial: {
+    ...midnight.dial,
+    bezel: {
+      width: 0.01,
+      dark: '#0b3a33',
+      light: '#2ee6a6',
+      highlight: 'rgba(200, 255, 240, 0.7)',
+    },
+    tickBand: {
+      width: 0.12,
+      full: false,
+      inner: '#03120f',
+      outer: '#062019',
+      shadow: 'rgba(0, 0, 0, 0.5)',
+    },
+    face: { center: '#010605', edge: '#041210', texture: 0 },
+    hub: {
+      ...midnight.dial.hub,
+      fill: '#020a08',
+      ring: 'rgba(46, 230, 166, 0.35)',
+      text: 'rgba(230, 255, 248, 0.96)',
+      textSecondary: 'rgba(46, 230, 166, 0.8)',
+    },
+    ticks: {
+      major: { length: 0.07, width: 4, color: 'rgba(200, 255, 240, 0.85)' },
+      mid: { length: 0.045, width: 3, color: 'rgba(46, 230, 166, 0.55)' },
+      minor: { length: 0.025, width: 2.4, color: 'rgba(46, 230, 166, 0.3)' },
+      minorPerMajor: 4,
+      cap: 'round',
+    },
+    numerals: {
+      ...midnight.dial.numerals,
+      weight: 600,
+      size: 0.095,
+      color: 'rgba(170, 240, 220, 0.6)',
+      lit: '#e6fff8',
+    },
+    redline: { band: 'rgba(255, 120, 80, 0.6)', glow: 'rgba(255, 120, 80, 0.6)' },
+    needle: {
+      ...midnight.dial.needle,
+      baseWidth: 12,
+      tipWidth: 6,
+      color: '#2ee6a6',
+      core: '#d9fff2',
+      glow: 'rgba(46, 230, 166, 0.9)',
+      afterglowDeg: 34,
+      afterglow: 'rgba(46, 230, 166, 0.25)',
+    },
+    segments: { count: 50, on: '#2ee6a6', ghost: 'rgba(46,230,166,0.06)' },
+  },
+  sideGauge: { track: 'rgba(46, 230, 166, 0.15)', fill: '#2ee6a6', marker: '#e6fff8' },
+  panel: { surface: 'rgba(46, 230, 166, 0.03)', divider: 'rgba(46, 230, 166, 0.1)' },
+  map: {
+    ground: '#020a08',
+    block: '#06150f',
+    park: '#0a2418',
+    water: '#04141c',
+    road: '#0f2a22',
+    roadMajor: '#16392e',
+    roadEdge: '#030b09',
+    route: '#2ee6a6',
+    routeGlow: 'rgba(46, 230, 166, 0.55)',
+    vehicle: '#e6fff8',
+    label: 'rgba(150, 230, 210, 0.6)',
+  },
+  chart: { good: '#2ee6a6', neutral: '#bff5e5', bad: '#ff8a5c' },
+  car: {
+    paintDark: '#0a1f1a',
+    paintLight: '#1d4a3f',
+    glass: '#020a08',
+    outline: 'rgba(46, 230, 166, 0.45)',
+  },
+  effects: {
+    ...midnight.effects,
+    bloom: 0.85,
+    bloomRadius: 16,
+    ambient: 'rgba(20, 140, 110, 0.2)',
+  },
+  needlePhysics: { stiffness: 110, damping: 19, maxVelocity: 2 },
+  sounds: { chime: 'soft' },
+};
