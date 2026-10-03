@@ -1,9 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { ClusterRenderer } from '@/cluster/renderer/ClusterRenderer';
+import type { ClusterKey } from '@/cluster/renderer/types';
 import { classic } from '@/cluster/layouts/classic';
 import { DEFAULT_THEME } from '@/cluster/themes';
 import { S } from '@/core/signals/catalog';
 import { DEFAULT_PROFILE } from '@/profiles';
 import { ClusterView } from './ClusterView';
+import { applyPose, poseFromUrl } from './poses';
 import { ClusterSession } from './session';
 import { useKeyboardDriving } from './useKeyboardDriving';
 import { usePoll } from './useSignal';
@@ -13,18 +16,39 @@ const KEYS: [string, string][] = [
   ['S', 'Brake'],
   ['Q / E', 'Paddles'],
   [', / .', 'Indicators'],
+  ['← / →', 'Pages'],
   ['P', 'Autopilot'],
 ];
+
+const ARROWS: Record<string, ClusterKey> = {
+  ArrowLeft: 'left',
+  ArrowRight: 'right',
+  ArrowUp: 'up',
+  ArrowDown: 'down',
+  Enter: 'ok',
+  Escape: 'back',
+};
+
+const params = new URLSearchParams(window.location.search);
+const KIOSK = params.get('kiosk') === '1';
+const LOW_POWER = params.get('lowpower') === '1';
 
 export function App() {
   const [session, setSession] = useState<ClusterSession | null>(null);
   const [fps, setFps] = useState(0);
+  const [frameMs, setFrameMs] = useState(0);
+  const rendererRef = useRef<ClusterRenderer | null>(null);
   const profile = DEFAULT_PROFILE;
 
   useEffect(() => {
     const s = new ClusterSession(profile);
     let live = true;
-    void s.start().then(() => live && setSession(s));
+    void s.start().then(() => {
+      if (!live) return;
+      const pose = poseFromUrl();
+      if (pose) applyPose(s.source, pose);
+      setSession(s);
+    });
     return () => {
       live = false;
       void s.stop();
@@ -33,6 +57,44 @@ export function App() {
   }, [profile]);
 
   useKeyboardDriving(session?.source);
+
+  // Steering-wheel navigation keys go into the cluster.
+  useEffect(() => {
+    const down = (e: KeyboardEvent): void => {
+      const key = ARROWS[e.key];
+      if (key && rendererRef.current?.input(key)) e.preventDefault();
+    };
+    window.addEventListener('keydown', down);
+    return () => window.removeEventListener('keydown', down);
+  }, []);
+
+  const onFps = useCallback((f: number, ms: number) => {
+    setFps(f);
+    setFrameMs(ms);
+  }, []);
+
+  const onRenderer = useCallback((r: ClusterRenderer | null) => {
+    rendererRef.current = r;
+  }, []);
+
+  const cluster = session ? (
+    <ClusterView
+      session={session}
+      layout={classic}
+      theme={DEFAULT_THEME}
+      onFps={onFps}
+      lowPower={LOW_POWER}
+      onRenderer={onRenderer}
+      parallax={!KIOSK}
+    />
+  ) : null;
+
+  if (KIOSK)
+    return (
+      <div className="kiosk" data-fps={fps.toFixed(0)} data-frame-ms={frameMs.toFixed(2)}>
+        {cluster}
+      </div>
+    );
 
   return (
     <div className="app">
@@ -46,19 +108,8 @@ export function App() {
       </header>
 
       <main className="stage">
-        <div className="bezel">
-          <div className="screen">
-            {session ? (
-              <ClusterView
-                session={session}
-                layout={classic}
-                theme={DEFAULT_THEME}
-                onFps={setFps}
-              />
-            ) : (
-              <div className="screen-boot">Starting…</div>
-            )}
-          </div>
+        <div className="hood">
+          <div className="screen">{cluster ?? <div className="screen-boot">Starting…</div>}</div>
         </div>
 
         <section className="hints" aria-label="Keyboard controls">

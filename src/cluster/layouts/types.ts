@@ -13,8 +13,32 @@ export interface LayoutSlot {
   candidates: WidgetSpec[];
 }
 
+/**
+ * Visible area of the physical display. Everything outside is true black and the
+ * edge fades softly (no stroke).
+ */
+export interface DisplayMask {
+  /** Margin from the canvas edge, px. */
+  inset: number;
+  /** How far the top corners sit below the top centre (gentle arch), px. */
+  topArch: number;
+  /** How far the bottom centre rises above the bottom corners, px. */
+  bottomArch: number;
+  /** Extra horizontal inset of the top corners vs the bottom ones (tapered sides), px. */
+  taper: number;
+}
+
+export interface AmbientGlow {
+  x: number;
+  y: number;
+  r: number;
+}
+
 export interface LayoutDefinition {
   id: string;
   nameKey: string;
+  mask: DisplayMask;
+  /** Soft light pools behind dials. */
+  ambient: AmbientGlow[];
   slots: LayoutSlot[];
 }

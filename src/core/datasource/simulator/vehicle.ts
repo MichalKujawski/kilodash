@@ -159,12 +159,15 @@ export class VehicleSimulator {
     if (this.shift && this.shift.t < p.shiftTimeS * 0.6) effThrottle *= 0.15; // torque cut
 
     // Turbo spools with rpm and throttle, lagging behind.
-    const boostTarget = e.maxBoostKPa * effThrottle * clamp((s.rpm - 1200) / 1800, 0, 1);
+    // Boost only builds at high load (wastegate open at part throttle).
+    const boostTarget =
+      e.maxBoostKPa * clamp((effThrottle - 0.3) / 0.55, 0, 1) * clamp((s.rpm - 1200) / 1800, 0, 1);
     this.boostKPa +=
       (boostTarget - this.boostKPa) * approach(dt, boostTarget > this.boostKPa ? 0.5 : 0.2);
-    const boostRatio = e.maxBoostKPa > 0 ? 0.35 + 0.65 * (this.boostKPa / e.maxBoostKPa) : 1;
+    const boostRatio = e.maxBoostKPa > 0 ? 0.45 + 0.55 * (this.boostKPa / e.maxBoostKPa) : 1;
 
-    const friction = (10 + s.rpm * 0.0055) * e.displacementL;
+    // Friction mean effective pressure ~1–1.6 bar across the rev range.
+    const friction = (5 + s.rpm * 0.0022) * e.displacementL;
     const fullTorque = interpTable(e.torqueCurve, s.rpm);
     const engineTorque = fullTorque * effThrottle * (e.maxBoostKPa > 0 ? boostRatio : 1) - friction;
 
@@ -302,8 +305,8 @@ export class VehicleSimulator {
     const e = this.profile.engine;
     if (this.shift || this.shiftCooldown > 0) return;
     const t = s.throttle;
-    const upRpm = lerp(2000, e.redlineRpm - 150, Math.pow(t, 1.4));
-    const downRpm = lerp(1150, e.redlineRpm * 0.52, Math.pow(t, 1.2));
+    const upRpm = lerp(1750, e.redlineRpm - 150, Math.pow(t, 1.8));
+    const downRpm = lerp(1100, e.redlineRpm * 0.5, Math.pow(t, 1.6));
 
     if (s.coupled && s.rpm > upRpm && s.gear < this.gearCount) {
       // Only upshift if the next gear does not lug the engine.

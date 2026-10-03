@@ -1,3 +1,4 @@
+import type { Flasher } from '@/core/alerts/flasher';
 import type { SignalStore } from '@/core/signals/store';
 import type { SignalId } from '@/core/signals/types';
 import type { Theme } from '../themes/types';
@@ -12,6 +13,9 @@ export interface Rect {
   h: number;
 }
 
+/** Steering-wheel / keyboard navigation keys routed into the cluster. */
+export type ClusterKey = 'left' | 'right' | 'up' | 'down' | 'ok' | 'back';
+
 export interface FrameContext {
   /** `performance.now()` ms. */
   now: number;
@@ -22,6 +26,15 @@ export interface FrameContext {
   /** Device pixels per logical pixel; multiply blur radii by this. */
   pxScale: number;
   lowPower: boolean;
+  /**
+   * Bloom layer in the same logical coordinates. Draw emissive shapes (needles,
+   * lit telltales, redline) here as well; it is blurred and added on top. Null in
+   * low-power mode.
+   */
+  emissive: CanvasRenderingContext2D | null;
+  /** False when decorative motion must pause (driving lockout, later HMI rules). */
+  decorativeMotion: boolean;
+  flasher: Flasher;
 }
 
 export interface StaticContext {
@@ -46,6 +59,8 @@ export interface Widget {
   drawStatic?(ctx: CanvasRenderingContext2D, sc: StaticContext): void;
   /** Dynamic parts, every frame. */
   draw(ctx: CanvasRenderingContext2D, frame: FrameContext): void;
+  /** Handle a navigation key; return true if consumed. */
+  onInput?(key: ClusterKey): boolean;
 }
 
 export interface WidgetFactory<P = Record<string, unknown>> {

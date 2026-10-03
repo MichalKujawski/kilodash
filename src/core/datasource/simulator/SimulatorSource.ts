@@ -35,8 +35,10 @@ export class SimulatorSource implements DataSource {
   readonly id = 'simulator';
   readonly label = 'Physics simulator';
   readonly sim: VehicleSimulator;
-  readonly autodriver = new AutoDriver();
+  autodriver = new AutoDriver();
   autopilot = true;
+  /** Dark outside: ambient light low, headlights on. */
+  night = false;
 
   private samples = new Emitter<Sample>();
   private status = new Emitter<ConnectionStatus>();
@@ -135,6 +137,15 @@ export class SimulatorSource implements DataSource {
     }
   }
 
+  /** Run the simulation `seconds` ahead instantly (tests, screenshots), then publish. */
+  fastForward(seconds: number, each?: () => void): void {
+    for (let i = 0; i < seconds / STEP_S; i++) {
+      this.step();
+      each?.();
+    }
+    this.emit(this.clock(), true);
+  }
+
   private step(): void {
     this.manualIdle += STEP_S;
     if (this.isAutopilotActive) {
@@ -176,5 +187,7 @@ export class SimulatorSource implements DataSource {
     put(S.BatteryVoltage, st.voltage);
     put(S.Odometer, st.odometerKm);
     put(S.EngineRunning, st.engineRunning ? 1 : 0);
+    put(S.LightIntensity, this.night ? 4 : 85);
+    put(S.LowBeam, this.night ? 1 : 0);
   }
 }

@@ -57,6 +57,8 @@
     "Vehicle.Acceleration.Longitudinal",
     "Vehicle.Chassis.Brake.PedalPosition",
     "Vehicle.Body.Lights.DirectionIndicator.Left.IsSignaling",
-    "Vehicle.Body.Lights.DirectionIndicator.Right.IsSignaling"
+    "Vehicle.Body.Lights.DirectionIndicator.Right.IsSignaling",
+    "Vehicle.Exterior.LightIntensity",
+    "Vehicle.Body.Lights.Beam.Low.IsOn"
   ]
 }

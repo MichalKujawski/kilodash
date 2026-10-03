@@ -4,8 +4,14 @@ An adaptive, themeable virtual instrument cluster (digital cockpit) for the brow
 from a pluggable data-source layer: a physics simulator today, a real ELM327 OBD-II adapter
 and a Raspberry Pi CAN-bus bridge on the roadmap.
 
-> **Status: Milestone 1 (skeleton) of 8.** The classic layout, the Midnight theme and the
+> **Status: Milestone 1.5 (visual realism).** The classic layout, the Midnight theme and the
 > physics simulator work. See the [roadmap](#roadmap).
+
+![Highway cruise](docs/screenshots/highway.png)
+
+| Parked                             | Near redline (manual)                    | Night                                |
+| ---------------------------------- | ---------------------------------------- | ------------------------------------ |
+| ![Idle](docs/screenshots/idle.png) | ![Redline](docs/screenshots/redline.png) | ![Night](docs/screenshots/night.png) |
 
 ## Quick start
 
@@ -16,8 +22,18 @@ npm test           # unit tests (Vitest)
 npm run test:e2e   # browser smoke test (Playwright)
 ```
 
-Keyboard: `W` throttle, `S` brake, `Q`/`E` paddle shifts, `,`/`.` indicators, `P` toggles the
-autopilot. The autopilot takes over again 8 s after your last input.
+Keyboard: `W` throttle, `S` brake, `Q`/`E` paddle shifts, `,`/`.` indicators, `←`/`→` centre
+pages (map, car, trip, efficiency), `P` toggles the autopilot. The autopilot takes over again 8 s
+after your last input.
+
+URL options: `?kiosk=1` shows only the cluster (for a real screen), `?lowpower=1` turns off bloom,
+glass and blur, `?pose=idle|city|highway|redline|night` puts the simulator into a reproducible
+state, and `?profile=1` collects per-widget frame timings in `window.__clusterProfile`.
+
+### Visual review
+
+`node scripts/screenshots.mjs` (with the dev server running) renders the deterministic poses at
+1920×720 into `docs/screenshots/`. These shots serve as the visual regression baselines.
 
 ## Architecture
 
@@ -46,6 +62,11 @@ flowchart LR
   frame. React polls it at a few Hz for the UI chrome.
 - **Needles** follow a spring–damper model with a slew limit, so they have the inertia of a
   stepper-motor gauge. Digital readouts are smoothed and refresh at 5 Hz.
+- **Built like a physical display.** A layout-defined display mask (arched top, tapered sides)
+  fades into true black with no border. Each dial is layered: metallic bezel, tick band with a
+  three-level tick hierarchy, face, hub ring, and a filled redline band that glows as the needle
+  approaches. Emissive elements feed a bloom pass, and a glass reflection and dither noise sit on
+  top. Every one of these is a theme token, and low-power mode turns them off.
 - **Layouts and themes are data.** A layout slot lists candidate widgets in order, and the first
   one whose signals the car provides (or that can be derived) wins. A car with no fuel-level
   PID gets no fake fuel gauge.
