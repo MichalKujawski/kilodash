@@ -44,6 +44,12 @@ export class StartupSequence {
   private wasOn: boolean | null = null;
   private summary: TripSnapshot | null = null;
 
+  /** Play the boot choreography again (guided demo start-up chapter). */
+  replayBoot(): void {
+    this.phase = 'boot';
+    this.t = 0;
+  }
+
   update(store: SignalStore, dt: number): ClusterRuntime {
     const on = !store.has(S.Ignition) || store.value(S.Ignition) >= 2;
     if (this.wasOn === null || on !== this.wasOn) {

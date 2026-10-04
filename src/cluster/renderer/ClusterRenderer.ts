@@ -99,7 +99,17 @@ export class ClusterRenderer {
   readonly flasher: Flasher;
   readonly startup = new StartupSequence();
   /** Shared UI state between widgets (centre page etc.). */
-  readonly ui = { centerPage: 'map' };
+  readonly ui: { centerPage: string; requestPage?: string } = { centerPage: 'map' };
+
+  /** Replay the start-up sweep and lamp check (guided demo). */
+  playWelcome(): void {
+    this.startup.replayBoot();
+  }
+
+  /** Show a centre page by id (guided demo); ignored by views without the carousel. */
+  showPage(id: string): void {
+    this.ui.requestPage = id;
+  }
   private baseTheme: Theme;
   private fadeLayer: [HTMLCanvasElement, CanvasRenderingContext2D];
   /** Seconds into a theme cross-fade; Infinity when idle. */

@@ -158,6 +158,11 @@ export class Carousel implements Widget {
     const { x, y, w, h } = this.rect;
     this.refreshPages(f);
     this.followMode(f);
+    if (f.ui.requestPage) {
+      const i = this.pages.findIndex((p) => p.id === f.ui.requestPage);
+      if (i >= 0) this.index = i;
+      f.ui.requestPage = undefined;
+    }
     for (const p of this.pages) p.update?.(f);
     f.ui.centerPage = this.currentPage;
 

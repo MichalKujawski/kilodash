@@ -9,6 +9,9 @@ import { useClusterAudio } from './audio/useClusterAudio';
 import { ClusterView } from './ClusterView';
 import { ControlBus } from './controls/ControlBus';
 import { ControlPanel } from './controls/ControlPanel';
+import { Director } from './director/Director';
+import { useDirector } from './director/useDirector';
+import { WatchPanel } from './director/WatchPanel';
 import { useControlInputs } from './controls/useControlInputs';
 import { applyPose, poseFromUrl } from './poses';
 import { ClusterSession } from './session';
@@ -31,6 +34,8 @@ const LOW_POWER = params.get('lowpower') === '1';
 /** Experimental extras (other themes, theme editor) are only exposed with ?dev=1. */
 const DEV = params.get('dev') === '1';
 const POSE = poseFromUrl();
+/** `?chapter=<id>` opens the guided demo at that chapter. */
+const CHAPTER = params.get('chapter');
 
 function initialTheme(userThemes: Theme[]): Theme {
   // The public demo is the Midnight experience only.
@@ -49,6 +54,7 @@ export function App() {
   const [session, setSession] = useState<ClusterSession | null>(null);
   const [bus, setBus] = useState<ControlBus | null>(null);
   const [renderer, setRenderer] = useState<ClusterRenderer | null>(null);
+  const [director, setDirector] = useState<Director | null>(null);
   const [fps, setFps] = useState(0);
   const [frameMs, setFrameMs] = useState(0);
   const [dropped, setDropped] = useState(0);
@@ -112,7 +118,10 @@ export function App() {
     void s.start().then(() => {
       if (!live) return;
       if (POSE) applyPose(s, POSE);
-      else s.source.startRolling();
+      else {
+        s.source.startRolling();
+        setDirector(new Director(s.source, () => rendererRef.current));
+      }
       // Scripting hook for tests and visual review (dev builds or ?debug).
       if (import.meta.env.DEV || params.has('debug')) {
         (window as unknown as { __oc?: unknown }).__oc = {
@@ -130,8 +139,27 @@ export function App() {
       void s.stop();
       setSession(null);
       setBus(null);
+      setDirector(null);
     };
   }, [profileId]);
+
+  // The guided demo plays in Watch (and keeps the car moving behind Engineer);
+  // Drive hands the car over exactly where it is.
+  const directing = !!director && mode !== 'drive';
+  const begun = useRef<Director | null>(null);
+  useEffect(() => {
+    if (!director) return;
+    if (mode === 'drive') director.release();
+    else if (begun.current !== director) {
+      if (CHAPTER) director.goto(CHAPTER);
+      else director.start(0);
+    } else if (!director.playing) director.start(director.index);
+    if (mode !== 'drive') begun.current = director;
+  }, [director, mode]);
+  useEffect(() => {
+    if (renderer && director?.playing) director.rendererChanged();
+  }, [director, renderer]);
+  const directorState = useDirector(director, directing);
 
   useEffect(() => {
     audio.setChimeStyle(theme.sounds.chime);
@@ -144,7 +172,8 @@ export function App() {
 
   useClusterAudio(session, audio);
   const unlockAudio = useCallback(() => audio.unlock(), [audio]);
-  useControlInputs(bus, unlockAudio);
+  // In Watch the keyboard runs the demo (Space, ←/→), not the car.
+  useControlInputs(mode === 'watch' ? null : bus, unlockAudio);
 
   // Browsers only allow audio after a user gesture.
   useEffect(() => {
@@ -219,7 +248,14 @@ export function App() {
         onMute={() => setSound((x) => ({ ...x, muted: !x.muted }))}
       />
       <Stage session={session} cluster={cluster}>
-        {mode === 'watch' && <p className="slot-note">Demo drive</p>}
+        {mode === 'watch' && director && directorState && (
+          <WatchPanel
+            director={director}
+            state={directorState}
+            onTakeWheel={() => setMode('drive')}
+            onHowItWorks={() => setMode('engineer')}
+          />
+        )}
         {mode === 'drive' && (
           <button className="more-toggle" onClick={() => setMoreOpen((o) => !o)}>
             More controls {moreOpen ? '▾' : '▴'}

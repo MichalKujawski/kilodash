@@ -168,13 +168,18 @@ _Last updated: 2026-10-04_
 | 0 | Audit, 3 concepts, owner chose A (+ wider cluster, calm chapters, spoke buttons) | done |
 | 1 | Shell: header with Watch/Drive/Engineer, stage (light, hood, feathered display, glow by drive mode, reflection), rolling start at midday, larger cluster text | done |
 | 2 | 3D map (tilted, extruded buildings, labels, glowing route) | done |
-| 3 | Demo Director + chapters (Start-up, Motorway first) | next |
-| 4 | Drive dock (wheel with spoke buttons, stalk, lever, pedals, contextual cruise) | |
+| 3 | Demo Director: 9 chapters (2:36), captions, chapter bar, Space/←/→, `?chapter=`, Take the wheel | done |
+| 4 | Drive dock (wheel with spoke buttons, stalk, lever, pedals, contextual cruise) | next |
 | 5 | Engineer mode | |
 | 6–11 | Intro, landing sections, responsive, recording, analytics, polish | |
 
 - `node scripts/site-shots.mjs docs/design/progress name=query@WxH` screenshots the site and reports
-  time-to-moving, fps and dropped frames. Step screenshots live in `docs/design/progress/`.
+  time-to-moving, fps and dropped frames (`@WxH+s` waits s extra seconds). Step screenshots live in
+  `docs/design/progress/`.
+- Step 3: `src/app/director/` (chapters as data, `Director` plays them in the live world, `WatchPanel`).
+  The Demo driver gained `scripted` (no lane changes of its own), `lookAway()` and
+  `requestOvertake()`; it waits for a gap before changing lanes. Docs: `docs/features/guided-demo.md`.
+  "How it works →" opens Engineer for now; step 5 gives it the explanation sheet.
 
 ## Known issues / open questions
 

@@ -31,3 +31,17 @@ test('opens in Watch, moving within ~1.5 s, and the mode switch updates the URL'
   await page.getByRole('button', { name: 'Drive' }).click();
   await expect(page).toHaveURL(/mode=drive/);
 });
+
+test('guided demo: chapters from the URL, captions, Space pauses, Take the wheel goes to Drive', async ({
+  page,
+}) => {
+  await page.goto('/?chapter=safety');
+  await expect(page.locator('.chapter-title')).toHaveText('Safety');
+  await expect(page.locator('.caption-line')).not.toBeEmpty();
+  await page.keyboard.press(' ');
+  await expect(page.getByRole('button', { name: 'Play' })).toBeVisible();
+  await page.keyboard.press('ArrowRight');
+  await expect(page.locator('.chapter-title')).toHaveText('Drive modes');
+  await page.getByRole('button', { name: 'Take the wheel →' }).click();
+  await expect(page).toHaveURL(/mode=drive/);
+});

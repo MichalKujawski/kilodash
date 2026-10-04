@@ -589,6 +589,21 @@ export class SimulatorSource implements DataSource {
     } else this.sim.setIgnition(2);
   }
 
+  /** Guided demo: the Demo driver takes over again right away (no 10 s wait). */
+  resumeDemo(): void {
+    this.autopilot = true;
+    this.manualIdle = DEMO_RESUME_S;
+    this.manual.throttle = 0;
+    this.manual.brake = 0;
+  }
+
+  /** Guided demo: the driver lifts both feet for a moment (Eco coasting). */
+  liftOff(): void {
+    this.manual.throttle = 0;
+    this.manual.brake = 0;
+    this.manualIdle = 0;
+  }
+
   setAutopilot(on: boolean): void {
     this.autopilot = on;
   }

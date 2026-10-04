@@ -54,6 +54,8 @@ export interface FrameContext {
 
 export interface ClusterUiState {
   centerPage: string;
+  /** Ask the centre carousel to show this page (guided demo); cleared when done. */
+  requestPage?: string;
 }
 
 export interface StaticContext {

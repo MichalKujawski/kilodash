@@ -37,6 +37,10 @@ export class DemoDriver {
   /** Workshop "distracted driver": looks at the phone, glances at the road now and then. */
   distracted = false;
   private glanceT = 0;
+  /** Guided demo: lane changes only when the script asks (no overtaking on its own). */
+  scripted = false;
+  /** Guided demo: seconds left with the eyes fully off the road. */
+  private eyesOff = 0;
   private seenLead: { dx: number; v: number; t: number } | null = null;
   /** Seconds since the last button press on the cruise pad (humans don't press instantly). */
   private accT = 0;
@@ -56,6 +60,24 @@ export class DemoDriver {
     this.phase = 'startup';
     this.t = 0;
     this.pedals.reset(0, 0);
+  }
+
+  /** Guided demo: the driver looks down for a while and misses what happens ahead. */
+  lookAway(seconds: number): void {
+    this.eyesOff = seconds;
+  }
+
+  /** Guided demo: indicate and move one lane left (waits while the blind spot is occupied). */
+  requestOvertake(): void {
+    this.pendingLane = 1;
+    this.laneTimer = 2.5;
+  }
+
+  /** Guided demo: begin the day already started, reversing out of the bay. */
+  startReversing(sim: VehicleSimulator): void {
+    sim.setSelector('R');
+    this.phase = 'reversing';
+    this.t = 0;
   }
 
   /** Continue driving from wherever the car is (after a takeover or jump). */
@@ -226,6 +248,8 @@ export class DemoDriver {
     dt: number,
   ): { dx: number; v: number } | null {
     const lead = scene.lead;
+    this.eyesOff = Math.max(0, this.eyesOff - dt);
+    if (this.eyesOff > 0) return this.staleLead(v, dt);
     if (!this.distracted) {
       this.seenLead = lead ? { dx: lead.dx, v: lead.v, t: 0 } : null;
       return lead;
@@ -235,6 +259,11 @@ export class DemoDriver {
       this.seenLead = lead ? { dx: lead.dx, v: lead.v, t: 0 } : null;
       return lead;
     }
+    return this.staleLead(v, dt);
+  }
+
+  /** Not looking: the car ahead is assumed to keep the speed it had at the last glance. */
+  private staleLead(v: number, dt: number): { dx: number; v: number } | null {
     const seen = this.seenLead;
     if (!seen) return null;
     seen.t += dt;
@@ -302,7 +331,8 @@ export class DemoDriver {
   /** Work the pedals to get the wanted acceleration (see PedalController). */
   private pedalsFor(sim: VehicleSimulator, v0: number, aWanted: number, dt: number): void {
     const p = this.pedals.update(sim.state.speedMs, v0, aWanted, dt);
-    sim.inputs.throttle = p.throttle;
+    // Looking down, a driver holds the pedal roughly where it was; nobody floors it blind.
+    sim.inputs.throttle = this.eyesOff > 0 ? Math.min(p.throttle, 0.35) : p.throttle;
     sim.inputs.brake = p.brake;
   }
 
@@ -337,6 +367,8 @@ export class DemoDriver {
     this.laneTimer = Math.max(0, this.laneTimer - dt);
     if (this.pendingLane !== 0) {
       indicator = this.pendingLane > 0 ? 'left' : 'right';
+      // Somebody alongside in the target lane: keep indicating and wait.
+      if (this.laneTimer === 0 && this.occupied(scene, this.pendingLane)) this.laneTimer = 0.3;
       if (this.laneTimer === 0) {
         world.changeLane(this.pendingLane);
         this.pendingLane = 0;
@@ -344,6 +376,8 @@ export class DemoDriver {
       }
     } else if (
       this.laneTimer === 0 &&
+      this.eyesOff === 0 &&
+      !this.scripted &&
       scene.ego.lanes >= 2 &&
       scene.ego.lane === Math.round(scene.ego.lane)
     ) {
@@ -357,6 +391,14 @@ export class DemoDriver {
       indicator = world.ego.targetLane > scene.ego.lane ? 'left' : 'right';
     sim.inputs.leftIndicator = indicator === 'left';
     sim.inputs.rightIndicator = indicator === 'right';
+  }
+
+  /** A car alongside, just behind or just ahead in the lane on that side (mirror and shoulder check). */
+  private occupied(scene: SceneSnapshot, dir: 1 | -1): boolean {
+    return scene.objects.some(
+      (o) =>
+        !o.oncoming && Math.abs(o.laneOffset - dir) < 0.5 && o.dx < 20 && o.dx + o.length > -14,
+    );
   }
 
   /** +1 = move left (overtake), −1 = move right (keep right / exit / lane ends). */

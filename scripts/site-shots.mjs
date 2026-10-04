@@ -1,4 +1,5 @@
-// Website screenshots for design review: `node scripts/site-shots.mjs <outDir> [name=query@WxH ...]`.
+// Website screenshots for design review: `node scripts/site-shots.mjs <outDir> [name=query@WxH[+s] ...]`
+// (+s = wait that many extra seconds before the capture).
 // Default: Watch and Drive at 1440×900. Reports time until the cockpit is moving, fps and dropped frames.
 import { chromium } from '@playwright/test';
 
@@ -11,9 +12,10 @@ const shots = (
     s.split('=', 2).length === 2
       ? [s.slice(0, s.indexOf('=')), s.slice(s.indexOf('=') + 1)]
       : [s, ''];
-  const [query, size = '1440x900'] = rest.split('@');
+  const [query, spec = '1440x900'] = rest.split('@');
+  const [size, wait = '0'] = spec.split('+');
   const [w, h] = size.split('x').map(Number);
-  return { name, query, w, h };
+  return { name, query, w, h, wait: Number(wait) * 1000 };
 });
 const browser = await chromium.launch({
   channel: 'chrome',
@@ -24,7 +26,7 @@ const browser = await chromium.launch({
     '--enable-features=Vulkan',
   ],
 });
-for (const { name, query, w, h } of shots) {
+for (const { name, query, w, h, wait } of shots) {
   const page = await browser.newPage({
     viewport: { width: w, height: h },
     deviceScaleFactor: w < 900 ? 2 : 1,
@@ -48,6 +50,7 @@ for (const { name, query, w, h } of shots) {
   const site = page.locator('.site, .kiosk');
   const d0 = Number(await site.getAttribute('data-dropped'));
   await page.waitForTimeout(3000);
+  if (wait) await page.waitForTimeout(wait);
   const fps = await site.getAttribute('data-fps');
   const dropped = Number(await site.getAttribute('data-dropped')) - d0;
   await page.screenshot({ path: `${outDir}/${name}.png` });
