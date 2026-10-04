@@ -51,11 +51,12 @@ for (const pose of poses) {
   }
   const d0 = Number(await page.locator('.kiosk').getAttribute('data-dropped'));
   await page.waitForTimeout(4000);
-  await page.screenshot({ path: `${outDir}/${pose}.png` });
+  // Read the counters before the screenshot: capturing can itself stall a frame.
   const kiosk = page.locator('.kiosk');
   const fps = await kiosk.getAttribute('data-fps');
   const ms = await kiosk.getAttribute('data-frame-ms');
   const dropped = Number(await kiosk.getAttribute('data-dropped')) - d0;
+  await page.screenshot({ path: `${outDir}/${pose}.png` });
   console.log(`${pose}: ${fps} fps, ${ms} ms CPU/frame, ${dropped} dropped frames in 4 s`);
 }
 if (process.env.SITE !== '0') {

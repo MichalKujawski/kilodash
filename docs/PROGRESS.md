@@ -120,6 +120,9 @@ _Last updated: 2026-10-04_
 
 ## Known issues / open questions
 
+- Rare single dropped frame (about 1 in 30 pose runs, in any pose). Suspects: GC or the map's
+  progressive raster rebuild. Investigate with `?profile=1` in the polish pass.
+
 - `docs/briefs/` holds only the active brief. The original Phase 1, Milestone 1.5,
   experiences-and-menus and Phase 2 briefs need to be added by the owner.
 - The Cockpit Contract (view models + renderer registry + parity test) is not formalised yet. Core
