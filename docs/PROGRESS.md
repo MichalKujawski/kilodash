@@ -163,6 +163,8 @@ _Last updated: 2026-10-04_
 
 ## Known issues / open questions
 
+- **Later (owner):** a nicer 3D-looking model of our own car in the lane view; the current one is boxy.
+
 - Rare single dropped frame (about 1 in 30 pose runs). Partly explained in step 9: traffic's
   O(n²) leader search cost 0.4 ms per simulation step in the roadworks queue. It now uses a sorted
   scan (75 µs), and queue poses showed 0 drops in 8 runs. Keep watching the other poses.
