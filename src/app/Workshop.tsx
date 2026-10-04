@@ -110,6 +110,25 @@ export function Workshop({ session, profileId, onProfile }: Props) {
           >
             Remember drive mode
           </button>
+          <button
+            className={`pill ${src.isa.enabled ? 'pill-on' : ''}`}
+            onClick={() => src.isa.toggle()}
+            title="Speed warning (ISA). Switches itself back on at every start, as the law requires."
+          >
+            Speed warning
+          </button>
+          <select
+            className="pill"
+            value={src.isa.offset}
+            onChange={(e) => src.isa.setOffset(Number(e.target.value))}
+            aria-label="Speed warning tolerance"
+          >
+            {[0, 3, 5, 7, 10].map((o) => (
+              <option key={o} value={o}>
+                Warn at +{o} km/h
+              </option>
+            ))}
+          </select>
         </div>
         <Inspector session={session} />
       </div>

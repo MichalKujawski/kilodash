@@ -76,3 +76,54 @@ export function drawSign(
   }
   ctx.restore();
 }
+
+/**
+ * Supplementary plate under a sign (white rectangle, black symbol): rain
+ * cloud for "when wet", clock for a time range.
+ */
+export function drawPlate(
+  ctx: CanvasRenderingContext2D,
+  kind: 'wet' | 'time',
+  x: number,
+  y: number,
+  w: number,
+): void {
+  const h = w * 0.55;
+  ctx.save();
+  ctx.fillStyle = '#f4f5f6';
+  ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.roundRect(x - w / 2, y, w, h, 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.strokeStyle = '#111';
+  ctx.fillStyle = '#111';
+  ctx.lineWidth = 1.4;
+  const cx = x;
+  const cy = y + h / 2;
+  if (kind === 'wet') {
+    // Cloud with three drops.
+    ctx.beginPath();
+    ctx.arc(cx - 3, cy - 1.5, 3, Math.PI, 0);
+    ctx.arc(cx + 2.5, cy - 2.5, 3.5, Math.PI * 1.1, Math.PI * 0.1);
+    ctx.lineTo(cx + 5.5, cy + 0.5);
+    ctx.lineTo(cx - 6, cy + 0.5);
+    ctx.closePath();
+    ctx.fill();
+    for (const dx of [-4, 0, 4]) {
+      ctx.beginPath();
+      ctx.moveTo(cx + dx, cy + 2.5);
+      ctx.lineTo(cx + dx - 1, cy + 4.5);
+      ctx.stroke();
+    }
+  } else {
+    ctx.beginPath();
+    ctx.arc(cx, cy, h * 0.36, 0, Math.PI * 2);
+    ctx.moveTo(cx, cy - h * 0.22);
+    ctx.lineTo(cx, cy);
+    ctx.lineTo(cx + h * 0.16, cy + h * 0.1);
+    ctx.stroke();
+  }
+  ctx.restore();
+}

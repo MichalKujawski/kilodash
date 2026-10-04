@@ -6,7 +6,7 @@ import { MODES, type DriveModeId } from '@/core/drive/modes';
 import { drawIcon, type IconId } from '../telltales/icons';
 import { modeId } from './driveMode';
 import { assistLook } from './speedAssist';
-import { drawSign, type SignSpec } from '../telltales/signs';
+import { drawPlate, drawSign, type SignSpec } from '../telltales/signs';
 import { SAFETY_COLORS } from '../themes/types';
 
 function groupThousands(n: number): string {
@@ -54,16 +54,34 @@ export class TopStrip implements Widget {
     const sc = f.scene;
     const on = f.runtime.phase === 'on';
 
-    // Speed limit: always visible while driving (EU intelligent speed assistance).
-    if (sc && on) {
-      const l = sc.legal;
-      const sign: SignSpec =
-        l.limit !== null ? { kind: 'limit', value: l.limit } : { kind: 'endAll' };
-      drawSign(ctx, sign, p.sign, y, 25, t.fonts.primary);
-      if (l.noOvertaking)
+    // Speed limit as the car recognises it: always visible (EU ISA). Over the
+    // limit it flashes, then stays ringed in red while the chime has sounded.
+    if (st.has(S.SpeedLimit) && on && st.value(S.SpeedLimit) >= 0) {
+      const lim = st.value(S.SpeedLimit);
+      const sign: SignSpec = lim > 0 ? { kind: 'limit', value: lim } : { kind: 'endAll' };
+      const isa = st.value(S.IsaState);
+      const blinkOff = isa === 2 && Math.floor(f.now / 220) % 2 === 1;
+      if (isa >= 2 && f.emissive) {
+        f.emissive.fillStyle = SAFETY_COLORS.danger;
+        f.emissive.beginPath();
+        f.emissive.arc(p.sign, y, 31, 0, Math.PI * 2);
+        f.emissive.fill();
+      }
+      drawSign(ctx, sign, p.sign, y, 25, t.fonts.primary, blinkOff ? 0.25 : 1);
+      if (isa === 3) {
+        ctx.strokeStyle = SAFETY_COLORS.danger;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(p.sign, y, 29, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      const plate = st.value(S.SpeedLimitPlate);
+      if (plate > 0) drawPlate(ctx, plate === 1 ? 'wet' : 'time', p.sign, y + 27, 26);
+      if (st.value(S.NoOvertaking) > 0)
         drawSign(ctx, { kind: 'noOvertaking' }, p.sign + 56, y, 20, t.fonts.primary);
-      if (l.limit === null && l.advisory) {
-        label(ctx, `${l.advisory}`, p.sign + 32, y + 6, 14, t.fonts.primary, t.text.tertiary);
+      const adv = st.value(S.SpeedAdvisory);
+      if (lim === 0 && adv > 0) {
+        label(ctx, `${adv}`, p.sign + 32, y + 6, 14, t.fonts.primary, t.text.tertiary);
       }
     }
 

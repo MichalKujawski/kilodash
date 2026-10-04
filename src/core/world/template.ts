@@ -159,7 +159,8 @@ export const DEMO_ROUTE: SegmentSpec[] = [
     signs: [
       { at: 2500, kind: 'limit', value: 120 },
       { at: 3380, kind: 'tunnel' },
-      { at: 3400, kind: 'limit', value: 100 },
+      // Hidden behind a truck at the tunnel portal: the camera never reads it.
+      { at: 3400, kind: 'limit', value: 100, visibility: 0 },
       { at: 4650, kind: 'endAll' },
       { at: 5600, kind: 'limit', value: 80, temporary: true },
       { at: 5900, kind: 'noOvertaking', temporary: true, visibility: 0.5 },

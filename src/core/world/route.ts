@@ -57,6 +57,8 @@ export class Route {
   /** Path out of the starting bay: reversed along it, ending at s = 0. */
   readonly startBay: Pose[];
   private legal: LegalEntry[];
+  /** What a navigation map database knows: permanent signs only (no roadworks). */
+  private mapLegal: LegalEntry[];
 
   constructor(
     specs: SegmentSpec[],
@@ -89,7 +91,8 @@ export class Route {
       )
       .sort((a, b) => a.s - b.s);
     this.points = this.integrate();
-    this.legal = this.buildLegal();
+    this.legal = this.buildLegal(this.signs);
+    this.mapLegal = this.buildLegal(this.signs.filter((g) => !g.temporary));
     this.startBay = this.buildStartBay();
   }
 
@@ -180,8 +183,17 @@ export class Route {
 
   /** The legal speed limit at s under the given conditions. */
   legalAt(s: number, ctx: LegalContext): LegalLimit {
-    let entry = this.legal[0]!;
-    for (const e of this.legal) {
+    return this.limitFrom(this.legal, s, ctx);
+  }
+
+  /** The limit a navigation map would report: misses temporary (roadworks) signs. */
+  mapLegalAt(s: number, ctx: LegalContext): LegalLimit {
+    return this.limitFrom(this.mapLegal, s, ctx);
+  }
+
+  private limitFrom(timeline: LegalEntry[], s: number, ctx: LegalContext): LegalLimit {
+    let entry = timeline[0]!;
+    for (const e of timeline) {
       if (e.s > s) break;
       entry = e;
     }
@@ -260,7 +272,7 @@ export class Route {
    * cancelled by an end sign, "end of all restrictions", or a context change
    * (town, zone, motorway). Plates make a limit conditional.
    */
-  private buildLegal(): LegalEntry[] {
+  private buildLegal(signs: Sign[]): LegalEntry[] {
     const r = this.country.implicit;
     const out: LegalEntry[] = [];
     let inTown = !!this.segments[0]?.town;
@@ -279,7 +291,10 @@ export class Route {
             ? r.urban
             : motorway
               ? r.motorway
-              : r[kind];
+              : // Past the town-exit sign a street counts as a rural road.
+                kind === 'urban'
+                ? r.rural
+                : r[kind];
     const push = (s: number): void => {
       out.push({
         s,
@@ -297,7 +312,7 @@ export class Route {
     type Ev = { s: number; seg?: Segment; sign?: Sign };
     const events: Ev[] = [
       ...this.segments.map((seg): Ev => ({ s: seg.s0, seg })),
-      ...this.signs.map((sign): Ev => ({ s: sign.s, sign })),
+      ...signs.map((sign): Ev => ({ s: sign.s, sign })),
     ].sort((a, b) => a.s - b.s || (a.seg ? -1 : 1));
     for (const ev of events) {
       if (ev.seg) {

@@ -13,6 +13,7 @@ export function useClusterAudio(session: ClusterSession | null, audio: AudioEngi
     const { store, flasher, alerts } = session;
     const cylinders = session.profile.engine?.cylinders ?? 4;
     const last = { indicatorLeft: false, indicatorRight: false };
+    let lastIsa = 0;
     const timer = setInterval(() => {
       const now = performance.now();
       const hazard = store.value(S.Hazard) > 0;
@@ -26,6 +27,10 @@ export function useClusterAudio(session: ClusterSession | null, audio: AudioEngi
         last[key] = lit;
       }
       if (edge !== null) audio.tick(edge);
+      // Speed warning: one short chime when the acoustic stage starts.
+      const isa = store.value(S.IsaState);
+      if (isa === 3 && lastIsa !== 3) audio.chime('info');
+      lastIsa = isa;
       audio.updateEngine(
         store.value(S.EngineSpeed),
         store.value(S.EngineLoad),

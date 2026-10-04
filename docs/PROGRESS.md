@@ -22,8 +22,8 @@ _Last updated: 2026-10-04_
 | 3    | Cluster shape: open dials, top strip, fixed bottom strip, grouped telltales, real fuel/coolant logic | done  |
 | 4    | Drive modes (Eco coasting, Sport, Individual, Snow/Off-road, EV power meter/regen)                   | done  |
 | 5    | ACC, cruise, limiter                                                                                 | done  |
-| 6    | Speed-limit recognition / ISA                                                                        | next  |
-| 7    | Lane keeping/centering, hands-off staging, Driver Assistance view                                    |       |
+| 6    | Speed-limit recognition / ISA                                                                        | done  |
+| 7    | Lane keeping/centering, hands-off staging, Driver Assistance view                                    | next  |
 | 8    | Collision warning/AEB, blind spot, rear cross traffic                                                |       |
 | 9    | Start-stop, Auto Hold, gear recommendation, shift lights, diesel DPF/AdBlue                          |       |
 | 10   | Warnings catalogue, seatbelt escalation, TPMS, service                                               |       |
@@ -91,6 +91,18 @@ _Last updated: 2026-10-04_
   limits.
 - Equipment flag `acc` per profile; the 2016 estate and 2008 hatchback have plain cruise.
 - New poses: `acc` (following the queue at the roadworks), `limiter` (50 in town).
+
+## Notes from step 6
+
+- `core/assist/SpeedLimitRecognition.ts`: camera + map fusion (`SpeedLimitRecognition`) and the ISA
+  warning cascade (`IsaWarning`). The cluster now draws the recognised limit from signals, not
+  `scene.legal`. Docs: `docs/features/speed-limits.md`.
+- `Route.mapLegalAt` is the "map database" (no temporary signs).
+- The tunnel's 100 sign is deliberately unreadable, so the demo shows one realistic recognition miss.
+  The recognition seed is chosen so the town at the start reads cleanly.
+- Fixed: the town-exit limit now applies from the sign, not from the next segment.
+- New poses: `isa` (56 in a 50, red ring), `rain` (130 with the "when wet" plate). New jump place:
+  `wetLimit`.
 
 ## Known issues / open questions
 

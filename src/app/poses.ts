@@ -12,6 +12,8 @@ export const POSES = [
   'offroad',
   'acc',
   'limiter',
+  'isa',
+  'rain',
 ] as const;
 export type Pose = (typeof POSES)[number];
 
@@ -27,7 +29,7 @@ export function applyPose(session: ClusterSession, pose: Pose): void {
   src.setEnvironment({
     realTime: false,
     hour: pose === 'night' ? 22 : 14,
-    weather: 'clear',
+    weather: pose === 'rain' ? 'rain' : 'clear',
     temperatureC: 16,
   });
   switch (pose) {
@@ -92,6 +94,18 @@ export function applyPose(session: ClusterSession, pose: Pose): void {
       src.assist.switchFunction();
       src.assist.pressSet(false, 50);
       session.fastForward(18);
+      break;
+    case 'isa':
+      // Too fast in town: the speed warning flashes the sign, then chimes.
+      src.jumpTo('town');
+      src.setAutopilot(false);
+      src.setManualInput({ throttle: 0.45 });
+      session.fastForward(9);
+      break;
+    case 'rain':
+      // Rain on the Autobahn: the "130 when wet" sign applies and shows its plate.
+      src.jumpTo('wetLimit');
+      session.fastForward(22);
       break;
     case 'redline': {
       src.jumpTo('motorway');

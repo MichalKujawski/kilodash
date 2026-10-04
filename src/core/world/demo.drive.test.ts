@@ -19,6 +19,8 @@ describe('Demo drive over the whole route', () => {
     let reversed = false;
     let maxKmh = 0;
     let accS = 0;
+    let agreeS = 0;
+    let drivingS = 0;
     let takeovers = 0;
     let wasTakeover = false;
     let lastLog = 0;
@@ -31,6 +33,10 @@ describe('Demo drive over the whole route', () => {
       const kmh = sim.speedKmh;
       maxKmh = Math.max(maxKmh, kmh);
       if (src.assist.controlling) accS += 0.1;
+      if (kmh > 5) {
+        drivingS += 0.1;
+        if (src.recognized.limit === sc.legal.limit) agreeS += 0.1;
+      }
       if (src.assist.out.takeover && !wasTakeover) takeovers++;
       wasTakeover = src.assist.out.takeover;
       if (sim.state.direction === -1 && kmh > 0.5) reversed = true;
@@ -58,6 +64,7 @@ describe('Demo drive over the whole route', () => {
       overLimitS: overLimitS.toFixed(1),
       maxKmh: maxKmh.toFixed(0),
       accS: accS.toFixed(0),
+      recognitionAgreement: (agreeS / drivingS).toFixed(3),
       takeovers,
       redRun,
       reversed,
@@ -70,6 +77,8 @@ describe('Demo drive over the whole route', () => {
     expect(redRun).toBe(false);
     // ACC drives a good part of the Autobahn (about 9 km).
     expect(accS).toBeGreaterThan(120);
+    // Sign recognition is mostly right, but not always (missed and roadworks signs).
+    expect(agreeS / drivingS).toBeGreaterThan(0.85);
     expect(minGap).toBeGreaterThan(1.5);
     expect(overLimitS).toBeLessThan(20);
     expect(maxKmh).toBeGreaterThan(120);

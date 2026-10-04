@@ -3,6 +3,13 @@ import { FUEL_TYPE_TO_CODE } from '../../obd/pids';
 import { S } from '../../signals/catalog';
 import type { Sample, SignalId, SignalSource } from '../../signals/types';
 import { ASSIST_FUNCTIONS, ASSIST_STATES, SpeedAssist } from '../../assist/SpeedAssist';
+import {
+  ISA_LEVELS,
+  IsaWarning,
+  SpeedLimitRecognition,
+  type RecognizedLimit,
+} from '../../assist/SpeedLimitRecognition';
+import { createRng } from '../../math';
 import { consumerFuelLh, ecoTip, type EfficiencyState } from '../../drive/efficiency';
 import { DRIVE_MODE_ORDER } from '../../drive/modes';
 import { DemoDriver } from '../../world/DemoDriver';
@@ -78,6 +85,7 @@ export const WORLD_PLACES: {
   { id: 'motorway', label: 'Autobahn', segment: 'A 7', at: 300 },
   { id: 'tunnel', label: 'Tunnel', segment: 'A 7', at: 3200 },
   { id: 'roadworks', label: 'Roadworks & jam', segment: 'A 7', at: 5400 },
+  { id: 'wetLimit', label: 'Limit when wet', segment: 'A 7', at: 7350, lane: 0 },
   { id: 'exit', label: 'Exit', segment: 'A 7', at: 8300 },
   { id: 'destination', label: 'Destination', segment: 'Marktstraße', at: 100 },
 ];
@@ -97,6 +105,20 @@ export class SimulatorSource implements DataSource {
   readonly demo: DemoDriver;
   /** Cruise control / ACC / speed limiter. */
   readonly assist: SpeedAssist;
+  /** Traffic-sign recognition + map, and the speed warning (ISA). */
+  readonly recognition: SpeedLimitRecognition;
+  readonly isa = new IsaWarning();
+  /** The limit the car believes applies (what the cluster shows). */
+  recognized: RecognizedLimit = {
+    limit: undefined,
+    advisory: null,
+    noOvertaking: false,
+    plate: null,
+    source: 'map',
+  };
+  private seenSigns = new Set<number>();
+  private lastRoad = '';
+  private lastIgnition = 2;
   /** Demo drive enabled (resumes after inactivity). */
   autopilot = true;
   readonly buttons: CarButtons = {
@@ -130,6 +152,7 @@ export class SimulatorSource implements DataSource {
     this.world = new World({ seed: options.seed, env: options.env });
     this.demo = new DemoDriver();
     this.assist = new SpeedAssist(!!profile.equipment?.acc);
+    this.recognition = new SpeedLimitRecognition(createRng((options.seed ?? 1) + 10));
     for (const s of profileSignals(profile)) {
       this.sources.set(s.id, s.source);
       this.wanted.add(s.id);
@@ -228,6 +251,13 @@ export class SimulatorSource implements DataSource {
     s.setSelector('D');
     this.demo.resume(s);
     this.lastScene = null;
+    this.resetRecognition();
+  }
+
+  private resetRecognition(): void {
+    this.recognition.reset();
+    this.seenSigns.clear();
+    this.lastRoad = '';
   }
 
   /** Back to the first bay, ignition off; the Demo drive starts a new day. */
@@ -238,6 +268,7 @@ export class SimulatorSource implements DataSource {
     this.sim.setSelector('P');
     this.demo.restart();
     this.lastScene = null;
+    this.resetRecognition();
   }
 
   private syncEnvironment(): void {
@@ -495,6 +526,7 @@ export class SimulatorSource implements DataSource {
         world.changeLane(-1);
     }
     this.wasAutopilot = auto;
+    this.recognize(scene);
     this.applyAssist(scene);
     sim.inputs.curvature = world.curvature();
     sim.inputs.gradient = world.gradient() * sim.state.direction;
@@ -529,6 +561,28 @@ export class SimulatorSource implements DataSource {
   }
 
   private lastMode = '';
+
+  /** Camera + map speed-limit recognition and the ISA warning. */
+  private recognize(scene: SceneSnapshot): void {
+    const st = this.sim.state;
+    if (this.lastIgnition < 2 && st.ignition >= 2) this.isa.onIgnition();
+    this.lastIgnition = st.ignition;
+    const passed = scene.passedSigns.filter((g) => !this.seenSigns.has(g.s));
+    for (const g of passed) this.seenSigns.add(g.s);
+    const road = scene.road.name;
+    const roadChanged = this.lastRoad !== '' && road !== this.lastRoad;
+    this.lastRoad = road;
+    const route = this.world.route;
+    const ctx = { wet: scene.env.wet, hour: scene.env.hour };
+    this.recognized = this.recognition.step({
+      passed,
+      map: route.mapLegalAt(scene.ego.s, ctx),
+      implicit: { urban: route.country.implicit.urban!, rural: route.country.implicit.rural },
+      roadChanged,
+      ...ctx,
+    });
+    this.isa.step(this.sim.speedKmh, st.ignition >= 2 ? this.recognized.limit : undefined, STEP_S);
+  }
 
   /** Run cruise/ACC/limiter on top of the driver's pedals. */
   private applyAssist(scene: SceneSnapshot): void {
@@ -624,6 +678,16 @@ export class SimulatorSource implements DataSource {
     put(S.AccTakeover, flag(as.out.takeover));
     put(S.AccLeadDrivingOff, flag(as.out.leadDrivingOff));
     put(S.LimiterExceeded, flag(as.out.limiterExceeded));
+    const r = this.recognized;
+    if (on) {
+      put(S.SpeedLimit, r.limit === undefined ? -1 : (r.limit ?? 0));
+      put(S.SpeedAdvisory, r.advisory ?? 0);
+      put(S.NoOvertaking, flag(r.noOvertaking));
+      put(S.SpeedLimitPlate, r.plate === 'wet' ? 1 : r.plate === 'time' ? 2 : 0);
+      put(S.SpeedLimitSource, r.source === 'camera' ? 0 : 1);
+    }
+    put(S.IsaState, ISA_LEVELS.indexOf(this.isa.level));
+    put(S.IsaOffset, this.isa.offset);
     if (!includeLow) return out;
     if (on) {
       put(S.CoolantTemp, st.coolantC);

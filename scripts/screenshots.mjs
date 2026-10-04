@@ -18,6 +18,8 @@ const poses = only.length
       'offroad',
       'acc',
       'limiter',
+      'isa',
+      'rain',
     ];
 const keys = (process.env.KEYS ?? '').split(',').filter(Boolean);
 
