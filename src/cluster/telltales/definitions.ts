@@ -14,6 +14,8 @@ export interface TelltaleDefinition {
 }
 
 const never: Condition = { any: [] };
+/** Engine switched off by start-stop: charge and oil lamps stay dark. */
+const notAutoStopped: Condition = { not: is(S.StartStopState, '==', 2) };
 
 /** Lamp meanings (ISO 2575 conventions). Positions live in layout data. */
 export const TELLTALES: TelltaleDefinition[] = [
@@ -42,7 +44,7 @@ export const TELLTALES: TelltaleDefinition[] = [
     color: 'danger',
     when: {
       any: [
-        { all: [is(S.Ignition, '==', 2), is(S.EngineRunning, '==', 0)] },
+        { all: [is(S.Ignition, '==', 2), is(S.EngineRunning, '==', 0), notAutoStopped] },
         { all: [on(S.EngineRunning), is(S.BatteryVoltage, '<', 12.6)] },
       ],
     },
@@ -51,7 +53,7 @@ export const TELLTALES: TelltaleDefinition[] = [
     id: 'oilPressure',
     icon: 'oilPressure',
     color: 'danger',
-    when: { all: [is(S.Ignition, '==', 2), is(S.EngineRunning, '==', 0)] },
+    when: { all: [is(S.Ignition, '==', 2), is(S.EngineRunning, '==', 0), notAutoStopped] },
   },
   {
     id: 'coolantTemp',
@@ -93,6 +95,14 @@ export const TELLTALES: TelltaleDefinition[] = [
   },
   { id: 'tcs', icon: 'tcs', color: 'caution', when: on(S.TCSActive), blink: 'warning' },
   { id: 'escOff', icon: 'escOff', color: 'caution', when: is(S.ESCMode, '>', 0) },
+  { id: 'autoHold', icon: 'autoHold', color: 'info', when: is(S.AutoHoldState, '==', 2) },
+  { id: 'dpf', icon: 'dpf', color: 'caution', when: is(S.DpfLoad, '>=', 80) },
+  {
+    id: 'def',
+    icon: 'def',
+    color: 'caution',
+    when: { all: [is(S.DefRange, '<', 2400), is(S.DefRange, '>=', 0)] },
+  },
   // Collision warning switched off (it is on again at every start).
   {
     id: 'fcwOff',
@@ -111,7 +121,7 @@ export const TELLTALES: TelltaleDefinition[] = [
     id: 'glowPlug',
     icon: 'glowPlug',
     color: 'caution',
-    when: { all: [is(S.FuelType, '==', 4), is(S.Ignition, '==', 2), is(S.EngineRunning, '==', 0)] },
+    when: on(S.GlowPlug),
   },
   { id: 'ice', icon: 'ice', color: 'caution', when: is(S.AmbientTemp, '<=', 3) },
 ];

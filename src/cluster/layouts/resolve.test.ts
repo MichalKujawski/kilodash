@@ -8,7 +8,7 @@ const pick = (ids: string[]) =>
 
 describe('resolveLayout', () => {
   it('fills every slot when all signals exist', () => {
-    const r = pick([S.Speed, S.EngineSpeed, S.FuelLevel, S.CoolantTemp]);
+    const r = pick([S.Speed, S.EngineSpeed, S.FuelLevel, S.CoolantTemp, S.ShiftLight]);
     expect(Object.values(r).every((v) => v !== null)).toBe(true);
   });
 

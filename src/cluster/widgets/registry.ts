@@ -1,6 +1,7 @@
 import type { WidgetFactory } from '../renderer/types';
 import { carousel } from './center/Carousel';
 import { powerMeter, speedometer, tachometer } from './RoundDial';
+import { shiftLights } from './ShiftLights';
 import { sideGauge } from './SideGauge';
 import { bottomStrip, topStrip } from './StatusStrip';
 import { driveModePopup } from './system/DriveModePopup';
@@ -21,5 +22,6 @@ export const WIDGETS: ReadonlyMap<string, AnyFactory> = new Map(
     topStrip,
     bottomStrip,
     driveModePopup,
+    shiftLights,
   ].map((f) => [f.type, f as AnyFactory]),
 );

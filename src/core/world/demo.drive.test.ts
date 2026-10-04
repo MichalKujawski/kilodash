@@ -21,6 +21,8 @@ describe('Demo drive over the whole route', () => {
     let accS = 0;
     let agreeS = 0;
     const fcw: Record<string, number> = {};
+    let autoStops = 0;
+    let wasStopped = false;
     let lastStage = 'ready';
     let drivingS = 0;
     let takeovers = 0;
@@ -35,6 +37,8 @@ describe('Demo drive over the whole route', () => {
       const kmh = sim.speedKmh;
       maxKmh = Math.max(maxKmh, kmh);
       if (src.assist.controlling) accS += 0.1;
+      if (sim.autoStopped && !wasStopped) autoStops++;
+      wasStopped = sim.autoStopped;
       const stage = src.collision.stage;
       if (stage !== lastStage) fcw[stage] = (fcw[stage] ?? 0) + 1;
       lastStage = stage;
@@ -71,6 +75,7 @@ describe('Demo drive over the whole route', () => {
       accS: accS.toFixed(0),
       recognitionAgreement: (agreeS / drivingS).toFixed(3),
       fcw: JSON.stringify(fcw),
+      autoStops,
       takeovers,
       redRun,
       reversed,
@@ -87,6 +92,8 @@ describe('Demo drive over the whole route', () => {
     expect(agreeS / drivingS).toBeGreaterThan(0.85);
     // An attentive driver never needs emergency braking.
     expect(fcw.braking ?? 0).toBe(0);
+    // Start-stop switches the engine off at red lights and in the queue.
+    expect(autoStops).toBeGreaterThan(0);
     expect(minGap).toBeGreaterThan(1.5);
     expect(overLimitS).toBeLessThan(20);
     expect(maxKmh).toBeGreaterThan(120);

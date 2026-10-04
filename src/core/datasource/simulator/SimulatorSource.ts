@@ -18,6 +18,17 @@ import {
   CrossTraffic,
   FCW_STAGES,
 } from '../../assist/CollisionAssist';
+import { ExhaustFluid, ParticulateFilter } from '../../drive/Diesel';
+import {
+  AUTO_HOLD_STATES,
+  AutoHold,
+  GEAR_ADVICE,
+  gearAdvice,
+  shiftLight,
+  START_STOP_STATES,
+  StartStop,
+  STOP_BLOCKS,
+} from '../../drive/StartStop';
 import { driverSteer, LaneAssist, LANE_ASSIST_STATES, LINE_STATES } from '../../assist/LaneAssist';
 import { consumerFuelLh, ecoTip, type EfficiencyState } from '../../drive/efficiency';
 import { DRIVE_MODE_ORDER } from '../../drive/modes';
@@ -128,6 +139,13 @@ export class SimulatorSource implements DataSource {
   readonly collision = new CollisionAssist();
   readonly blindSpot = new BlindSpot();
   readonly crossTraffic = new CrossTraffic();
+  /** Engine start-stop and Auto Hold. */
+  readonly startStop = new StartStop();
+  readonly autoHold = new AutoHold();
+  /** Diesel: particulate filter and exhaust fluid. */
+  readonly dpf = new ParticulateFilter();
+  readonly def = new ExhaustFluid();
+  private lastOdo = 0;
   private wander: SmoothNoise;
   /** The limit the car believes applies (what the cluster shows). */
   recognized: RecognizedLimit = {
@@ -459,6 +477,16 @@ export class SimulatorSource implements DataSource {
     this.assist.pressDistance();
   }
 
+  /** Workshop: fill the particulate filter / empty the exhaust fluid to see the warnings. */
+  setDieselDemo(what: 'dpf' | 'def' | 'service'): void {
+    if (what === 'dpf') this.dpf.load = 82;
+    else if (what === 'def') this.def.litres = 2.3;
+    else {
+      this.dpf.load = 20;
+      this.def.refill();
+    }
+  }
+
   pressButton(
     b:
       | 'laneAssist'
@@ -576,6 +604,7 @@ export class SimulatorSource implements DataSource {
     sim.inputs.gradient = world.gradient() * sim.state.direction;
     const steer = this.applyLane(scene);
     this.applyCollision(scene, human);
+    this.applyStopAndHold(human);
     this.syncEnvironment();
     sim.step(STEP_S);
     world.step(STEP_S, sim.state.speedMs, sim.state.direction, steer);
@@ -607,6 +636,78 @@ export class SimulatorSource implements DataSource {
   }
 
   private lastMode = '';
+
+  private lastIgnitionStop = 2;
+
+  /**
+   * Auto Hold and engine start-stop (combustion cars with start-stop), plus
+   * the diesel's particulate filter and exhaust fluid.
+   */
+  private applyStopAndHold(human: { throttle: number; brake: number }): void {
+    const sim = this.sim;
+    const st = sim.state;
+    const b = sim.body;
+    const p = this.profile;
+    if (this.lastIgnitionStop < 2 && st.ignition >= 2) {
+      this.startStop.onIgnition();
+      this.buttons.startStopOff = false;
+    }
+    this.lastIgnitionStop = st.ignition;
+    const doorOpen = b.doors.some((d) => d) || b.trunk;
+    const inDrive = st.selector === 'D';
+    this.autoHold.enabled = this.buttons.autoHold;
+    const hold = this.autoHold.step({
+      speedKmh: sim.speedKmh,
+      brake: sim.inputs.brake,
+      throttle: human.throttle,
+      inDrive,
+      doorOpen,
+      beltOn: b.seatbelt,
+    });
+    if (hold.brake !== null) sim.inputs.brake = Math.max(sim.inputs.brake, hold.brake);
+    if (hold.park) b.parkingBrake = true;
+
+    if (p.equipment?.startStop && p.engine && !p.electric) {
+      this.startStop.enabled = !this.buttons.startStopOff;
+      const out = this.startStop.step({
+        speedKmh: sim.speedKmh,
+        brake: sim.inputs.brake,
+        throttle: sim.inputs.throttle,
+        holding: this.autoHold.state === 'holding' || this.assist.state === 'hold',
+        inDrive,
+        engineRunning: st.engineRunning,
+        coolantC: st.coolantC,
+        batteryOk: !sim.faults.has('alternator'),
+        ambientC: st.ambientC,
+        gradient: sim.inputs.gradient,
+        steeringDeg: st.steeringDeg,
+        doorOpen,
+        beltOn: b.seatbelt,
+        filterCleaning: this.dpf.regenerating,
+        dt: STEP_S,
+      });
+      if (out.stopEngine) sim.autoStop();
+      if (out.startEngine) sim.autoRestart();
+      if (!sim.autoStopped && this.startStop.state === 'restartRequired')
+        this.startStop.manualRestart();
+    }
+
+    if (p.fuelType === 'diesel') {
+      this.dpf.step(sim.speedKmh, st.loadPct, st.engineRunning, STEP_S);
+      if (this.lastOdo > 0) this.def.consume(Math.max(0, st.odometerKm - this.lastOdo));
+      sim.startBlocked = this.def.startBlocked;
+    }
+    this.lastOdo = st.odometerKm;
+  }
+
+  /** Engine speed in another gear at the current road speed. */
+  private gearRpm(gear: number): number {
+    const p = this.profile;
+    const r = p.gearRatios[gear - 1];
+    return r
+      ? (this.sim.state.speedMs / (2 * Math.PI * p.wheelRadiusM)) * 60 * r * p.finalDrive
+      : 0;
+  }
 
   private autoHazard = false;
   private lastIgnitionFcw = 2;
@@ -841,6 +942,30 @@ export class SimulatorSource implements DataSource {
     put(S.AssistedDriving, flag(lo.assisted));
     put(S.LaneOffset, this.lastScene?.ego.lateral ?? 0);
     put(S.FcwState, FCW_STAGES.indexOf(this.collision.stage));
+    put(S.StartStopState, START_STOP_STATES.indexOf(this.startStop.state));
+    put(S.StartStopReason, STOP_BLOCKS.indexOf(this.startStop.reason));
+    put(S.AutoHoldState, AUTO_HOLD_STATES.indexOf(this.autoHold.state));
+    put(S.GlowPlug, flag(sim.glowing));
+    if (this.profile.engine && on) {
+      const e = this.profile.engine;
+      const prog = sim.program;
+      const sport = sim.driveModes.state.current === 'sport' || prog === 'S';
+      const advice = gearAdvice({
+        manual: sim.mode === 'manual' || this.profile.transmission === 'manual',
+        sport,
+        gear: st.gear,
+        gears: sim.gearCount,
+        rpm: st.rpm,
+        idleRpm: e.idleRpm,
+        rpmUp: this.gearRpm(st.gear + 1),
+        rpmDown: this.gearRpm(st.gear - 1),
+        throttle: st.throttle,
+        redlineRpm: e.redlineRpm,
+      });
+      put(S.GearAdvice, GEAR_ADVICE.indexOf(advice.advice));
+      put(S.RecommendedGear, advice.gear);
+      put(S.ShiftLight, sport || prog === 'M' ? shiftLight(st.rpm, e.redlineRpm) : -1);
+    }
     put(S.BlindSpotLeft, BLIND_SPOT_STATES.indexOf(this.blindSpot.left));
     put(S.BlindSpotRight, BLIND_SPOT_STATES.indexOf(this.blindSpot.right));
     put(S.CrossTraffic, CROSS_TRAFFIC_STATES.indexOf(this.crossTraffic.state));
@@ -879,6 +1004,9 @@ export class SimulatorSource implements DataSource {
       put(S.DTCCount, sim.dtcs().length);
       put(S.FuelType, FUEL_TYPE_TO_CODE[this.profile.fuelType]);
       put(S.SoC, st.soc);
+      put(S.DpfLoad, this.dpf.load);
+      put(S.DpfRegenerating, flag(this.dpf.regenerating));
+      put(S.DefRange, this.def.rangeKm);
       put(S.BatteryTemp, st.batteryTempC);
       if (sim.isElectric) {
         const el = this.profile.electric!;

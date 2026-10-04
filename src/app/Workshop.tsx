@@ -124,6 +124,19 @@ export function Workshop({ session, profileId, onProfile }: Props) {
           >
             Sensor blocked
           </button>
+          {session.profile.fuelType === 'diesel' && (
+            <>
+              <button className="pill" onClick={() => src.setDieselDemo('dpf')}>
+                Load particulate filter
+              </button>
+              <button className="pill" onClick={() => src.setDieselDemo('def')}>
+                Exhaust fluid low
+              </button>
+              <button className="pill" onClick={() => src.setDieselDemo('service')}>
+                Diesel service
+              </button>
+            </>
+          )}
           <button
             className={`pill ${src.sim.driveModes.rememberLast ? 'pill-on' : ''}`}
             onClick={() => src.sim.driveModes.toggleRememberLast()}

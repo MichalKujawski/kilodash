@@ -1,5 +1,6 @@
 import { S } from '@/core/signals/catalog';
 import { label } from '../../renderer/draw';
+import { drawIcon } from '../../telltales/icons';
 import type { FrameContext } from '../../renderer/types';
 import { SAFETY_COLORS } from '../../themes/types';
 import { pageSurface } from './TripPage';
@@ -11,6 +12,18 @@ const DOORS = [
   { id: S.DoorRearLeft, name: 'Rear left door', side: -1, front: false },
   { id: S.DoorRearRight, name: 'Rear right door', side: 1, front: false },
 ] as const;
+
+/** Start-stop block reasons in plain words (index = STOP_BLOCKS). */
+const STOP_REASONS = [
+  '',
+  'engine not warm yet',
+  'battery charging',
+  'climate needs the engine',
+  'steep gradient',
+  'steering',
+  'door open or belt off',
+  'particulate filter cleaning',
+];
 
 const TIRES = [
   { id: S.TireFL, side: -1, front: true },
@@ -170,6 +183,14 @@ export class CarPage implements CenterPage {
       ctx.fillStyle = kpa < 190 ? SAFETY_COLORS.caution : t.text.primary;
       ctx.fillText((kpa / 100).toFixed(1), x, y);
       label(ctx, 'bar', x, y + 20, 13, t.fonts.primary, t.text.tertiary, 'center');
+    }
+
+    // Start-stop not available at this stop: the reason (information, not a fault).
+    const ss = st.value(S.StartStopState, 1);
+    if (ss === 3 || ss === 0) {
+      const why = ss === 0 ? 'switched off' : (STOP_REASONS[st.value(S.StartStopReason)] ?? '');
+      drawIcon(ctx, 'startStopOff', cx - 150, h - 64, 18, t.text.tertiary, t.fonts.primary);
+      label(ctx, `Start-stop: ${why}`, cx - 134, h - 58, 14, t.fonts.primary, t.text.tertiary);
     }
 
     const status = openName ? `${openName} open` : 'All doors closed';

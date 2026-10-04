@@ -19,6 +19,10 @@ export const POSES = [
   'handsoff',
   'blindspot',
   'aeb',
+  'autostop',
+  'advice',
+  'shiftlights',
+  'diesel',
 ] as const;
 export type Pose = (typeof POSES)[number];
 
@@ -163,6 +167,54 @@ export function applyPose(session: ClusterSession, pose: Pose): void {
       src.paused = true;
       break;
     }
+    case 'autostop':
+      // Warm engine, Auto Hold on, stopped at a red light: engine off, green A.
+      src.pressButton('autoHold');
+      src.jumpTo('town');
+      src.sim.state.coolantC = 88;
+      for (let i = 0; i < 1200 && !src.sim.autoStopped; i++) session.fastForward(0.1);
+      session.fastForward(1);
+      src.paused = true;
+      break;
+    case 'advice': {
+      // Manual gear selection, gentle acceleration: "shift up" advice.
+      src.jumpTo('rural');
+      session.fastForward(10);
+      src.setAutopilot(false);
+      src.setGearProgram('M');
+      src.setManualInput({ throttle: 0.25 });
+      session.fastForward(1);
+      const sim = src.sim;
+      for (let i = 0; i < 300 && sim.state.rpm < 2300; i++) session.fastForward(0.05);
+      src.paused = true;
+      break;
+    }
+    case 'shiftlights': {
+      // Sport, manual, full throttle: the shift lights fill and flash.
+      src.sim.driveModes.select('sport');
+      src.jumpTo('motorway');
+      session.fastForward(5);
+      src.setAutopilot(false);
+      src.setGearProgram('M');
+      const sim = src.sim;
+      // A clear lane ahead for the run up to the shift point.
+      const w = src.world;
+      w.traffic.vehicles = w.traffic.vehicles.filter(
+        (v) => v.oncoming || Math.abs(v.lane - w.ego.lane) > 0.5 || v.s < w.ego.s,
+      );
+      while (sim.state.gear > 3) sim.shiftDown();
+      src.setManualInput({ throttle: 1 });
+      const e = src.profile.engine!;
+      for (let i = 0; i < 400 && sim.state.rpm < e.redlineRpm - 700; i++) session.fastForward(0.02);
+      src.paused = true;
+      break;
+    }
+    case 'diesel':
+      // 2016 estate (use ?car=estate-2016): particulate filter full in town.
+      src.jumpTo('town');
+      src.setDieselDemo('dpf');
+      session.fastForward(8);
+      break;
     case 'redline': {
       src.jumpTo('motorway');
       src.setAutopilot(false);

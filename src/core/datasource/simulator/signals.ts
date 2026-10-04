@@ -27,6 +27,11 @@ export function profileSignals(p: VehicleProfile): ProfileSignal[] {
   if (p.engine?.cylinderDeactivation) can.push(S.CylinderDeactivation);
   if (p.drive === 'awd' && modes) can.push(S.HillDescent);
   if (p.electric) can.push(S.PowerDemand);
+  if (p.equipment?.startStop && p.engine && !p.electric)
+    can.push(S.StartStopState, S.StartStopReason);
+  if (p.equipment?.autoHold !== false && p.transmission !== 'manual') can.push(S.AutoHoldState);
+  if (p.engine && !p.electric) can.push(S.GearAdvice, S.RecommendedGear, S.ShiftLight);
+  if (p.fuelType === 'diesel') can.push(S.GlowPlug, S.DpfLoad, S.DpfRegenerating, S.DefRange);
   if (p.equipment?.acc)
     can.push(S.AccDistance, S.AccTargetDistance, S.AccTakeover, S.AccLeadDrivingOff);
   if (p.electric && !p.engine) can.push(S.RegenLevel);

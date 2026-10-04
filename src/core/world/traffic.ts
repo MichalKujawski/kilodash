@@ -28,6 +28,9 @@ export interface Vehicle {
   colour: number;
   /** Seconds since the last lane-change decision. */
   lcTimer: number;
+  /** Cached wanted speed (m/s) and seconds until it is worked out again. */
+  v0?: number;
+  v0T?: number;
 }
 
 /** The ego car as other traffic sees it. */
@@ -70,6 +73,8 @@ const DENSITY: Record<RoadKind, number> = {
 const WINDOW_BEHIND = 350;
 const WINDOW_AHEAD = 1100;
 const LANE_CHANGE_S = 3.5;
+/** Longest vehicle (truck), m. */
+const MAX_LENGTH = 16;
 
 /** Speed a driver takes a bend at: lateral ≈ 0.3 g. */
 export function curveSpeed(curvature: number, lateralG = 0.3): number {
@@ -100,6 +105,7 @@ export class Traffic {
   /** Fill the window around the ego position (on start or after a jump). */
   populate(ego: EgoState): void {
     this.vehicles = [];
+    this.sortedDirty = true;
     this.fired.clear();
     for (
       let s = Math.max(0, ego.s - WINDOW_BEHIND);
@@ -154,6 +160,7 @@ export class Traffic {
       lcTimer: this.rng(),
     };
     this.vehicles.push(veh);
+    this.sortedDirty = true;
     return veh;
   }
 
@@ -170,24 +177,54 @@ export class Traffic {
     return target * ctx.weather;
   }
 
+  /** Same-direction vehicles sorted by front position (rebuilt each step and on spawn). */
+  private sorted: Vehicle[] = [];
+  private sortedDirty = true;
+
+  private ensureSorted(): void {
+    if (!this.sortedDirty) return;
+    this.sorted = this.vehicles.filter((o) => !o.oncoming).sort((a, b) => a.s - b.s);
+    this.sortedDirty = false;
+  }
+
   /** Nearest vehicle (or the ego car) ahead in `lane`, as [gap m, speed m/s]. */
   leaderOf(
     v: { s: number; lane: number; id?: number },
     ego: EgoState | null,
     lane = v.lane,
   ): [number, number] | null {
-    let best: [number, number] | null = null;
-    const consider = (s: number, len: number, speed: number): void => {
-      const gap = s - len - v.s;
-      if (gap > -0.5 && (!best || gap < best[0])) best = [gap, speed];
-    };
-    for (const o of this.vehicles) {
-      if (o.oncoming || o.id === v.id) continue;
-      if (Math.abs(o.lane - lane) < 0.6 || Math.abs(o.targetLane - lane) < 0.1)
-        consider(o.s, o.length, o.v);
+    this.ensureSorted();
+    const list = this.sorted;
+    // First vehicle whose front is beyond ours (only those can be ahead).
+    let lo = 0;
+    let hi = list.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (list[mid]!.s > v.s - 0.5) hi = mid;
+      else lo = mid + 1;
     }
-    if (ego && Math.abs(ego.lane - lane) < 0.6) consider(ego.s, ego.length, ego.v);
-    return best;
+    let bestGap = Infinity;
+    let bestSpeed = 0;
+    for (let i = lo; i < list.length; i++) {
+      const o = list[i]!;
+      // Sorted by front: once even the longest vehicle can't beat the best gap, stop.
+      if (o.s - MAX_LENGTH - v.s > bestGap) break;
+      if (o.id === v.id) continue;
+      if (Math.abs(o.lane - lane) >= 0.6 && Math.abs(o.targetLane - lane) >= 0.1) continue;
+      const gap = o.s - o.length - v.s;
+      if (gap > -0.5 && gap < bestGap) {
+        bestGap = gap;
+        bestSpeed = o.v;
+      }
+    }
+    if (ego && Math.abs(ego.lane - lane) < 0.6) {
+      const gap = ego.s - ego.length - v.s;
+      if (gap > -0.5 && gap < bestGap) {
+        bestGap = gap;
+        bestSpeed = ego.v;
+      }
+    }
+    return bestGap === Infinity ? null : [bestGap, bestSpeed];
   }
 
   /** Nearest follower in `lane` behind position s: [gap m, speed m/s]. */
@@ -224,12 +261,19 @@ export class Traffic {
 
   step(dt: number, ego: EgoState, ctx: TrafficContext): void {
     this.fireEvents(ego, ctx);
+    this.sortedDirty = true;
     for (const v of this.vehicles) {
       if (v.oncoming) {
         v.s -= v.v * dt;
         continue;
       }
-      const v0 = this.desired(v, ctx);
+      // Drivers settle on a speed every half second, not 100 times a second.
+      v.v0T = (v.v0T ?? 0) - dt;
+      if (v.v0 === undefined || v.v0T <= 0) {
+        v.v0 = this.desired(v, ctx);
+        v.v0T = 0.5;
+      }
+      const v0 = v.v0;
       let leader = this.leaderOf(v, ego);
       if (v.lane !== v.targetLane) {
         // While changing lanes, respect the car ahead in both lanes.
@@ -342,6 +386,7 @@ export class Traffic {
   }
 
   private recycle(ego: EgoState): void {
+    this.sortedDirty = true;
     this.vehicles = this.vehicles.filter((v) => {
       if (v.oncoming) return v.s > ego.s - WINDOW_BEHIND && v.s < ego.s + WINDOW_AHEAD + 200;
       return (

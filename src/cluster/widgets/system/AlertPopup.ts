@@ -94,6 +94,7 @@ export class AlertPopup implements Widget {
     const vars = {
       range: f.store.has(S.Range) ? Math.round(f.store.value(S.Range)) : '--',
       ambient: f.store.has(S.AmbientTemp) ? Math.round(f.store.value(S.AmbientTemp)) : '--',
+      defRange: f.store.has(S.DefRange) ? Math.round(f.store.value(S.DefRange) / 10) * 10 : '--',
     };
     text(ctx, tr(a.rule.titleKey, vars), x + w / 2, y + 136, {
       font: font(500, 30, th.fonts.primary),

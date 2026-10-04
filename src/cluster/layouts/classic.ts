@@ -19,6 +19,7 @@ const LEFT_GROUP = [
   'tcs',
   'escOff',
   'fcwOff',
+  'autoHold',
 ];
 const RIGHT_GROUP = [
   'checkEngine',
@@ -33,6 +34,8 @@ const RIGHT_GROUP = [
   'doorOpen',
   'tpms',
   'glowPlug',
+  'dpf',
+  'def',
 ];
 
 /**
@@ -191,6 +194,12 @@ export const classic: LayoutDefinition = {
           props: { y: BOTTOM_Y, temp: 330, trip: 455, clock: 960, odo: 1600 },
         },
       ],
+    },
+    {
+      // Shift lights over the tachometer (Sport / manual).
+      id: 'shift-lights',
+      rect: { x: RIGHT.cx - 140, y: 50, w: 280, h: 9 },
+      candidates: [{ type: 'shift-lights' }],
     },
     {
       id: 'drive-mode',

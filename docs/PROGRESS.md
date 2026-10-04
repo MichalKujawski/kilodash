@@ -25,8 +25,8 @@ _Last updated: 2026-10-04_
 | 6    | Speed-limit recognition / ISA                                                                        | done  |
 | 7    | Lane keeping/centering, hands-off staging, Driver Assistance view                                    | done  |
 | 8    | Collision warning/AEB, blind spot, rear cross traffic                                                | done  |
-| 9    | Start-stop, Auto Hold, gear recommendation, shift lights, diesel DPF/AdBlue                          | next  |
-| 10   | Warnings catalogue, seatbelt escalation, TPMS, service                                               |       |
+| 9    | Start-stop, Auto Hold, gear recommendation, shift lights, diesel DPF/AdBlue                          | done  |
+| 10   | Warnings catalogue, seatbelt escalation, TPMS, service                                               | next  |
 | 11   | Fatigue, parking sensors + camera, auto high beam, lights/body/wipers                                |       |
 | 12   | Views (Classic, Navigation, Reduced, Driver Assistance, Sport, Auto view)                            |       |
 
@@ -128,10 +128,24 @@ _Last updated: 2026-10-04_
   short events use it (`departure`, `blindspot`, `aeb`).
 - Workshop: "Collision warning", "Sensor blocked".
 
+## Notes from step 9
+
+- `core/drive/StartStop.ts` (start-stop, Auto Hold, gear advice, shift lights) and
+  `core/drive/Diesel.ts` (glow time, particulate filter, exhaust fluid). Docs:
+  `docs/features/powertrain-helpers.md`.
+- The vehicle got `autoStop()` / `autoRestart()` (0.35 s restart), glow-before-crank and
+  `startBlocked`.
+- The diesel exhaust fluid uses the generic name everywhere (the brand name is a trademark).
+- Fixed: `ClusterSession.fastForward` rounded small durations to zero steps. It now runs exactly
+  the time asked for.
+- New poses: `autostop`, `advice`, `shiftlights`, `diesel` (with `?car=estate-2016`, set
+  automatically by the screenshot script).
+
 ## Known issues / open questions
 
-- Rare single dropped frame (about 1 in 30 pose runs, in any pose). Suspects: GC or the map's
-  progressive raster rebuild. Investigate with `?profile=1` in the polish pass.
+- Rare single dropped frame (about 1 in 30 pose runs). Partly explained in step 9: traffic's
+  O(n²) leader search cost 0.4 ms per simulation step in the roadworks queue. It now uses a sorted
+  scan (75 µs), and queue poses showed 0 drops in 8 runs. Keep watching the other poses.
 
 - `docs/briefs/` holds only the active brief. The original Phase 1, Milestone 1.5,
   experiences-and-menus and Phase 2 briefs need to be added by the owner.

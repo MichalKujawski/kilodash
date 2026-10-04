@@ -94,7 +94,6 @@ export class RoundDial implements Widget {
   private readyFade = new Fade(2.5);
   private setFade = new Fade(4);
   private lastLook: AssistLook | null = null;
-  private shiftFlash = 0;
   private lastFrac = 0;
   private sweepSpeed = 0;
 
@@ -648,21 +647,24 @@ export class RoundDial implements Widget {
     const st = f.store;
     const { cx, cy, r } = g;
 
-    // READY fades in with the engine.
-    const running = !st.has(S.EngineRunning) || st.value(S.EngineRunning) > 0;
+    // READY fades in with the engine. Start-stop: green "auto stop" while the
+    // engine is off at a stop, a grey crossed symbol when it can't stop.
+    const ss = st.value(S.StartStopState, 1);
+    const autoStopped = ss === 2 || ss === 4;
+    const running = !st.has(S.EngineRunning) || st.value(S.EngineRunning) > 0 || autoStopped;
     const auto = !st.has(S.SelectedGear) || st.value(S.SelectedGear) === 127;
     const ready = this.readyFade.update(running && f.runtime.phase === 'on', f.dt);
+    const statusY = cy + r * (g.compact ? 0.66 : GAP.status);
     ctx.globalAlpha = ready * 0.9;
-    label(
-      ctx,
-      'Ready',
-      cx,
-      cy + r * (g.compact ? 0.66 : GAP.status),
-      14,
-      t.fonts.primary,
-      SAFETY_COLORS.info,
-      'center',
-    );
+    if (autoStopped && !g.compact) {
+      const col = ss === 4 ? SAFETY_COLORS.caution : SAFETY_COLORS.info;
+      drawIcon(ctx, 'startStop', cx - 40, statusY - 5, 20, col, t.fonts.primary);
+      label(ctx, 'Auto stop', cx - 26, statusY, 14, t.fonts.primary, col);
+    } else {
+      label(ctx, 'Ready', cx, statusY, 14, t.fonts.primary, SAFETY_COLORS.info, 'center');
+      if (ss === 3 && !g.compact)
+        drawIcon(ctx, 'startStopOff', cx + 50, statusY - 5, 18, t.text.tertiary, t.fonts.primary);
+    }
     // Hybrids: "EV" while the engine is off.
     if (!g.compact && st.has(S.PowerDemand) && st.has(S.EngineRunning) && !running) {
       label(
@@ -730,20 +732,39 @@ export class RoundDial implements Widget {
       align: 'center',
     });
 
-    // Shift-up prompt in manual mode.
-    const shift = st.value(S.ShiftRequest) > 0;
-    this.shiftFlash = shift ? this.shiftFlash + f.dt : 0;
-    if (shift && Math.floor(this.shiftFlash * 8) % 2 === 0) {
-      const y = gearY - big * 1.04;
-      for (const c of f.emissive ? [ctx, f.emissive] : [ctx]) {
-        c.fillStyle = SAFETY_COLORS.caution;
-        c.beginPath();
-        c.moveTo(cx + 14, y - 14);
-        c.lineTo(cx + 30, y + 4);
-        c.lineTo(cx - 2, y + 4);
-        c.closePath();
-        c.fill();
+    // Gear advice (manual gear selection): arrow and the gear to choose.
+    const advice = st.has(S.GearAdvice)
+      ? st.value(S.GearAdvice)
+      : st.value(S.ShiftRequest) > 0
+        ? 1
+        : 0;
+    if (advice > 0) {
+      const up = advice === 1;
+      const ax = cx + big * 0.62;
+      const ay = gearY - big * 0.52;
+      ctx.fillStyle = t.text.primary;
+      ctx.beginPath();
+      if (up) {
+        ctx.moveTo(ax, ay - 12);
+        ctx.lineTo(ax + 10, ay);
+        ctx.lineTo(ax - 10, ay);
+      } else {
+        ctx.moveTo(ax, ay + 12);
+        ctx.lineTo(ax + 10, ay);
+        ctx.lineTo(ax - 10, ay);
       }
+      ctx.closePath();
+      ctx.fill();
+      if (st.has(S.RecommendedGear))
+        label(
+          ctx,
+          String(st.value(S.RecommendedGear)),
+          ax + 16,
+          ay + 7,
+          20,
+          t.fonts.primary,
+          t.text.primary,
+        );
     }
   }
 

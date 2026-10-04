@@ -153,8 +153,9 @@ export class ClusterSession {
    * (tests and screenshots): trip computer and history fill as if driven.
    */
   fastForward(seconds: number, each?: () => void): void {
-    const stepS = 0.1;
-    const steps = Math.round(seconds / stepS);
+    // Chunks of at most 0.1 s that add up to exactly `seconds`.
+    const steps = Math.max(1, Math.ceil(seconds / 0.1 - 1e-9));
+    const stepS = seconds / steps;
     for (let i = 0; i < steps; i++) {
       this.source.fastForward(stepS, each);
       this.derived.step(performance.now(), stepS);

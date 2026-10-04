@@ -25,9 +25,15 @@ const poses = only.length
       'handsoff',
       'blindspot',
       'aeb',
+      'autostop',
+      'advice',
+      'shiftlights',
+      'diesel',
     ];
 const keys = (process.env.KEYS ?? '').split(',').filter(Boolean);
 // Poses that show a carousel page other than the map.
+// Poses that need another car.
+const POSE_QUERY = { diesel: '&car=estate-2016' };
 const POSE_KEYS = {
   lanes: ['ArrowRight'],
   departure: ['ArrowRight'],
@@ -51,7 +57,9 @@ const page = await browser.newPage({ viewport: { width: 1920, height: 720 } });
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
 for (const pose of poses) {
-  await page.goto(`${BASE}/?kiosk=1&pose=${pose}${process.env.QUERY ?? ''}`);
+  await page.goto(
+    `${BASE}/?kiosk=1&pose=${pose}${POSE_QUERY[pose] ?? ''}${process.env.QUERY ?? ''}`,
+  );
   await page.waitForTimeout(1500);
   for (const k of [...(POSE_KEYS[pose] ?? []), ...keys]) {
     await page.keyboard.press(k);

@@ -39,7 +39,7 @@
   "tankL": 60,
   "speedoMaxKmh": 300,
   "tachoMaxRpm": 8000,
-  "equipment": { "acc": true },
+  "equipment": { "acc": true, "startStop": true },
   "tpms": true,
   "obdPids": [
     "01",

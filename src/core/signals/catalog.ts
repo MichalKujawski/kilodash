@@ -109,6 +109,23 @@ export const S = {
   /** Speed warning (ISA): 0 off, 1 on, 2 over the limit (visual), 3 over the limit (acoustic). */
   IsaState: 'Vehicle.ADAS.ISA.State',
   IsaOffset: 'Vehicle.ADAS.ISA.Offset',
+  /** Start-stop: 0 off, 1 ready, 2 engine stopped, 3 not available at this stop, 4 restart with the button. */
+  StartStopState: 'Vehicle.Powertrain.StartStop.State',
+  /** Why start-stop isn't stopping the engine (index into STOP_BLOCKS). */
+  StartStopReason: 'Vehicle.Powertrain.StartStop.BlockReason',
+  /** Auto Hold: 0 off, 1 armed, 2 holding. */
+  AutoHoldState: 'Vehicle.Chassis.Brake.AutoHold.State',
+  /** Gear advice: 0 none, 1 shift up, 2 shift down. */
+  GearAdvice: 'Vehicle.Powertrain.Transmission.GearRecommendation',
+  RecommendedGear: 'Vehicle.Powertrain.Transmission.RecommendedGear',
+  /** Shift lights: −1 hidden, 0–1 fill, 2 flashing (shift now). */
+  ShiftLight: 'Vehicle.Powertrain.Transmission.ShiftLight',
+  GlowPlug: 'Vehicle.Powertrain.CombustionEngine.Diesel.IsGlowing',
+  /** Particulate filter soot load, %. */
+  DpfLoad: 'Vehicle.Powertrain.CombustionEngine.DieselParticulateFilter.Load',
+  DpfRegenerating: 'Vehicle.Powertrain.CombustionEngine.DieselParticulateFilter.IsRegenerating',
+  /** Diesel exhaust fluid range, km. */
+  DefRange: 'Vehicle.Powertrain.CombustionEngine.DieselExhaustFluid.Range',
   TCSActive: 'Vehicle.ADAS.TCS.IsEngaged',
   /** 0 on, 1 traction control off, 2 ESC sport. */
   ESCMode: 'Vehicle.ADAS.ESC.Mode',
@@ -420,6 +437,37 @@ const defs: SignalDefinition[] = [
   },
   { id: S.IsaState, nameKey: 'signal.isa', unit: 'enum', min: 0, max: 3, expectedHz: 10 },
   { id: S.IsaOffset, nameKey: 'signal.isaOffset', unit: 'km/h', min: 0, max: 10, expectedHz: 1 },
+  {
+    id: S.StartStopState,
+    nameKey: 'signal.startStop',
+    unit: 'enum',
+    min: 0,
+    max: 4,
+    expectedHz: 5,
+  },
+  {
+    id: S.StartStopReason,
+    nameKey: 'signal.startStopReason',
+    unit: 'enum',
+    min: 0,
+    max: 7,
+    expectedHz: 2,
+  },
+  { id: S.AutoHoldState, nameKey: 'signal.autoHold', unit: 'enum', min: 0, max: 2, expectedHz: 5 },
+  { id: S.GearAdvice, nameKey: 'signal.gearAdvice', unit: 'enum', min: 0, max: 2, expectedHz: 5 },
+  {
+    id: S.RecommendedGear,
+    nameKey: 'signal.recommendedGear',
+    unit: 'gear',
+    min: 0,
+    max: 10,
+    expectedHz: 5,
+  },
+  { id: S.ShiftLight, nameKey: 'signal.shiftLight', unit: 'enum', min: -1, max: 2, expectedHz: 30 },
+  bool(S.GlowPlug, 'signal.glowPlug', 5),
+  { id: S.DpfLoad, nameKey: 'signal.dpfLoad', unit: 'percent', min: 0, max: 100, expectedHz: 0.5 },
+  bool(S.DpfRegenerating, 'signal.dpfRegen', 1),
+  { id: S.DefRange, nameKey: 'signal.defRange', unit: 'km', min: 0, max: 20000, expectedHz: 0.5 },
   bool(S.TCSActive, 'signal.tcs', 10),
   { id: S.ESCMode, nameKey: 'signal.escMode', unit: 'enum', min: 0, max: 2, expectedHz: 1 },
   bool(S.LaneAssistEnabled, 'signal.laneAssist', 1),

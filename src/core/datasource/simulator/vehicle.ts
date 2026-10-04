@@ -1,4 +1,5 @@
 import { coastingAllowed, DriveModeController } from '../../drive/DriveModeController';
+import { glowTime } from '../../drive/Diesel';
 import { comfortConsumers, consumerFuelLh, type Consumer } from '../../drive/efficiency';
 import { throttleMap, type GearboxProgram, type ModeParams } from '../../drive/modes';
 import { approach, clamp, createRng, SmoothNoise } from '../../math';
@@ -189,6 +190,12 @@ export class VehicleSimulator {
   private voltNoise: SmoothNoise;
   private tireWarm = 0;
   private lastIgnition: IgnitionLevel = 2;
+  /** Engine switched off by start-stop (ignition and drive-ready stay on). */
+  autoStopped = false;
+  /** Engine start refused (e.g. diesel exhaust fluid empty). */
+  startBlocked = false;
+  private glowT = 0;
+  private startPending = false;
   /** Comfort consumers running now (A/C, heaters, lights). */
   consumers: Consumer[] = [];
   private onTimeS = 0;
@@ -335,6 +342,8 @@ export class VehicleSimulator {
     const s = this.state;
     s.ignition = level;
     if (level < 2) {
+      this.autoStopped = false;
+      this.startPending = false;
       s.engineRunning = false;
       s.ready = false;
       s.cruiseActive = false;
@@ -370,6 +379,11 @@ export class VehicleSimulator {
    */
   pressStart(brakePressed: boolean): void {
     const s = this.state;
+    // Engine stopped by start-stop: the button starts it again.
+    if (this.autoStopped) {
+      this.autoRestart();
+      return;
+    }
     if (s.ready || s.ignition === 3) {
       if (s.speedMs < 1) this.setIgnition(0);
       return;
@@ -387,8 +401,42 @@ export class VehicleSimulator {
       s.ready = true;
       return;
     }
+    if (this.startBlocked) return;
+    // Diesels pre-glow when cold; keyless cars crank by themselves once ready.
+    if (this.glowing) {
+      this.startPending = true;
+      return;
+    }
     s.ignition = 3;
     this.crankT = 0;
+  }
+
+  /** Start-stop: switch the engine off at a stop (the car stays "on"). */
+  autoStop(): void {
+    const s = this.state;
+    if (!s.engineRunning || this.isElectric) return;
+    s.engineRunning = false;
+    this.autoStopped = true;
+  }
+
+  /** Start-stop: quick restart (the starter is already engaged, ~0.35 s). */
+  autoRestart(): void {
+    if (!this.autoStopped) return;
+    this.autoStopped = false;
+    this.state.ignition = 3;
+    this.crankT = 0.45;
+  }
+
+  /** Diesel glow plugs are pre-heating (lamp on). */
+  get glowing(): boolean {
+    const s = this.state;
+    return (
+      this.profile.fuelType === 'diesel' &&
+      s.ignition === 2 &&
+      !s.engineRunning &&
+      !this.autoStopped &&
+      this.glowT < glowTime(s.coolantC)
+    );
   }
 
   injectFault(kind: FaultKind): void {
@@ -504,6 +552,16 @@ export class VehicleSimulator {
 
   private updateIgnition(dt: number): void {
     const s = this.state;
+    // Glow plugs heat from ignition on; a pending start cranks when they're done.
+    if (s.ignition === 2 && !s.engineRunning) this.glowT += dt;
+    else if (s.ignition < 2) this.glowT = 0;
+    if (this.startPending && !this.glowing) {
+      this.startPending = false;
+      if (s.ignition === 2) {
+        s.ignition = 3;
+        this.crankT = 0;
+      }
+    }
     if (s.ignition === 3) {
       this.crankT += dt;
       const crankTime = s.coolantC < 30 ? 1.3 : 0.8;
@@ -633,9 +691,9 @@ export class VehicleSimulator {
     const alternatorOk = !this.faults.has('alternator');
     let volts: number;
     if (s.ignition === 3) volts = 10.3 + this.voltNoise.next(dt) * 0.3;
-    else if (s.ready) {
+    else if (s.ready && (s.engineRunning || this.isElectric)) {
       volts = alternatorOk ? 14.15 + this.voltNoise.next(dt) * 0.06 : 11.9 - s.runTimeS * 0.0004;
-    } else if (on) volts = 12.3;
+    } else if (on) volts = this.autoStopped ? 12.4 : 12.3;
     else volts = 12.5;
     s.voltage += (volts - s.voltage) * approach(dt, s.ignition === 3 ? 0.05 : 0.4);
 

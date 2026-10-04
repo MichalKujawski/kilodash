@@ -54,7 +54,12 @@ export type IconId =
   | 'collisionOff'
   | 'distance'
   | 'blindSpot'
-  | 'crossTraffic';
+  | 'crossTraffic'
+  | 'autoHold'
+  | 'startStop'
+  | 'startStopOff'
+  | 'dpf'
+  | 'def';
 
 const lamp = 'M13.5 5.5C18.5 5.5 21 8.5 21 12s-2.5 6.5-7.5 6.5z';
 
@@ -311,6 +316,38 @@ export const ICONS: Record<IconId, IconPart[]> = {
   crossTraffic: [
     { kind: 'fill', d: 'M9 2.5h6l1 2v9H8v-9z' },
     { kind: 'stroke', d: 'M3 18h18M6 15.5 3 18l3 2.5M18 15.5l3 2.5-3 2.5', width: 1.6 },
+  ],
+  // Auto Hold: a circled A between brake-drum brackets.
+  autoHold: [
+    { kind: 'stroke', d: 'M12 5a7 7 0 1 0 0 14a7 7 0 1 0 0-14z', width: 1.7 },
+    { kind: 'stroke', d: 'M3.5 7.5a10 10 0 0 0 0 9M20.5 7.5a10 10 0 0 1 0 9', width: 1.6 },
+    { kind: 'text', text: 'A', x: 12, y: 15.6, size: 9, weight: 700 },
+  ],
+  // Start-stop: an A inside a circular arrow (ISO 2575 meaning).
+  startStop: [
+    { kind: 'stroke', d: 'M18.5 7.5A8 8 0 1 0 20 12', width: 1.8 },
+    { kind: 'fill', d: 'M21 4.5v5.2h-5.2z' },
+    { kind: 'text', text: 'A', x: 12, y: 15.8, size: 10, weight: 700 },
+  ],
+  startStopOff: [
+    { kind: 'stroke', d: 'M18.5 7.5A8 8 0 1 0 20 12', width: 1.8 },
+    { kind: 'fill', d: 'M21 4.5v5.2h-5.2z' },
+    { kind: 'text', text: 'A', x: 12, y: 15.8, size: 10, weight: 700 },
+    { kind: 'stroke', d: 'M4 20 20 4', width: 1.8 },
+  ],
+  // Particulate filter: a filter block with soot dots and exhaust flow.
+  dpf: [
+    { kind: 'stroke', d: 'M5 7h14v10H5zM2 12h3M19 12h3', width: 1.6 },
+    {
+      kind: 'fill',
+      d: 'M8 9.3h1.6v1.6H8zM11.2 9.3h1.6v1.6h-1.6zM14.4 9.3H16v1.6h-1.6zM9.6 13h1.6v1.6H9.6zM12.8 13h1.6v1.6h-1.6z',
+    },
+  ],
+  // Diesel exhaust fluid: a filler drop with a nozzle.
+  def: [
+    { kind: 'stroke', d: 'M12 5c3 4 5 6.5 5 9a5 5 0 0 1-10 0c0-2.5 2-5 5-9z', width: 1.7 },
+    { kind: 'stroke', d: 'M15 3.5h5l1 2', width: 1.5 },
+    { kind: 'text', text: 'DEF', x: 12, y: 16.5, size: 5.5, weight: 700 },
   ],
   // Speed limiter: speedometer arc with a stop bar at the top.
   limiter: [

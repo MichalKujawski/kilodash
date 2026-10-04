@@ -25,6 +25,8 @@ export interface Equipment {
   /** Adaptive dampers: adds Comfort mode. */
   adaptiveDampers?: boolean;
   startStop?: boolean;
+  /** Auto Hold button (default: on automatic cars). */
+  autoHold?: boolean;
   /** Adaptive cruise control with stop & go (radar). Without it: plain cruise control. */
   acc?: boolean;
 }
