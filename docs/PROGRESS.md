@@ -167,8 +167,8 @@ _Last updated: 2026-10-04_
 | --- | --- | --- |
 | 0 | Audit, 3 concepts, owner chose A (+ wider cluster, calm chapters, spoke buttons) | done |
 | 1 | Shell: header with Watch/Drive/Engineer, stage (light, hood, feathered display, glow by drive mode, reflection), rolling start at midday, larger cluster text | done |
-| 2 | 3D map (tilted, extruded buildings, labels, glowing route) | next |
-| 3 | Demo Director + chapters (Start-up, Motorway first) | |
+| 2 | 3D map (tilted, extruded buildings, labels, glowing route) | done |
+| 3 | Demo Director + chapters (Start-up, Motorway first) | next |
 | 4 | Drive dock (wheel with spoke buttons, stalk, lever, pedals, contextual cruise) | |
 | 5 | Engineer mode | |
 | 6–11 | Intro, landing sections, responsive, recording, analytics, polish | |
