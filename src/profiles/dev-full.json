@@ -37,6 +37,7 @@
   "tankL": 68,
   "speedoMaxKmh": 320,
   "tachoMaxRpm": 9000,
+  "equipment": { "acc": true },
   "tpms": true,
   "obdPids": [
     "01",

@@ -2,6 +2,7 @@ import { Emitter } from '../../emitter';
 import { FUEL_TYPE_TO_CODE } from '../../obd/pids';
 import { S } from '../../signals/catalog';
 import type { Sample, SignalId, SignalSource } from '../../signals/types';
+import { ASSIST_FUNCTIONS, ASSIST_STATES, SpeedAssist } from '../../assist/SpeedAssist';
 import { consumerFuelLh, ecoTip, type EfficiencyState } from '../../drive/efficiency';
 import { DRIVE_MODE_ORDER } from '../../drive/modes';
 import { DemoDriver } from '../../world/DemoDriver';
@@ -94,6 +95,8 @@ export class SimulatorSource implements DataSource {
   readonly sim: VehicleSimulator;
   readonly world: World;
   readonly demo: DemoDriver;
+  /** Cruise control / ACC / speed limiter. */
+  readonly assist: SpeedAssist;
   /** Demo drive enabled (resumes after inactivity). */
   autopilot = true;
   readonly buttons: CarButtons = {
@@ -126,6 +129,7 @@ export class SimulatorSource implements DataSource {
     this.sim = new VehicleSimulator(profile, options.seed ?? 1);
     this.world = new World({ seed: options.seed, env: options.env });
     this.demo = new DemoDriver();
+    this.assist = new SpeedAssist(!!profile.equipment?.acc);
     for (const s of profileSignals(profile)) {
       this.sources.set(s.id, s.source);
       this.wanted.add(s.id);
@@ -378,27 +382,24 @@ export class SimulatorSource implements DataSource {
     this.sim.pressStart(this.manual.brake > 0.2 || this.sim.inputs.brake > 0.2);
   }
 
-  toggleCruise(): void {
-    this.sim.setCruise(!this.sim.state.cruiseActive);
+  /** Main button: short = on/off, long = switch between cruise/ACC and the limiter. */
+  pressCruiseMain(long = false): void {
+    if (long) this.assist.switchFunction();
+    else this.assist.pressMain();
   }
 
-  /** SET− / RES+: ±1 km/h, long press to the next multiple of 10 (until ACC arrives, drives cruise). */
+  /** SET− (dir −1) / RES+ (dir +1): short ±1 km/h, long to the next multiple of 10. */
   adjustCruise(dir: 1 | -1, long = false): void {
-    const s = this.sim.state;
-    if (!s.cruiseActive) {
-      this.sim.setCruise(true, this.sim.speedKmh);
-      return;
-    }
-    const v = s.cruiseSetKmh;
-    s.cruiseSetKmh = long
-      ? dir > 0
-        ? Math.floor(v / 10) * 10 + 10
-        : Math.ceil(v / 10) * 10 - 10
-      : v + dir;
+    if (dir < 0) this.assist.pressSet(long, this.sim.speedKmh);
+    else this.assist.pressRes(long, this.sim.speedKmh);
   }
 
   cancelCruise(): void {
-    this.sim.setCruise(false);
+    this.assist.cancel();
+  }
+
+  pressDistance(): void {
+    this.assist.pressDistance();
   }
 
   pressButton(b: 'laneAssist' | 'startStopOff' | 'autoHold' | 'parkAssist' | 'handsOn'): void {
@@ -483,7 +484,7 @@ export class SimulatorSource implements DataSource {
     const auto = this.isAutopilotActive;
     if (auto) {
       if (!this.wasAutopilot) this.demo.resume(sim);
-      this.demo.update(sim, world, scene, STEP_S);
+      this.demo.update(sim, world, scene, STEP_S, this.assist);
     } else {
       sim.inputs.throttle = this.manual.throttle;
       sim.inputs.brake = this.manual.brake;
@@ -494,6 +495,7 @@ export class SimulatorSource implements DataSource {
         world.changeLane(-1);
     }
     this.wasAutopilot = auto;
+    this.applyAssist(scene);
     sim.inputs.curvature = world.curvature();
     sim.inputs.gradient = world.gradient() * sim.state.direction;
     this.syncEnvironment();
@@ -524,6 +526,40 @@ export class SimulatorSource implements DataSource {
           sim.driveModes.state.current === 'eco' || sim.driveModes.state.available.length === 0,
       }),
     };
+  }
+
+  private lastMode = '';
+
+  /** Run cruise/ACC/limiter on top of the driver's pedals. */
+  private applyAssist(scene: SceneSnapshot): void {
+    const sim = this.sim;
+    const st = sim.state;
+    const a = this.assist;
+    if (st.ignition < 2 && a.state !== 'off') a.switchOff();
+    // The driving mode sets ACC dynamics and the default distance.
+    const mode = sim.driveModes.state.current;
+    a.dynamics = sim.modeParams.acc;
+    if (mode !== this.lastMode) {
+      a.distance = mode === 'sport' ? 2 : mode === 'snow' ? 5 : 3;
+      this.lastMode = mode;
+    }
+    const lead = scene.lead;
+    const out = a.step({
+      speedKmh: sim.speedKmh,
+      driverThrottle: sim.inputs.throttle,
+      driverBrake: sim.inputs.brake,
+      canDrive: st.ready && st.selector === 'D',
+      lead: lead && !lead.oncoming ? { gap: lead.dx, speed: lead.v } : null,
+      dt: STEP_S,
+    });
+    if (out.pedals) {
+      sim.inputs.throttle = Math.max(sim.inputs.throttle, out.pedals.throttle);
+      sim.inputs.brake = out.pedals.brake;
+    }
+    if (out.throttleCap !== null)
+      sim.inputs.throttle = Math.min(sim.inputs.throttle, out.throttleCap);
+    st.cruiseActive = a.controlling;
+    st.cruiseSetKmh = a.setKmh ?? 0;
   }
 
   /**
@@ -578,8 +614,16 @@ export class SimulatorSource implements DataSource {
     put(S.ESCMode, ['on', 'tcsOff', 'sport'].indexOf(this.buttons.esc));
     put(S.LaneAssistEnabled, flag(this.buttons.laneAssist));
     put(S.ABSActive, flag(st.abs));
-    put(S.CruiseActive, flag(st.cruiseActive));
-    put(S.CruiseSpeed, st.cruiseSetKmh);
+    const as = this.assist;
+    put(S.CruiseActive, flag(as.engaged));
+    put(S.CruiseSpeed, as.setKmh ?? 0);
+    put(S.SpeedAssistState, ASSIST_STATES.indexOf(as.state));
+    put(S.SpeedAssistFunction, ASSIST_FUNCTIONS.indexOf(as.fn));
+    put(S.AccDistance, as.distance);
+    put(S.AccTargetDistance, as.leadGap ?? -1);
+    put(S.AccTakeover, flag(as.out.takeover));
+    put(S.AccLeadDrivingOff, flag(as.out.leadDrivingOff));
+    put(S.LimiterExceeded, flag(as.out.limiterExceeded));
     if (!includeLow) return out;
     if (on) {
       put(S.CoolantTemp, st.coolantC);

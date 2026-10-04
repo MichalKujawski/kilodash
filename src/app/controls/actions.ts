@@ -103,7 +103,7 @@ export const ACTIONS: Record<Action, ActionInfo> = {
   view: { label: 'View', keys: ['v'] },
   back: { label: 'Menu / back', keys: ['escape', 'backspace'] },
   home: { label: 'Home', keys: ['home'] },
-  accMain: { label: 'Cruise / ACC on-off', keys: ['c'] },
+  accMain: { label: 'Cruise / ACC on-off (hold = limiter)', keys: ['c'] },
   accSet: { label: 'SET − (hold = −10)', keys: ['-'] },
   accRes: { label: 'RES + (hold = +10)', keys: ['='] },
   accCancel: { label: 'Cancel', keys: ['x'] },

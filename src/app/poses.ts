@@ -10,6 +10,8 @@ export const POSES = [
   'sport',
   'modes',
   'offroad',
+  'acc',
+  'limiter',
 ] as const;
 export type Pose = (typeof POSES)[number];
 
@@ -77,6 +79,19 @@ export function applyPose(session: ClusterSession, pose: Pose): void {
       src.sim.driveModes.select('offroad');
       src.jumpTo('village');
       session.fastForward(20);
+      break;
+    case 'acc':
+      // ACC following traffic towards the roadworks.
+      src.jumpTo('roadworks');
+      session.fastForward(45);
+      break;
+    case 'limiter':
+      // Speed limiter set to 50 in town.
+      src.jumpTo('town');
+      src.assist.pressMain();
+      src.assist.switchFunction();
+      src.assist.pressSet(false, 50);
+      session.fastForward(18);
       break;
     case 'redline': {
       src.jumpTo('motorway');

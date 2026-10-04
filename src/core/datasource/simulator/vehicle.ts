@@ -118,6 +118,7 @@ export interface VehicleState {
   batteryTempC: number;
   /** Tyre pressures FL, FR, RL, RR, kPa. */
   tires: [number, number, number, number];
+  /** A speed assist (cruise/ACC) is controlling the pedals (set by the assist each step). */
   cruiseActive: boolean;
   selector: Selector;
   /** +1 forward, −1 reversing (speed is always a magnitude). */
@@ -185,7 +186,6 @@ export class VehicleSimulator {
   private accelFiltered = 0;
   private tcsHold = 0;
   private absHold = 0;
-  private cruiseIntegral = 0;
   private voltNoise: SmoothNoise;
   private tireWarm = 0;
   private lastIgnition: IgnitionLevel = 2;
@@ -391,15 +391,6 @@ export class VehicleSimulator {
     this.crankT = 0;
   }
 
-  setCruise(active: boolean, setKmh = this.speedKmh): void {
-    const s = this.state;
-    s.cruiseActive = active && s.ready && setKmh > 30;
-    if (s.cruiseActive) {
-      s.cruiseSetKmh = Math.round(setKmh);
-      this.cruiseIntegral = s.throttle;
-    }
-  }
-
   injectFault(kind: FaultKind): void {
     this.faults.add(kind);
     if (kind === 'lowFuel') {
@@ -589,14 +580,6 @@ export class VehicleSimulator {
       brake = clamp((this.speedKmh - 8) * 0.04 - this.gradient * 1.2, 0, 0.6);
     }
 
-    if (s.cruiseActive) {
-      if (brake > 0.05 || !s.ready) s.cruiseActive = false;
-      else {
-        const err = s.cruiseSetKmh - this.speedKmh;
-        this.cruiseIntegral = clamp(this.cruiseIntegral + err * dt * 0.01, 0, 0.8);
-        throttle = Math.max(throttle, clamp(this.cruiseIntegral + err * 0.05, 0, 0.9));
-      }
-    }
     if (!s.ready) throttle = 0;
     s.throttle += (throttle - s.throttle) * approach(dt, 0.08);
     s.brake += (brake - s.brake) * approach(dt, 0.05);

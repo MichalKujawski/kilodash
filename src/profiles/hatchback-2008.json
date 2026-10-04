@@ -37,6 +37,7 @@
   "tankL": 45,
   "speedoMaxKmh": 220,
   "tachoMaxRpm": 8000,
+  "equipment": { "acc": false, "driveModes": false },
   "tpms": false,
   "obdPids": ["01", "04", "05", "0C", "0D", "0F", "11", "1C"],
   "vin": "SIMHB08A2CL000123"

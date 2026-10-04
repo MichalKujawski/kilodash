@@ -141,7 +141,8 @@ function Key({ bus, action, children, className = '', active, led, style, label 
 
 function SteeringWheel({ bus, source }: { bus: ControlBus; source: SimulatorSource }) {
   const b = source.buttons;
-  const cruise = source.sim.state.cruiseActive;
+  // The main button's LED shows the system is on (standby or engaged).
+  const cruise = source.assist.state !== 'off';
   const angle = Math.max(-120, Math.min(120, source.sim.state.steeringDeg));
   return (
     <div className="wheel" aria-label="Steering wheel">

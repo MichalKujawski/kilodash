@@ -40,7 +40,7 @@
   "speedoMaxKmh": 260,
   "tachoMaxRpm": 7000,
   "tpms": true,
-  "equipment": { "driveModes": true, "adaptiveDampers": true, "startStop": true },
+  "equipment": { "driveModes": true, "adaptiveDampers": true, "startStop": true, "acc": true },
   "obdPids": [
     "01",
     "04",

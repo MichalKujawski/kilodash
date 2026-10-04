@@ -215,9 +215,7 @@ export class ControlBus {
       case 'laneAssist':
         src.pressButton('laneAssist');
         break;
-      case 'accMain':
-        src.toggleCruise();
-        break;
+
       case 'accCancel':
         src.cancelCruise();
         break;
@@ -284,6 +282,12 @@ export class ControlBus {
         break;
       case 'esc':
         src.pressEsc(long);
+        break;
+      case 'accMain':
+        src.pressCruiseMain(long);
+        break;
+      case 'accDistance':
+        src.pressDistance();
         break;
       case 'accSet':
         src.adjustCruise(-1, long);

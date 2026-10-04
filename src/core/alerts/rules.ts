@@ -40,6 +40,32 @@ const anyTireLow = (limit: number): Condition => ({
 /** Data-driven alert rules. Order does not matter; severity decides priority. */
 export const ALERT_RULES: AlertRule[] = [
   {
+    // ACC needs more braking than it may use: red, urgent chime until handled.
+    id: 'accTakeover',
+    severity: 'critical',
+    when: on(S.AccTakeover),
+    icon: 'acc',
+    titleKey: 'alert.accTakeover.title',
+    messageKey: 'alert.accTakeover.message',
+    repeatChimeS: 1.5,
+  },
+  {
+    id: 'limiterExceeded',
+    severity: 'warning',
+    when: on(S.LimiterExceeded),
+    icon: 'limiter',
+    titleKey: 'alert.limiterExceeded.title',
+    messageKey: 'alert.limiterExceeded.message',
+  },
+  {
+    id: 'accDriveOff',
+    severity: 'info',
+    when: on(S.AccLeadDrivingOff),
+    icon: 'acc',
+    titleKey: 'alert.accDriveOff.title',
+    messageKey: 'alert.accDriveOff.message',
+  },
+  {
     id: 'coolantHigh',
     severity: 'critical',
     when: is(S.CoolantTemp, '>=', 118),

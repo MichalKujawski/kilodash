@@ -10,6 +10,7 @@ import type { DialTokens, Theme } from '../themes/types';
 import { SAFETY_COLORS } from '../themes/types';
 import { mapValue } from './SideGauge';
 import { modeAccent, modeLabel } from './driveMode';
+import { assistLook, drawAccDistance, type AssistLook } from './speedAssist';
 
 export interface RoundDialProps {
   signal: SignalId;
@@ -92,6 +93,7 @@ export class RoundDial implements Widget {
   private readout = new ReadoutValue(5);
   private readyFade = new Fade(2.5);
   private setFade = new Fade(4);
+  private lastLook: AssistLook | null = null;
   private shiftFlash = 0;
   private lastFrac = 0;
   private sweepSpeed = 0;
@@ -592,23 +594,52 @@ export class RoundDial implements Widget {
     this.drawSetSpeed(ctx, f, g);
   }
 
-  /** Cruise/ACC set speed in the speedometer gap: green when active. */
+  /**
+   * Cruise/ACC/limiter in the speedometer: set speed with the system's symbol
+   * in the gap, a marker on the scale, and (ACC) the distance graphic in the hub.
+   */
   private drawSetSpeed(ctx: CanvasRenderingContext2D, f: FrameContext, g: Geometry): void {
-    const st = f.store;
-    const active = st.value(S.CruiseActive) > 0;
-    const set = st.value(S.CruiseSpeed);
-    const k = this.setFade.update(active || set > 0, f.dt);
+    const look = assistLook(f);
+    const k = this.setFade.update(look !== null, f.dt);
     if (k <= 0.01) return;
+    if (look) this.lastLook = look;
+    const l = this.lastLook;
+    if (!l) return;
     const t = f.theme;
-    const color = active ? SAFETY_COLORS.info : t.text.tertiary;
     const y = g.cy + g.r * GAP.status;
     ctx.globalAlpha = k;
-    drawIcon(ctx, 'cruise', g.cx - 30, y - 6, 20, color, t.fonts.primary);
+    drawIcon(ctx, l.icon, g.cx - 34, y - 6, 22, l.color, t.fonts.primary);
     ctx.font = font(500, 22, t.fonts.primary);
-    ctx.fillStyle = color;
+    ctx.fillStyle = l.color;
     ctx.textBaseline = 'alphabetic';
-    tabular(ctx, set > 0 ? String(Math.round(set)) : '– – –', g.cx - 14, y + 2, 'left');
+    tabular(ctx, l.setText, g.cx - 18, y + 2, 'left');
+    if (l.setKmh > 0) this.drawSetMarker(ctx, f, g, l.setKmh, l.color);
+    drawAccDistance(ctx, f, l, g.cx, g.cy + g.hub * 0.86);
     ctx.globalAlpha = 1;
+  }
+
+  /** Small triangle on the scale at the set speed, pointing at the numerals. */
+  private drawSetMarker(
+    ctx: CanvasRenderingContext2D,
+    f: FrameContext,
+    g: Geometry,
+    kmh: number,
+    color: string,
+  ): void {
+    const d = f.theme.dial;
+    const deg = this.deg(clamp(this.frac(kmh), 0, 1), d);
+    const [x0, y0] = polar(g.cx, g.cy, g.bandOuter + 1, deg - 2.2);
+    const [x1, y1] = polar(g.cx, g.cy, g.bandOuter + 1, deg + 2.2);
+    const [x2, y2] = polar(g.cx, g.cy, g.bandOuter - 13, deg);
+    for (const c of f.emissive && color !== f.theme.text.tertiary ? [ctx, f.emissive] : [ctx]) {
+      c.fillStyle = color;
+      c.beginPath();
+      c.moveTo(x0, y0);
+      c.lineTo(x1, y1);
+      c.lineTo(x2, y2);
+      c.closePath();
+      c.fill();
+    }
   }
 
   private drawGear(ctx: CanvasRenderingContext2D, f: FrameContext, g: Geometry): void {

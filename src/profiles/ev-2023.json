@@ -26,6 +26,7 @@
   "tankL": 0,
   "speedoMaxKmh": 180,
   "tachoMaxRpm": 0,
+  "equipment": { "acc": true },
   "tpms": true,
   "obdPids": ["01", "0D", "42", "46", "A6"],
   "manufacturerSignals": [

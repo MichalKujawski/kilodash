@@ -1,4 +1,10 @@
 export const en: Record<string, string> = {
+  'alert.accTakeover.title': 'Take over!',
+  'alert.accTakeover.message': 'Adaptive cruise control cannot brake enough. Brake now.',
+  'alert.limiterExceeded.title': 'Speed limit exceeded',
+  'alert.limiterExceeded.message': 'The speed limiter cannot hold the set speed downhill. Brake.',
+  'alert.accDriveOff.title': 'Vehicle ahead is moving off',
+  'alert.accDriveOff.message': 'Press RES or the accelerator to follow.',
   'alert.coolantHigh.title': 'Coolant temperature high',
   'alert.coolantHigh.message': 'Stop safely and let the engine cool down.',
   'alert.oilTempHigh.title': 'Engine oil temperature high',

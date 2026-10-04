@@ -5,6 +5,7 @@ import type { FrameContext, Rect, Widget, WidgetFactory } from '../renderer/type
 import { MODES, type DriveModeId } from '@/core/drive/modes';
 import { drawIcon, type IconId } from '../telltales/icons';
 import { modeId } from './driveMode';
+import { assistLook } from './speedAssist';
 import { drawSign, type SignSpec } from '../telltales/signs';
 import { SAFETY_COLORS } from '../themes/types';
 
@@ -35,6 +36,7 @@ export interface TopStripProps {
 export class TopStrip implements Widget {
   private navFade = new Fade(5);
   private cruiseFade = new Fade(5);
+  private lastIcon: IconId = 'cruise';
   private laneActive = new Fade(3);
   private modeFade = new Fade(4);
   private shownMode: DriveModeId = 'normal';
@@ -78,13 +80,21 @@ export class TopStrip implements Widget {
       ctx.globalAlpha = 1;
     }
 
-    // Cruise/ACC: green with set speed when active, grey when only stored.
-    const cruise = st.value(S.CruiseActive) > 0;
-    const ck = this.cruiseFade.update(cruise || st.value(S.CruiseSpeed) > 0, f.dt);
+    // Cruise/ACC/limiter symbol in its state colour (set speed is in the speedometer).
+    const look = assistLook(f);
+    const ck = this.cruiseFade.update(look !== null && on, f.dt);
+    if (look) this.lastIcon = look.icon;
     if (ck > 0.01) {
       ctx.globalAlpha = ck;
-      const col = cruise ? SAFETY_COLORS.info : t.text.tertiary;
-      drawIcon(ctx, 'cruise', p.cruise, y, 22, col, t.fonts.primary);
+      drawIcon(
+        ctx,
+        this.lastIcon,
+        p.cruise,
+        y,
+        24,
+        look?.color ?? t.text.tertiary,
+        t.fonts.primary,
+      );
       ctx.globalAlpha = 1;
     }
 

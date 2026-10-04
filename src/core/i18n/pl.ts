@@ -1,4 +1,10 @@
 export const pl: Record<string, string> = {
+  'alert.accTakeover.title': 'Przejmij kontrolę!',
+  'alert.accTakeover.message': 'Aktywny tempomat nie może hamować mocniej. Hamuj.',
+  'alert.limiterExceeded.title': 'Przekroczono ograniczenie',
+  'alert.limiterExceeded.message': 'Ogranicznik nie utrzyma prędkości na zjeździe. Hamuj.',
+  'alert.accDriveOff.title': 'Pojazd z przodu rusza',
+  'alert.accDriveOff.message': 'Naciśnij RES lub pedał gazu, aby jechać dalej.',
   'alert.coolantHigh.title': 'Wysoka temperatura płynu chłodzącego',
   'alert.coolantHigh.message': 'Zatrzymaj się bezpiecznie i pozwól silnikowi ostygnąć.',
   'alert.oilTempHigh.title': 'Wysoka temperatura oleju',

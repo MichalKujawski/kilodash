@@ -25,6 +25,8 @@ export interface Equipment {
   /** Adaptive dampers: adds Comfort mode. */
   adaptiveDampers?: boolean;
   startStop?: boolean;
+  /** Adaptive cruise control with stop & go (radar). Without it: plain cruise control. */
+  acc?: boolean;
 }
 
 export interface ElectricSpec {

@@ -21,8 +21,8 @@ _Last updated: 2026-10-04_
 | 2    | Control panel (wheel, stalks, light switch, console, pedals, Workshop drawer)                        | done  |
 | 3    | Cluster shape: open dials, top strip, fixed bottom strip, grouped telltales, real fuel/coolant logic | done  |
 | 4    | Drive modes (Eco coasting, Sport, Individual, Snow/Off-road, EV power meter/regen)                   | done  |
-| 5    | ACC, cruise, limiter                                                                                 | next  |
-| 6    | Speed-limit recognition / ISA                                                                        |       |
+| 5    | ACC, cruise, limiter                                                                                 | done  |
+| 6    | Speed-limit recognition / ISA                                                                        | next  |
 | 7    | Lane keeping/centering, hands-off staging, Driver Assistance view                                    |       |
 | 8    | Collision warning/AEB, blind spot, rear cross traffic                                                |       |
 | 9    | Start-stop, Auto Hold, gear recommendation, shift lights, diesel DPF/AdBlue                          |       |
@@ -53,7 +53,7 @@ _Last updated: 2026-10-04_
 - Controls: `app/controls/` (keymap, ControlBus semantics, keyboard + gamepad, on-screen panel).
   Docs: `docs/features/controls.md`.
 - Buttons whose systems come later (ACC, lane assist, start-stop, Auto Hold, park assist, drive modes,
-  views) keep their state now. The assist pad drives plain cruise control until step 5.
+  views) keep their state now. (Drive modes and the assist pad became live in steps 4 and 5.)
 - World controls (time, weather, road, temperature, Demo drive, jumps) are in `app/WorldPanel.tsx`.
   The Workshop drawer has faults, vehicle profile, hands-on-wheel and a data inspector.
 
@@ -79,6 +79,18 @@ _Last updated: 2026-10-04_
 - New review poses: `eco`, `sport`, `modes` (list held open), `offroad`. `?car=<profile id>` picks a
   car (e.g. `?car=ev-2023`).
 - ACC "gentle/dynamic" settings and the step-9 shift lights are carried as mode data but not yet used.
+
+## Notes from step 5
+
+- `core/assist/SpeedAssist.ts`: one state machine for ACC (stop & go, take-over), plain cruise and
+  the limiter. It outputs pedals that `SimulatorSource.applyAssist` merges with the driver's. The
+  old built-in cruise code in `vehicle.ts` is gone. Docs: `docs/features/speed-assist.md`.
+- `core/assist/PedalController.ts` is the acceleration → pedal controller, now shared by the Demo
+  driver and the assists.
+- The Demo drive uses ACC on the Autobahn (about 260 s per loop) and adjusts the set speed for
+  limits.
+- Equipment flag `acc` per profile; the 2016 estate and 2008 hatchback have plain cruise.
+- New poses: `acc` (following the queue at the roadworks), `limiter` (50 in town).
 
 ## Known issues / open questions
 

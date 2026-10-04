@@ -27,6 +27,8 @@ export function profileSignals(p: VehicleProfile): ProfileSignal[] {
   if (p.engine?.cylinderDeactivation) can.push(S.CylinderDeactivation);
   if (p.drive === 'awd' && modes) can.push(S.HillDescent);
   if (p.electric) can.push(S.PowerDemand);
+  if (p.equipment?.acc)
+    can.push(S.AccDistance, S.AccTargetDistance, S.AccTakeover, S.AccLeadDrivingOff);
   if (p.electric && !p.engine) can.push(S.RegenLevel);
   if (p.tpms) can.push(S.TireFL, S.TireFR, S.TireRL, S.TireRR);
   for (const id of can) if (!out.has(id)) out.set(id, 'can');

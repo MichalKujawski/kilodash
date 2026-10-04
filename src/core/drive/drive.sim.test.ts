@@ -90,7 +90,7 @@ describe('family SUV powertrain by mode', () => {
     run(normal, 3);
     expect(normal.state.coasting).toBe(false);
     const eco = cruise('eco', 100).sim;
-    eco.setCruise(true, 100);
+    eco.state.cruiseActive = true; // what an engaged cruise/ACC sets
     eco.inputs.throttle = 0;
     run(eco, 3);
     expect(eco.state.coasting).toBe(false);

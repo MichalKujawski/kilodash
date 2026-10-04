@@ -1,4 +1,6 @@
-import { approach, clamp, createRng, SmoothNoise } from '../math';
+import { PedalController } from '../assist/PedalController';
+import type { SpeedAssist } from '../assist/SpeedAssist';
+import { createRng, SmoothNoise } from '../math';
 import type { VehicleSimulator } from '../datasource/simulator/vehicle';
 import type { SceneObject, SceneSnapshot } from './scene';
 import { curveSpeed } from './traffic';
@@ -30,8 +32,11 @@ const FREE_SPEED = 135;
 export class DemoDriver {
   phase: DemoPhase = 'startup';
   private t = 0;
-  private vRef = 0;
-  private integral = 0;
+  private pedals = new PedalController();
+  private assist: SpeedAssist | null = null;
+  /** Seconds since the last button press on the cruise pad (humans don't press instantly). */
+  private accT = 0;
+  private onAcc = false;
   private noise: SmoothNoise;
   private laneTimer = 0;
   private pendingLane: 1 | -1 | 0 = 0;
@@ -46,8 +51,7 @@ export class DemoDriver {
   restart(): void {
     this.phase = 'startup';
     this.t = 0;
-    this.vRef = 0;
-    this.integral = 0;
+    this.pedals.reset(0, 0);
   }
 
   /** Continue driving from wherever the car is (after a takeover or jump). */
@@ -56,13 +60,21 @@ export class DemoDriver {
     if (sim.gearProgram === 'M') sim.setGearProgram('D');
     if (sim.state.selector !== 'D' && sim.state.speedMs < 0.5 && sim.state.ready)
       sim.setSelector('D');
-    this.vRef = sim.state.speedMs;
-    this.integral = 0.15;
+    this.pedals.reset(sim.state.speedMs, 0.15);
+    this.pedals.out.throttle = sim.inputs.throttle;
+    this.pedals.out.brake = sim.inputs.brake;
     if (this.phase !== 'drive' && this.phase !== 'parking') this.phase = 'drive';
   }
 
-  update(sim: VehicleSimulator, world: World, scene: SceneSnapshot, dt: number): void {
+  update(
+    sim: VehicleSimulator,
+    world: World,
+    scene: SceneSnapshot,
+    dt: number,
+    assist?: SpeedAssist,
+  ): void {
     this.t += dt;
+    this.assist = assist ?? null;
     switch (this.phase) {
       case 'startup':
         return this.startup(sim, world);
@@ -76,8 +88,8 @@ export class DemoDriver {
   }
 
   private hold(sim: VehicleSimulator): void {
-    sim.inputs.throttle = 0;
-    sim.inputs.brake = 0.4;
+    sim.inputs.throttle = this.pedals.out.throttle = 0;
+    sim.inputs.brake = this.pedals.out.brake = 0.4;
   }
 
   private startup(sim: VehicleSimulator, world: World): void {
@@ -105,7 +117,7 @@ export class DemoDriver {
       sim.setSelector('D');
       this.phase = 'drive';
       this.t = 0;
-      this.vRef = 0;
+      this.pedals.reset(0, 0);
     }
   }
 
@@ -189,37 +201,77 @@ export class DemoDriver {
         this.t = 0;
       }
     }
-    this.pedalsFor(sim, v0, a, dt);
+    if (this.useAcc(sim, scene, v0, a, dt)) {
+      // ACC drives; feet off the pedals.
+      sim.inputs.throttle = 0;
+      sim.inputs.brake = 0;
+      this.pedals.out.throttle = this.pedals.out.brake = 0;
+    } else this.pedalsFor(sim, v0, a, dt);
     this.signalAndLanes(sim, world, scene, v0, dt);
   }
 
   /**
-   * Turn the wanted acceleration into pedal positions: a speed reference that
-   * integrates the acceleration, tracked by a PI controller (like a driver
-   * pressing a bit more until the car does what they want).
+   * On the Autobahn the demo driver uses ACC like most people do: switch on,
+   * SET once above 60 km/h, adjust the set speed for limits, cancel
+   * before the exit, and brake themselves if ACC asks them to take over.
+   * Returns true while ACC is driving.
    */
-  private pedalsFor(sim: VehicleSimulator, v0: number, aWanted: number, dt: number): void {
+  private useAcc(
+    sim: VehicleSimulator,
+    scene: SceneSnapshot,
+    v0: number,
+    a: number,
+    dt: number,
+  ): boolean {
+    const acc = this.assist;
+    if (!acc || acc.fn === 'limiter') return false;
+    this.accT += dt;
     const v = sim.state.speedMs;
-    const a = clamp(aWanted, -8, 2.5);
-    this.vRef = clamp(this.vRef + a * dt, 0, Math.max(v0, 0) + 0.5);
-    if (Math.abs(this.vRef - v) > 4) this.vRef = v + Math.sign(this.vRef - v) * 4;
-    const err = this.vRef - v;
-    let throttle = 0;
-    let brake = 0;
-    if (this.vRef < 0.05 && v < 1) {
-      // Hold firmly at (or just before) standstill: automatic gearboxes creep.
-      brake = 0.4;
-      this.integral = Math.max(0, this.integral - dt);
-    } else if (a < -0.6 || err < -0.6) {
-      brake = clamp(Math.max(0, -a) / 10 + Math.max(0, -err - 0.3) * 0.08, 0, 1);
-      this.integral = Math.max(0, this.integral - dt * 0.5);
-    } else {
-      this.integral = clamp(this.integral + err * dt * 0.06, 0, 0.7);
-      throttle = clamp(this.integral + err * 0.18 + Math.max(0, a) * 0.08, 0, 1);
+    const exit = scene.nav.current?.kind === 'exit' ? scene.nav.distance : Infinity;
+    const wanted = scene.road.kind === 'motorway' && exit > 1500 && this.phase === 'drive';
+    const engaged = acc.state === 'active' || acc.state === 'overridden' || acc.state === 'hold';
+    if (!wanted) {
+      if (engaged) acc.cancel();
+      if (this.onAcc) this.pedals.reset(v, 0.15);
+      this.onAcc = false;
+      return false;
     }
-    const s = sim.inputs;
-    s.throttle += (throttle - s.throttle) * approach(dt, 0.12);
-    s.brake += (brake - s.brake) * approach(dt, 0.08);
+    // Take-over request or the driver's own judgement says brake harder: intervene.
+    if (engaged && (acc.out.takeover || a < -3.5)) {
+      acc.cancel();
+      this.accT = 0;
+      this.pedals.reset(v, 0);
+      this.onAcc = false;
+      return false;
+    }
+    const setKmh = Math.round(v0 * 3.6);
+    if (engaged) {
+      // Nudge the set speed to the limit/conditions ahead (RES+/SET− presses).
+      if (acc.setKmh !== null && Math.abs(acc.setKmh - setKmh) >= 3 && this.accT > 1) {
+        acc.setSpeed(setKmh);
+        this.accT = 0;
+      }
+      this.onAcc = true;
+      return true;
+    }
+    if (v * 3.6 > 60 && this.accT > 1.2) {
+      if (acc.state === 'off') acc.pressMain();
+      else {
+        acc.pressSet(false, v * 3.6);
+        acc.setSpeed(setKmh);
+      }
+      this.accT = 0;
+    }
+    if (this.onAcc) this.pedals.reset(v, 0.15);
+    this.onAcc = false;
+    return false;
+  }
+
+  /** Work the pedals to get the wanted acceleration (see PedalController). */
+  private pedalsFor(sim: VehicleSimulator, v0: number, aWanted: number, dt: number): void {
+    const p = this.pedals.update(sim.state.speedMs, v0, aWanted, dt);
+    sim.inputs.throttle = p.throttle;
+    sim.inputs.brake = p.brake;
   }
 
   private signalAndLanes(

@@ -45,7 +45,9 @@ export type IconId =
   | 'modeOffroad'
   | 'hillDescent'
   | 'chargeLevel'
-  | 'check';
+  | 'check'
+  | 'acc'
+  | 'limiter';
 
 const lamp = 'M13.5 5.5C18.5 5.5 21 8.5 21 12s-2.5 6.5-7.5 6.5z';
 
@@ -260,6 +262,18 @@ export const ICONS: Record<IconId, IconPart[]> = {
     { kind: 'fill', d: 'M12.8 7.8 9.5 13.3h2.3l-.6 4.9 3.3-5.5h-2.3z' },
   ],
   check: [{ kind: 'stroke', d: 'M5 12.5 10 17.5 19.5 7', width: 2.2 }],
+  // Adaptive cruise: speedometer arc with a car ahead (original symbol).
+  acc: [
+    { kind: 'stroke', d: 'M3.5 19a8.5 8.5 0 0 1 17 0', width: 1.7 },
+    { kind: 'stroke', d: 'M12 18.5 15.5 13', width: 1.9 },
+    { kind: 'fill', d: 'M8.6 3h6.8l1.1 2.6v3H15v-1H9v1H7.5v-3z' },
+  ],
+  // Speed limiter: speedometer arc with a stop bar at the top.
+  limiter: [
+    { kind: 'stroke', d: 'M4.5 18a7.5 7.5 0 0 1 15 0', width: 1.7 },
+    { kind: 'stroke', d: 'M12 17.5 15 12', width: 1.9 },
+    { kind: 'stroke', d: 'M8 4.5h8', width: 2.2 },
+  ],
 };
 
 const cache = new Map<string, Path2D>();

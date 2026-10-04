@@ -18,6 +18,9 @@ describe('Demo drive over the whole route', () => {
     let redRun = false;
     let reversed = false;
     let maxKmh = 0;
+    let accS = 0;
+    let takeovers = 0;
+    let wasTakeover = false;
     let lastLog = 0;
     const log: string[] = [];
     while (t < 3000 && src.demo.phase !== 'parked') {
@@ -27,6 +30,9 @@ describe('Demo drive over the whole route', () => {
       const sc = src.scene();
       const kmh = sim.speedKmh;
       maxKmh = Math.max(maxKmh, kmh);
+      if (src.assist.controlling) accS += 0.1;
+      if (src.assist.out.takeover && !wasTakeover) takeovers++;
+      wasTakeover = src.assist.out.takeover;
       if (sim.state.direction === -1 && kmh > 0.5) reversed = true;
       if (sc.lead && sc.lead.dx < minGap && !sc.ego.inBay) minGap = sc.lead.dx;
       const limit = sc.legal.limit;
@@ -51,6 +57,8 @@ describe('Demo drive over the whole route', () => {
       minGap: minGap.toFixed(1),
       overLimitS: overLimitS.toFixed(1),
       maxKmh: maxKmh.toFixed(0),
+      accS: accS.toFixed(0),
+      takeovers,
       redRun,
       reversed,
       phase: src.demo.phase,
@@ -60,6 +68,8 @@ describe('Demo drive over the whole route', () => {
     expect(reversed).toBe(true);
     expect(src.demo.phase).toBe('parked');
     expect(redRun).toBe(false);
+    // ACC drives a good part of the Autobahn (about 9 km).
+    expect(accS).toBeGreaterThan(120);
     expect(minGap).toBeGreaterThan(1.5);
     expect(overLimitS).toBeLessThan(20);
     expect(maxKmh).toBeGreaterThan(120);
