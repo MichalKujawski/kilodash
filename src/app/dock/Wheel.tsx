@@ -123,7 +123,12 @@ export function Wheel({ bus, source, cruiseLit }: Props) {
       </svg>
 
       {/* Left spoke: cluster */}
-      <div className="rocker" style={at(124, 184, 40, 58)} role="group" aria-label="Scroll wheel">
+      <div
+        className="rocker hit-left"
+        style={at(124, 184, 40, 58)}
+        role="group"
+        aria-label="Scroll wheel"
+      >
         <HoldButton bus={bus} action="scrollUp" className="rocker-up" label="Scroll up">
           <Glyph name="up" size={14} />
         </HoldButton>
@@ -134,7 +139,12 @@ export function Wheel({ bus, source, cruiseLit }: Props) {
           <Glyph name="down" size={14} />
         </HoldButton>
       </div>
-      <HoldButton bus={bus} action="view" className="spoke-btn" style={at(176, 194, 48, 38)}>
+      <HoldButton
+        bus={bus}
+        action="view"
+        className="spoke-btn hit-right"
+        style={at(176, 194, 48, 38)}
+      >
         <span className="spoke-text">VIEW</span>
       </HoldButton>
 
@@ -142,7 +152,7 @@ export function Wheel({ bus, source, cruiseLit }: Props) {
       <HoldButton
         bus={bus}
         action="accMain"
-        className="spoke-btn"
+        className="spoke-btn hit-left"
         style={at(411, 194, 34, 38)}
         lit={cruiseLit}
         active={cruiseOn}
@@ -151,7 +161,12 @@ export function Wheel({ bus, source, cruiseLit }: Props) {
       >
         <Glyph name="acc" size={18} />
       </HoldButton>
-      <div className="rocker" style={at(451, 184, 38, 58)} role="group" aria-label="Cruise speed">
+      <div
+        className="rocker hit-fill"
+        style={at(451, 184, 38, 58)}
+        role="group"
+        aria-label="Cruise speed"
+      >
         <HoldButton
           bus={bus}
           action="accRes"
@@ -177,7 +192,7 @@ export function Wheel({ bus, source, cruiseLit }: Props) {
       <HoldButton
         bus={bus}
         action="accDistance"
-        className="spoke-btn"
+        className="spoke-btn hit-right"
         style={at(495, 194, 34, 38)}
         lit={cruiseLit}
         disabled={!cruiseLit}

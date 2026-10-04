@@ -25,11 +25,31 @@ export function Pedals({ bus, source }: { bus: ControlBus; source: SimulatorSour
     <div className="pedals2" aria-label="Pedals">
       <HoldButton bus={bus} action="brake" className="pedal2 pedal2-brake" label="Brake (hold)">
         <svg viewBox="0 0 80 110" aria-hidden>
-          <rect x="35" y="0" width="10" height="44" rx="3" fill="#1a1d22" />
-          <g ref={brake} className="pad" style={{ transformOrigin: '40px 40px' }}>
-            <path d="M8 40 L72 40 L66 96 Q40 102 14 96 Z" className="pad-face" />
-            {[52, 62, 72, 82].map((y) => (
-              <path key={y} d={`M16 ${y} L64 ${y}`} className="pad-rib" />
+          <defs>
+            <linearGradient id="pd-rubber" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stopColor="#2a2e34" />
+              <stop offset="1" stopColor="#16181c" />
+            </linearGradient>
+          </defs>
+          {/* Short arm stub; the rest is hidden under the dash. */}
+          <rect x="34" y="14" width="12" height="34" rx="4" fill="#121418" />
+          <g ref={brake} className="pad" style={{ transformOrigin: '40px 46px' }}>
+            {/* Metal bezel, then the rubber pad with shallow moulded grooves. */}
+            <rect x="9" y="42" width="62" height="56" rx="14" className="pad-bezel" />
+            <rect
+              x="12"
+              y="45"
+              width="56"
+              height="50"
+              rx="12"
+              fill="url(#pd-rubber)"
+              className="pad-face"
+            />
+            {[56, 64, 72, 80].map((y) => (
+              <g key={y}>
+                <path d={`M20 ${y} L60 ${y}`} className="pad-groove" />
+                <path d={`M20 ${y + 1.6} L60 ${y + 1.6}`} className="pad-groove-lit" />
+              </g>
             ))}
           </g>
         </svg>
@@ -42,9 +62,17 @@ export function Pedals({ bus, source }: { bus: ControlBus; source: SimulatorSour
       >
         <svg viewBox="0 0 50 110" aria-hidden>
           <g ref={gas} className="pad" style={{ transformOrigin: '25px 106px' }}>
-            <path d="M8 6 Q25 2 42 6 L44 104 L6 104 Z" className="pad-face" />
-            {[22, 34, 46, 58, 70, 82].map((y) => (
-              <path key={y} d={`M14 ${y} L36 ${y}`} className="pad-rib" />
+            <path d="M6 8 Q25 2 44 8 L46 104 L4 104 Z" className="pad-bezel" />
+            <path
+              d="M9 10 Q25 5 41 10 L43 101 L7 101 Z"
+              fill="url(#pd-rubber)"
+              className="pad-face"
+            />
+            {[24, 36, 48, 60, 72, 84].map((y) => (
+              <g key={y}>
+                <path d={`M15 ${y} L35 ${y}`} className="pad-groove" />
+                <path d={`M15 ${y + 1.6} L35 ${y + 1.6}`} className="pad-groove-lit" />
+              </g>
             ))}
           </g>
           <rect x="4" y="102" width="42" height="6" rx="2" fill="#15171b" />

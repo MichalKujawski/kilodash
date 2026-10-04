@@ -99,6 +99,62 @@
   outline-offset: 2px;
 }
 
+/* Invisible touch target: at least 44×44 px around the visible cap. */
+.hb-hit {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max(100%, 44px);
+  height: max(100%, 44px);
+  translate: -50% -50%;
+}
+
+/* Rocker halves grow outwards (up upwards, down downwards), not into each other. */
+.rocker-up .hb-hit {
+  top: auto;
+  bottom: 0;
+  translate: -50% 0;
+}
+
+.rocker-down .hb-hit {
+  top: 0;
+  translate: -50% 0;
+}
+
+/* OK sits between up and down: its own band in height. */
+.rocker-ok .hb-hit {
+  height: 100%;
+}
+
+/*
+ * Buttons side by side on a spoke are ~31 px apart, so targets grow towards
+ * free space (the rim or the hub) instead of into the neighbour.
+ */
+.hit-left .hb-hit {
+  left: auto;
+  right: -3px;
+  translate: 0 -50%;
+}
+
+.hit-right .hb-hit {
+  left: -3px;
+  translate: 0 -50%;
+}
+
+.rocker.hit-left .hb-hit {
+  left: auto;
+  right: -3px;
+  translate: 0 0;
+}
+
+.rocker.hit-left .rocker-ok .hb-hit {
+  translate: 0 -50%;
+}
+
+.rocker.hit-fill .hb-hit {
+  width: calc(100% + 6px);
+}
+
 /* Function on: a small green lamp in the cap, like real wheel buttons. */
 .hb-active::before {
   content: '';
@@ -186,6 +242,7 @@
 }
 
 .rocker .hb {
+  min-width: 0;
   border-radius: 0;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
@@ -205,6 +262,11 @@
 
 .rocker-ok {
   font-size: 11px;
+}
+
+.rocker .spoke-text {
+  font-size: 9px;
+  letter-spacing: 0.03em;
 }
 
 /* ---- Stalk ---- */
@@ -345,20 +407,30 @@
   transition: transform 60ms linear;
 }
 
-.pad-face {
-  fill: #23272d;
-  stroke: rgba(255, 255, 255, 0.1);
+.pad-bezel {
+  fill: #3a3f46;
+  stroke: rgba(255, 255, 255, 0.16);
 }
 
-.pad-rib {
-  stroke: rgba(0, 0, 0, 0.55);
-  stroke-width: 3;
+.pad-face {
+  stroke: rgba(0, 0, 0, 0.5);
+}
+
+/* Moulded grooves: a dark line with a faint lit edge under it. */
+.pad-groove {
+  stroke: rgba(0, 0, 0, 0.7);
+  stroke-width: 1.6;
   stroke-linecap: round;
 }
 
-.pad-pressed .pad-face {
-  fill: #2c3138;
-  stroke: rgba(255, 255, 255, 0.22);
+.pad-groove-lit {
+  stroke: rgba(255, 255, 255, 0.06);
+  stroke-width: 1;
+  stroke-linecap: round;
+}
+
+.pad-pressed .pad-bezel {
+  stroke: rgba(255, 255, 255, 0.3);
 }
 
 /* ---- Coach marks (first visit) ---- */

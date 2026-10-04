@@ -61,6 +61,7 @@ export function HoldButton({
       }}
     >
       {children}
+      <span className="hb-hit" aria-hidden />
     </button>
   );
 }
