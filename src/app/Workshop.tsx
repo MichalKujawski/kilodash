@@ -11,7 +11,21 @@ const FAULT_LABELS: Record<FaultKind, string> = {
   doorOpen: 'Door open',
   lowTire: 'Low tyre',
   alternator: 'Alternator',
+  oilPressure: 'Oil pressure',
+  coolantLevel: 'Coolant level',
+  brakeFluid: 'Brake fluid',
+  powerSteering: 'Power steering',
+  hoodOpen: 'Bonnet open',
+  gearboxHot: 'Gearbox hot',
+  airbag: 'Airbag',
+  abs: 'ABS',
+  washerFluid: 'Washer fluid',
+  brakePads: 'Brake pads',
+  bulb: 'Bulb',
+  keyBattery: 'Key battery',
 };
+
+const NEXT_SEAT = { empty: 'belted', belted: 'unbelted', unbelted: 'empty' } as const;
 
 function Inspector({ session }: { session: ClusterSession }) {
   usePoll(4);
@@ -84,6 +98,43 @@ export function Workshop({ session, profileId, onProfile }: Props) {
           </button>
         </div>
         <div className="dev-row">
+          <span className="dev-label">Occupants</span>
+          <button
+            className={`pill ${sim.body.seatbelt ? 'pill-on' : 'pill-warn'}`}
+            onClick={() => src.toggleDriverBelt()}
+          >
+            Driver {sim.body.seatbelt ? 'belted' : 'unbelted'}
+          </button>
+          <button
+            className="pill"
+            onClick={() => {
+              const p = sim.body.passenger;
+              // empty → belted → unbelted → empty
+              if (!p.present) src.setPassenger(true, true);
+              else if (p.belted) src.setPassenger(true, false);
+              else src.setPassenger(false, false);
+            }}
+          >
+            Passenger:{' '}
+            {!sim.body.passenger.present
+              ? 'empty'
+              : sim.body.passenger.belted
+                ? 'belted'
+                : 'unbelted'}
+          </button>
+          {(['Rear left', 'Rear middle', 'Rear right'] as const).map((name, i) => (
+            <button
+              key={name}
+              className="pill"
+              onClick={() =>
+                src.setRearSeat(i as 0 | 1 | 2, NEXT_SEAT[sim.body.rear[i] ?? 'empty'])
+              }
+            >
+              {name}: {sim.body.rear[i]}
+            </button>
+          ))}
+        </div>
+        <div className="dev-row">
           <span className="dev-label">Vehicle</span>
           <select
             className="pill"
@@ -124,6 +175,20 @@ export function Workshop({ session, profileId, onProfile }: Props) {
           >
             Sensor blocked
           </button>
+          <button className="pill" onClick={() => src.setService('soon')}>
+            Service soon
+          </button>
+          <button className="pill" onClick={() => src.setService('overdue')}>
+            Service overdue
+          </button>
+          <button className="pill" onClick={() => src.setService('reset')}>
+            Service done
+          </button>
+          {session.profile.tpmsType === 'indirect' && (
+            <button className="pill" onClick={() => src.storeTyrePressures()}>
+              Store tyre pressures
+            </button>
+          )}
           {session.profile.fuelType === 'diesel' && (
             <>
               <button className="pill" onClick={() => src.setDieselDemo('dpf')}>

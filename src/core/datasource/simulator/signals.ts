@@ -35,7 +35,18 @@ export function profileSignals(p: VehicleProfile): ProfileSignal[] {
   if (p.equipment?.acc)
     can.push(S.AccDistance, S.AccTargetDistance, S.AccTakeover, S.AccLeadDrivingOff);
   if (p.electric && !p.engine) can.push(S.RegenLevel);
-  if (p.tpms) can.push(S.TireFL, S.TireFR, S.TireRL, S.TireRR);
+  if (p.tpms && p.tpmsType !== 'indirect')
+    can.push(
+      S.TireFL,
+      S.TireFR,
+      S.TireRL,
+      S.TireRR,
+      S.TireTempFL,
+      S.TireTempFR,
+      S.TireTempRL,
+      S.TireTempRR,
+    );
+  if (p.tpms && p.tpmsType === 'indirect') can.push(S.TpmsWarning);
   for (const id of can) if (!out.has(id)) out.set(id, 'can');
   return [...out].map(([id, source]) => ({ id, source }));
 }

@@ -66,7 +66,8 @@ export class AlertPopup implements Widget {
     const th = f.theme;
     const { x, w, h } = this.rect;
     const y = this.rect.y + (1 - k) * 24;
-    const color = COLOR[a.rule.severity];
+    // Information is neutral (white); colour is kept for warnings and dangers.
+    const color = a.rule.severity === 'info' ? th.text.primary : COLOR[a.rule.severity];
     ctx.globalAlpha = Math.min(1, k);
 
     // Card: near-black surface so it reads on any page, thin severity edge on top.
@@ -85,8 +86,26 @@ export class AlertPopup implements Widget {
     ctx.fillStyle = edge;
     ctx.fillRect(x + 30, y, w - 60, 2);
 
-    drawIcon(ctx, a.rule.icon as IconId, x + w / 2, y + 62, 56, color, th.fonts.primary);
-    if (f.emissive) {
+    if (a.rule.icon === 'doorOpen' || a.rule.icon === 'hood') {
+      // Doors, boot and bonnet: a small car from above with the open parts in the alert colour.
+      drawCarOpenings(ctx, f, x + w / 2, y + 62, SAFETY_COLORS.danger);
+    } else drawIcon(ctx, a.rule.icon as IconId, x + w / 2, y + 62, 56, color, th.fonts.primary);
+    // Several messages take turns: show which one this is.
+    const turn = f.alerts?.showable(f.now).filter((o) => o.rule.severity === a.rule.severity) ?? [];
+    if (turn.length > 1) {
+      const n = turn.indexOf(a) + 1;
+      label(
+        ctx,
+        `${n}/${turn.length}`,
+        x + w - 30,
+        y + 34,
+        13,
+        th.fonts.primary,
+        th.text.tertiary,
+        'right',
+      );
+    }
+    if (f.emissive && a.rule.icon !== 'doorOpen' && a.rule.icon !== 'hood') {
       f.emissive.globalAlpha = k;
       drawIcon(f.emissive, a.rule.icon as IconId, x + w / 2, y + 62, 58, color, th.fonts.primary);
       f.emissive.globalAlpha = 1;
@@ -95,6 +114,8 @@ export class AlertPopup implements Widget {
       range: f.store.has(S.Range) ? Math.round(f.store.value(S.Range)) : '--',
       ambient: f.store.has(S.AmbientTemp) ? Math.round(f.store.value(S.AmbientTemp)) : '--',
       defRange: f.store.has(S.DefRange) ? Math.round(f.store.value(S.DefRange) / 10) * 10 : '--',
+      serviceKm: f.store.has(S.ServiceKm) ? Math.round(f.store.value(S.ServiceKm) / 50) * 50 : '--',
+      serviceDays: f.store.has(S.ServiceDays) ? Math.round(f.store.value(S.ServiceDays)) : '--',
     };
     text(ctx, tr(a.rule.titleKey, vars), x + w / 2, y + 136, {
       font: font(500, 30, th.fonts.primary),
@@ -115,5 +136,59 @@ export class AlertPopup implements Widget {
       label(ctx, 'OK', x + w / 2, y + h - 22, 13, th.fonts.primary, th.text.tertiary, 'center');
     }
     ctx.globalAlpha = 1;
+  }
+}
+
+/** Top view of the car (nose up) with open doors, boot and bonnet drawn in `color`. */
+function drawCarOpenings(
+  ctx: CanvasRenderingContext2D,
+  f: FrameContext,
+  cx: number,
+  cy: number,
+  color: string,
+): void {
+  const st = f.store;
+  const W = 26;
+  const L = 60;
+  const x = cx - W / 2;
+  const y = cy - L / 2;
+  ctx.strokeStyle = 'rgba(220,226,234,0.7)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.roundRect(x, y, W, L, 8);
+  ctx.stroke();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 3;
+  ctx.lineCap = 'round';
+  const door = (id: string, side: -1 | 1, front: boolean): void => {
+    if (st.value(id) <= 0) return;
+    const hy = y + (front ? L * 0.32 : L * 0.56);
+    const hx = cx + side * (W / 2);
+    ctx.beginPath();
+    ctx.moveTo(hx, hy);
+    ctx.lineTo(hx + side * 12, hy + 10);
+    ctx.stroke();
+  };
+  door(S.DoorFrontLeft, -1, true);
+  door(S.DoorFrontRight, 1, true);
+  door(S.DoorRearLeft, -1, false);
+  door(S.DoorRearRight, 1, false);
+  if (st.value(S.Hood) > 0) {
+    ctx.beginPath();
+    ctx.moveTo(x + 3, y + L * 0.22);
+    ctx.lineTo(x + W - 3, y + L * 0.22);
+    ctx.lineTo(x + W - 1, y - 6);
+    ctx.lineTo(x + 1, y - 6);
+    ctx.closePath();
+    ctx.stroke();
+  }
+  if (st.value(S.Trunk) > 0) {
+    ctx.beginPath();
+    ctx.moveTo(x + 3, y + L * 0.85);
+    ctx.lineTo(x + W - 3, y + L * 0.85);
+    ctx.lineTo(x + W - 1, y + L + 6);
+    ctx.lineTo(x + 1, y + L + 6);
+    ctx.closePath();
+    ctx.stroke();
   }
 }

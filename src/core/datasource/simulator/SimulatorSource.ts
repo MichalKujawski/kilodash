@@ -18,6 +18,7 @@ import {
   CrossTraffic,
   FCW_STAGES,
 } from '../../assist/CollisionAssist';
+import { IndirectTpms, SEAT_STATES, SeatbeltReminder, ServiceInterval } from '../../body/monitors';
 import { ExhaustFluid, ParticulateFilter } from '../../drive/Diesel';
 import {
   AUTO_HOLD_STATES,
@@ -145,6 +146,10 @@ export class SimulatorSource implements DataSource {
   /** Diesel: particulate filter and exhaust fluid. */
   readonly dpf = new ParticulateFilter();
   readonly def = new ExhaustFluid();
+  /** Seat-belt reminder, indirect tyre monitoring, service interval. */
+  readonly belts = new SeatbeltReminder();
+  readonly tpmsIndirect = new IndirectTpms();
+  readonly service: ServiceInterval;
   private lastOdo = 0;
   private wander: SmoothNoise;
   /** The limit the car believes applies (what the cluster shows). */
@@ -195,6 +200,7 @@ export class SimulatorSource implements DataSource {
     this.world = new World({ seed: options.seed, env: options.env });
     this.demo = new DemoDriver();
     this.assist = new SpeedAssist(!!profile.equipment?.acc);
+    this.service = new ServiceInterval(profile.service?.km, profile.service?.days);
     this.recognition = new SpeedLimitRecognition(createRng((options.seed ?? 1) + 10));
     this.wander = new SmoothNoise(createRng((options.seed ?? 1) + 21), 0.25);
     for (const s of profileSignals(profile)) {
@@ -477,6 +483,37 @@ export class SimulatorSource implements DataSource {
     this.assist.pressDistance();
   }
 
+  /** Workshop: service due soon / overdue / done. */
+  setService(what: 'soon' | 'overdue' | 'reset'): void {
+    if (what === 'soon') {
+      this.service.km = 900;
+      this.service.days = 21;
+    } else if (what === 'overdue') {
+      this.service.km = -120;
+      this.service.days = -4;
+    } else this.service.reset();
+  }
+
+  /** Workshop: store the current tyre pressures (indirect monitoring). */
+  storeTyrePressures(): void {
+    this.tpmsIndirect.store(this.sim.state.tires);
+  }
+
+  /** Workshop: occupants and their belts. */
+  toggleDriverBelt(): void {
+    this.sim.body.seatbelt = !this.sim.body.seatbelt;
+  }
+
+  setPassenger(present: boolean, belted: boolean): void {
+    this.sim.body.passenger = { present, belted };
+  }
+
+  setRearSeat(seat: 0 | 1 | 2, state: 'empty' | 'belted' | 'unbelted'): void {
+    const rear = [...this.sim.body.rear];
+    rear[seat] = state;
+    this.sim.body.rear = rear;
+  }
+
   /** Workshop: fill the particulate filter / empty the exhaust fluid to see the warnings. */
   setDieselDemo(what: 'dpf' | 'def' | 'service'): void {
     if (what === 'dpf') this.dpf.load = 82;
@@ -691,6 +728,17 @@ export class SimulatorSource implements DataSource {
       if (!sim.autoStopped && this.startStop.state === 'restartRequired')
         this.startStop.manualRestart();
     }
+
+    this.belts.step({
+      ignitionOn: st.ignition >= 2,
+      speedKmh: sim.speedKmh,
+      driverBelted: b.seatbelt,
+      passenger: b.passenger,
+      rear: b.rear,
+      dt: STEP_S,
+    });
+    if (p.tpmsType === 'indirect') this.tpmsIndirect.step(st.tires, sim.speedKmh, STEP_S);
+    if (this.lastOdo > 0) this.service.drive(Math.max(0, st.odometerKm - this.lastOdo));
 
     if (p.fuelType === 'diesel') {
       this.dpf.step(sim.speedKmh, st.loadPct, st.engineRunning, STEP_S);
@@ -1050,6 +1098,34 @@ export class SimulatorSource implements DataSource {
     put(S.TireFR, st.tires[1]);
     put(S.TireRL, st.tires[2]);
     put(S.TireRR, st.tires[3]);
+    put(S.TireTempFL, st.tireTemps[0]);
+    put(S.TireTempFR, st.tireTemps[1]);
+    put(S.TireTempRL, st.tireTemps[2]);
+    put(S.TireTempRR, st.tireTemps[3]);
+    put(S.TpmsWarning, flag(this.tpmsIndirect.warning));
+    // Faults and service items.
+    const fl = sim.faults;
+    put(S.OilPressureLow, flag(fl.has('oilPressure')));
+    put(S.CoolantLevelLow, flag(fl.has('coolantLevel')));
+    put(S.BrakeFluidLow, flag(fl.has('brakeFluid')));
+    put(S.PowerSteeringFault, flag(fl.has('powerSteering')));
+    put(S.Hood, flag(b.hood));
+    put(S.TransmissionHot, flag(fl.has('gearboxHot')));
+    put(S.AirbagFault, flag(fl.has('airbag')));
+    put(S.AbsFault, flag(fl.has('abs')));
+    put(S.WasherFluidLow, flag(fl.has('washerFluid')));
+    put(S.BrakePadsWorn, flag(fl.has('brakePads')));
+    put(S.BulbFailure, flag(fl.has('bulb')));
+    put(S.KeyBatteryLow, flag(fl.has('keyBattery')));
+    put(S.SeatbeltReminder, this.belts.stage);
+    put(S.BeltStatusVisible, flag(this.belts.statusVisible));
+    const seat = (present: boolean, belted: boolean): number => (!present ? 0 : belted ? 1 : 2);
+    put(S.BeltPassenger, seat(b.passenger.present, b.passenger.belted));
+    put(S.BeltRearLeft, SEAT_STATES.indexOf(b.rear[0] ?? 'empty'));
+    put(S.BeltRearMiddle, SEAT_STATES.indexOf(b.rear[1] ?? 'empty'));
+    put(S.BeltRearRight, SEAT_STATES.indexOf(b.rear[2] ?? 'empty'));
+    put(S.ServiceKm, Math.round(this.service.km));
+    put(S.ServiceDays, Math.round(this.service.days));
     return out;
   }
 

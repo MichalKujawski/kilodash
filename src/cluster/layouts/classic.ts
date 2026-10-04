@@ -26,7 +26,9 @@ const RIGHT_GROUP = [
   'oilPressure',
   'battery',
   'coolantTemp',
+  'brake',
   'abs',
+  'steeringFault',
   'airbag',
   'seatbelt',
   'parkingBrake',
@@ -62,7 +64,7 @@ export const classic: LayoutDefinition = {
         {
           type: 'carousel',
           props: {
-            pages: ['map', 'assist', 'car', 'trip', 'efficiency', 'offroad'],
+            pages: ['map', 'assist', 'car', 'trip', 'efficiency', 'offroad', 'messages'],
             edgeFade: 0.13,
             cutouts: [
               { ...LEFT, r: R },
@@ -191,9 +193,15 @@ export const classic: LayoutDefinition = {
       candidates: [
         {
           type: 'bottom-strip',
-          props: { y: BOTTOM_Y, temp: 330, trip: 455, clock: 960, odo: 1600 },
+          props: { y: BOTTOM_Y, temp: 330, trip: 455, clock: 960, odo: 1690, messages: 572 },
         },
       ],
+    },
+    {
+      // Seat-belt status card after the start.
+      id: 'belt-status',
+      rect: { x: 870, y: 470, w: 180, h: 120 },
+      candidates: [{ type: 'belt-status' }],
     },
     {
       // Shift lights over the tachometer (Sport / manual).
@@ -219,7 +227,9 @@ export const classic: LayoutDefinition = {
               { id: 'indicatorLeft', x: 590, y: TOP_Y, size: 34 },
               { id: 'indicatorRight', x: 1330, y: TOP_Y, size: 34 },
               ...LEFT_GROUP.map((id, i) => ({ id, x: 612 + i * 36, y: BOTTOM_Y })),
-              ...RIGHT_GROUP.map((id, i) => ({ id, x: 1022 + i * 34, y: BOTTOM_Y })),
+              ...RIGHT_GROUP.map((id, i) => ({ id, x: 1022 + i * 32, y: BOTTOM_Y })),
+              // The flashing seat-belt lamp shares the steady lamp's place.
+              { id: 'seatbeltFlash', x: 1022 + RIGHT_GROUP.indexOf('seatbelt') * 32, y: BOTTOM_Y },
             ],
           },
         },

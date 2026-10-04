@@ -7,11 +7,12 @@ import { AssistPage } from './AssistPage';
 import { CarPage } from './CarPage';
 import { EfficiencyPage } from './EfficiencyPage';
 import { MapPage } from './MapPage';
+import { MessagesPage } from './MessagesPage';
 import { OffroadPage } from './OffroadPage';
 import { TripPage } from './TripPage';
 import type { CenterPage } from './types';
 
-export type PageId = 'map' | 'assist' | 'car' | 'trip' | 'efficiency' | 'offroad';
+export type PageId = 'map' | 'assist' | 'car' | 'trip' | 'efficiency' | 'offroad' | 'messages';
 
 const PAGE_FACTORIES: Record<PageId, () => CenterPage> = {
   map: () => new MapPage(),
@@ -20,6 +21,7 @@ const PAGE_FACTORIES: Record<PageId, () => CenterPage> = {
   trip: () => new TripPage(),
   efficiency: () => new EfficiencyPage(),
   offroad: () => new OffroadPage(),
+  messages: () => new MessagesPage(),
 };
 
 export interface CarouselProps {

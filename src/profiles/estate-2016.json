@@ -39,6 +39,8 @@
   "tachoMaxRpm": 6000,
   "equipment": { "acc": false, "startStop": true },
   "tpms": true,
+  "tpmsType": "indirect",
+  "service": { "km": 650, "days": 18 },
   "obdPids": [
     "01",
     "04",

@@ -184,6 +184,8 @@ export interface BottomStripProps {
   trip: number;
   clock: number;
   odo: number;
+  /** Waiting vehicle messages (acknowledged warnings still active). */
+  messages?: number;
 }
 
 /**
@@ -234,6 +236,17 @@ export class BottomStrip implements Widget {
       ctx.fillStyle = t.text.secondary;
       tabular(ctx, st.value(S.TripDistance).toFixed(1), p.trip, baseline, 'left');
       label(ctx, 'km', p.trip + 50, baseline - 1, 13, t.fonts.primary, t.text.tertiary);
+    }
+
+    // Messages acknowledged but still active: a small triangle with their count.
+    const waiting =
+      f.alerts?.list().filter((a) => a.acknowledged && a.rule.severity !== 'info') ?? [];
+    if (p.messages !== undefined && waiting.length > 0 && f.runtime.phase === 'on') {
+      const red = waiting.some((a) => a.rule.severity === 'critical');
+      const col = red ? SAFETY_COLORS.danger : SAFETY_COLORS.caution;
+      drawIcon(ctx, 'message', p.messages, p.y, 22, col, t.fonts.primary);
+      if (waiting.length > 1)
+        label(ctx, String(waiting.length), p.messages + 15, baseline - 1, 14, t.fonts.primary, col);
     }
 
     if (st.has(S.Odometer)) {

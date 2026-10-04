@@ -30,7 +30,24 @@ export type DriveMode = 'auto' | 'manual';
 export type Selector = 'P' | 'R' | 'N' | 'D';
 
 export type FaultKind =
-  'overheat' | 'lowFuel' | 'checkEngine' | 'doorOpen' | 'lowTire' | 'alternator';
+  | 'overheat'
+  | 'lowFuel'
+  | 'checkEngine'
+  | 'doorOpen'
+  | 'lowTire'
+  | 'alternator'
+  | 'oilPressure'
+  | 'coolantLevel'
+  | 'brakeFluid'
+  | 'powerSteering'
+  | 'hoodOpen'
+  | 'gearboxHot'
+  | 'airbag'
+  | 'abs'
+  | 'washerFluid'
+  | 'brakePads'
+  | 'bulb'
+  | 'keyBattery';
 
 export const FAULTS: FaultKind[] = [
   'overheat',
@@ -39,6 +56,18 @@ export const FAULTS: FaultKind[] = [
   'doorOpen',
   'lowTire',
   'alternator',
+  'oilPressure',
+  'coolantLevel',
+  'brakeFluid',
+  'powerSteering',
+  'hoodOpen',
+  'gearboxHot',
+  'airbag',
+  'abs',
+  'washerFluid',
+  'brakePads',
+  'bulb',
+  'keyBattery',
 ];
 
 /** 0 OFF, 1 ACC, 2 ON, 3 START (cranking), matching VSS LowVoltageSystemState order. */
@@ -72,7 +101,12 @@ export interface BodyState {
   /** FL, FR, RL, RR. */
   doors: [boolean, boolean, boolean, boolean];
   trunk: boolean;
+  hood: boolean;
   seatbelt: boolean;
+  /** Front passenger seat occupied / belted. */
+  passenger: { present: boolean; belted: boolean };
+  /** Rear seats (left, middle, right): empty, belted or unbelted. */
+  rear: ('empty' | 'belted' | 'unbelted')[];
   parkingBrake: boolean;
 }
 
@@ -119,6 +153,8 @@ export interface VehicleState {
   batteryTempC: number;
   /** Tyre pressures FL, FR, RL, RR, kPa. */
   tires: [number, number, number, number];
+  /** Tyre temperatures FL, FR, RL, RR, °C. */
+  tireTemps: [number, number, number, number];
   /** A speed assist (cruise/ACC) is controlling the pedals (set by the assist each step). */
   cruiseActive: boolean;
   selector: Selector;
@@ -244,6 +280,7 @@ export class VehicleSimulator {
       powerKW: 0,
       batteryTempC: 24,
       tires: [...TIRE_BASE],
+      tireTemps: [this.env.ambientC, this.env.ambientC, this.env.ambientC, this.env.ambientC],
       cruiseActive: false,
       selector: 'D',
       direction: 1,
@@ -271,7 +308,10 @@ export class VehicleSimulator {
       washer: false,
       doors: [false, false, false, false],
       trunk: false,
+      hood: false,
       seatbelt: true,
+      passenger: { present: false, belted: false },
+      rear: ['empty', 'empty', 'empty'],
       parkingBrake: false,
     };
     this.driveModes = new DriveModeController({
@@ -446,11 +486,13 @@ export class VehicleSimulator {
       this.state.soc = Math.min(this.state.soc, 7);
     }
     if (kind === 'doorOpen') this.body.doors[0] = true;
+    if (kind === 'hoodOpen') this.body.hood = true;
   }
 
   clearFault(kind: FaultKind): void {
     this.faults.delete(kind);
     if (kind === 'doorOpen') this.body.doors[0] = false;
+    if (kind === 'hoodOpen') this.body.hood = false;
     if (kind === 'lowTire') this.state.tires[3] = TIRE_BASE[3];
   }
 
@@ -523,7 +565,7 @@ export class VehicleSimulator {
       force = Math.min(force, 0);
     }
     const maxBrake = this.env.grip * mg * 0.98;
-    if (brakeForce + regenBrakeN > maxBrake && v > 1) {
+    if (brakeForce + regenBrakeN > maxBrake && v > 1 && !this.faults.has('abs')) {
       brakeForce = Math.max(0, maxBrake - regenBrakeN);
       this.absHold = 0.25;
     }
@@ -706,6 +748,11 @@ export class VehicleSimulator {
       }
       const target = TIRE_BASE[i]! + this.tireWarm * 12;
       s.tires[i] = s.tires[i]! + (target - s.tires[i]!) * approach(dt, 30);
+    }
+    // Tyres run ~25 °C above ambient at motorway speed (rears a little cooler).
+    for (let i = 0; i < 4; i++) {
+      const target = s.ambientC + this.tireWarm * (i < 2 ? 26 : 22);
+      s.tireTemps[i] = s.tireTemps[i]! + (target - s.tireTemps[i]!) * approach(dt, 60);
     }
 
     s.mil = this.faults.has('checkEngine') || this.faults.has('overheat');

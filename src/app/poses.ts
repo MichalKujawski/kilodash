@@ -23,6 +23,10 @@ export const POSES = [
   'advice',
   'shiftlights',
   'diesel',
+  'belts',
+  'door',
+  'service',
+  'messages',
 ] as const;
 export type Pose = (typeof POSES)[number];
 
@@ -214,6 +218,46 @@ export function applyPose(session: ClusterSession, pose: Pose): void {
       src.jumpTo('town');
       src.setDieselDemo('dpf');
       session.fastForward(8);
+      break;
+    case 'belts':
+      // Driving in town; a rear passenger unbuckles: status card + reminder.
+      src.jumpTo('town');
+      src.setPassenger(true, true);
+      src.setRearSeat(0, 'belted');
+      src.setRearSeat(2, 'belted');
+      session.fastForward(40);
+      src.setRearSeat(0, 'unbelted');
+      session.fastForward(1);
+      src.paused = true;
+      break;
+    case 'door':
+      // Parked, engine running, driver's door and boot open.
+      src.parkAtStart();
+      src.setAutopilot(false);
+      src.sim.setIgnition(2);
+      src.sim.start();
+      session.fastForward(4);
+      src.setFault('doorOpen', true);
+      src.sim.body.trunk = true;
+      session.fastForward(1.5);
+      break;
+    case 'service':
+      // Start of the day with a service due soon.
+      src.setService('soon');
+      src.parkAtStart();
+      src.setAutopilot(false);
+      src.sim.setIgnition(2);
+      src.sim.start();
+      session.fastForward(4);
+      break;
+    case 'messages':
+      // Two yellow warnings taking turns.
+      src.jumpTo('rural');
+      session.fastForward(20);
+      src.setFault('washerFluid', true);
+      src.setFault('brakePads', true);
+      session.fastForward(1);
+      src.paused = true;
       break;
     case 'redline': {
       src.jumpTo('motorway');

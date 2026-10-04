@@ -13,7 +13,6 @@ export interface TelltaleDefinition {
   blink?: 'flasher' | 'warning';
 }
 
-const never: Condition = { any: [] };
 /** Engine switched off by start-stop: charge and oil lamps stay dark. */
 const notAutoStopped: Condition = { not: is(S.StartStopState, '==', 2) };
 
@@ -53,7 +52,12 @@ export const TELLTALES: TelltaleDefinition[] = [
     id: 'oilPressure',
     icon: 'oilPressure',
     color: 'danger',
-    when: { all: [is(S.Ignition, '==', 2), is(S.EngineRunning, '==', 0), notAutoStopped] },
+    when: {
+      any: [
+        { all: [is(S.Ignition, '==', 2), is(S.EngineRunning, '==', 0), notAutoStopped] },
+        { all: [on(S.EngineRunning), on(S.OilPressureLow)] },
+      ],
+    },
   },
   {
     id: 'coolantTemp',
@@ -62,9 +66,24 @@ export const TELLTALES: TelltaleDefinition[] = [
     when: is(S.CoolantTemp, '>=', 118),
     blink: 'warning',
   },
-  { id: 'abs', icon: 'abs', color: 'caution', when: never },
-  { id: 'airbag', icon: 'airbag', color: 'danger', when: never },
-  { id: 'seatbelt', icon: 'seatbelt', color: 'danger', when: is(S.Seatbelt, '==', 0) },
+  { id: 'abs', icon: 'abs', color: 'caution', when: on(S.AbsFault) },
+  { id: 'airbag', icon: 'airbag', color: 'danger', when: on(S.AirbagFault) },
+  { id: 'brake', icon: 'brake', color: 'danger', when: on(S.BrakeFluidLow) },
+  { id: 'steeringFault', icon: 'steeringFault', color: 'caution', when: on(S.PowerSteeringFault) },
+  // Seat-belt reminder: steady lamp, flashing during the chime phase (same position).
+  {
+    id: 'seatbelt',
+    icon: 'seatbelt',
+    color: 'danger',
+    when: { any: [is(S.SeatbeltReminder, '==', 1), is(S.SeatbeltReminder, '==', 3)] },
+  },
+  {
+    id: 'seatbeltFlash',
+    icon: 'seatbelt',
+    color: 'danger',
+    when: is(S.SeatbeltReminder, '==', 2),
+    blink: 'warning',
+  },
   { id: 'lowFuel', icon: 'lowFuel', color: 'caution', when: is(S.FuelLevel, '<=', 12) },
   {
     id: 'doorOpen',
@@ -90,6 +109,7 @@ export const TELLTALES: TelltaleDefinition[] = [
         is(S.TireFR, '<', 190),
         is(S.TireRL, '<', 190),
         is(S.TireRR, '<', 190),
+        on(S.TpmsWarning),
       ],
     },
   },

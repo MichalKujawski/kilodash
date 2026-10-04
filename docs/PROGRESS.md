@@ -26,8 +26,8 @@ _Last updated: 2026-10-04_
 | 7    | Lane keeping/centering, hands-off staging, Driver Assistance view                                    | done  |
 | 8    | Collision warning/AEB, blind spot, rear cross traffic                                                | done  |
 | 9    | Start-stop, Auto Hold, gear recommendation, shift lights, diesel DPF/AdBlue                          | done  |
-| 10   | Warnings catalogue, seatbelt escalation, TPMS, service                                               | next  |
-| 11   | Fatigue, parking sensors + camera, auto high beam, lights/body/wipers                                |       |
+| 10   | Warnings catalogue, seatbelt escalation, TPMS, service                                               | done  |
+| 11   | Fatigue, parking sensors + camera, auto high beam, lights/body/wipers                                | next  |
 | 12   | Views (Classic, Navigation, Reduced, Driver Assistance, Sport, Auto view)                            |       |
 
 ## Done earlier
@@ -140,6 +140,18 @@ _Last updated: 2026-10-04_
   the time asked for.
 - New poses: `autostop`, `advice`, `shiftlights`, `diesel` (with `?car=estate-2016`, set
   automatically by the screenshot script).
+
+## Notes from step 10
+
+- Alert engine: P2 warnings return 5 min after OK, same-priority messages take turns, and a
+  waiting-messages indicator sits in the bottom strip. New "Vehicle messages" carousel page. Docs:
+  `docs/features/warnings.md`.
+- `core/body/monitors.ts`: seat-belt reminder (EU-style), indirect TPMS, service interval.
+- 12 new Workshop faults, plus occupant controls and service buttons. Direct TPMS shows tyre
+  temperatures; the 2016 estate has indirect TPMS ("Store tyre pressures").
+- The right telltale group now holds 16 lamps at 32 px spacing; the odometer moved to x = 1690.
+- Info popups are white (neutral). Colour is kept for warnings and dangers.
+- New poses: `belts`, `door`, `service`, `messages`.
 
 ## Known issues / open questions
 

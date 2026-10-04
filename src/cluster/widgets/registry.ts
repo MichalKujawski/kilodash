@@ -4,6 +4,7 @@ import { powerMeter, speedometer, tachometer } from './RoundDial';
 import { shiftLights } from './ShiftLights';
 import { sideGauge } from './SideGauge';
 import { bottomStrip, topStrip } from './StatusStrip';
+import { beltStatus } from './system/BeltStatus';
 import { driveModePopup } from './system/DriveModePopup';
 import { telltales } from './Telltales';
 
@@ -23,5 +24,6 @@ export const WIDGETS: ReadonlyMap<string, AnyFactory> = new Map(
     bottomStrip,
     driveModePopup,
     shiftLights,
+    beltStatus,
   ].map((f) => [f.type, f as AnyFactory]),
 );

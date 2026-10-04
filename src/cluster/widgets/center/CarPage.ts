@@ -26,10 +26,10 @@ const STOP_REASONS = [
 ];
 
 const TIRES = [
-  { id: S.TireFL, side: -1, front: true },
-  { id: S.TireFR, side: 1, front: true },
-  { id: S.TireRL, side: -1, front: false },
-  { id: S.TireRR, side: 1, front: false },
+  { id: S.TireFL, temp: S.TireTempFL, side: -1, front: true },
+  { id: S.TireFR, temp: S.TireTempFR, side: 1, front: true },
+  { id: S.TireRL, temp: S.TireTempRL, side: -1, front: false },
+  { id: S.TireRR, temp: S.TireTempRR, side: 1, front: false },
 ] as const;
 
 /** Procedural top-down car showing doors, lights, indicators and tyre pressures. */
@@ -182,7 +182,22 @@ export class CarPage implements CenterPage {
       ctx.textAlign = 'center';
       ctx.fillStyle = kpa < 190 ? SAFETY_COLORS.caution : t.text.primary;
       ctx.fillText((kpa / 100).toFixed(1), x, y);
-      label(ctx, 'bar', x, y + 20, 13, t.fonts.primary, t.text.tertiary, 'center');
+      const temp = st.has(tire.temp) ? `  ${Math.round(st.value(tire.temp))}°C` : '';
+      label(ctx, `bar${temp}`, x, y + 20, 13, t.fonts.primary, t.text.tertiary, 'center');
+    }
+    // Indirect monitoring has no per-wheel values: only its state.
+    if (st.has(S.TpmsWarning)) {
+      const warn = st.value(S.TpmsWarning) > 0;
+      label(
+        ctx,
+        warn ? 'Tyre pressure loss: check tyres' : 'Tyre pressure monitoring active',
+        cx,
+        h - 88,
+        14,
+        t.fonts.primary,
+        warn ? SAFETY_COLORS.caution : t.text.tertiary,
+        'center',
+      );
     }
 
     // Start-stop not available at this stop: the reason (information, not a fault).

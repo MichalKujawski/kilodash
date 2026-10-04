@@ -59,7 +59,18 @@ export type IconId =
   | 'startStop'
   | 'startStopOff'
   | 'dpf'
-  | 'def';
+  | 'def'
+  | 'brake'
+  | 'steeringFault'
+  | 'transmission'
+  | 'washer'
+  | 'brakePads'
+  | 'bulb'
+  | 'key'
+  | 'service'
+  | 'message'
+  | 'hood'
+  | 'coolantLevel';
 
 const lamp = 'M13.5 5.5C18.5 5.5 21 8.5 21 12s-2.5 6.5-7.5 6.5z';
 
@@ -348,6 +359,86 @@ export const ICONS: Record<IconId, IconPart[]> = {
     { kind: 'stroke', d: 'M12 5c3 4 5 6.5 5 9a5 5 0 0 1-10 0c0-2.5 2-5 5-9z', width: 1.7 },
     { kind: 'stroke', d: 'M15 3.5h5l1 2', width: 1.5 },
     { kind: 'text', text: 'DEF', x: 12, y: 16.5, size: 5.5, weight: 700 },
+  ],
+  // Brake system: exclamation in a circle between two arcs (ISO 2575).
+  brake: [
+    { kind: 'stroke', d: 'M12 6a6 6 0 1 0 0 12a6 6 0 1 0 0-12z', width: 1.8 },
+    { kind: 'stroke', d: 'M4.5 6.5a8.5 8.5 0 0 0 0 11M19.5 6.5a8.5 8.5 0 0 1 0 11', width: 1.6 },
+    { kind: 'stroke', d: 'M12 8.5v4.5', width: 2 },
+    { kind: 'fill', d: 'M11 14.6h2v2h-2z' },
+  ],
+  // Power steering fault: steering wheel with an exclamation mark.
+  steeringFault: [
+    { kind: 'stroke', d: 'M10 4a7.5 7.5 0 1 0 6.5 4', width: 1.7 },
+    { kind: 'stroke', d: 'M3 11.5h4.7l1.4 2h1.8M9 13.5v6', width: 1.6 },
+    { kind: 'stroke', d: 'M19 2.5v6', width: 2 },
+    { kind: 'fill', d: 'M18 10.2h2v2h-2z' },
+  ],
+  // Gearbox temperature: gear wheel with a thermometer.
+  transmission: [
+    {
+      kind: 'stroke',
+      d: 'M9 6.5a5.5 5.5 0 1 0 0 11a5.5 5.5 0 1 0 0-11zM9 3.5v2M9 18.5v2M3.5 12h-2M16.5 12h-2',
+      width: 1.6,
+    },
+    { kind: 'stroke', d: 'M19.5 3.5v11', width: 1.6 },
+    { kind: 'fill', d: 'M19.5 14a2.3 2.3 0 1 1 0 4.6a2.3 2.3 0 1 1 0-4.6z' },
+  ],
+  // Washer fluid: windscreen with a spray fan.
+  washer: [
+    { kind: 'stroke', d: 'M3 18c5-3 13-3 18 0M5 18l1.5-7h11l1.5 7', width: 1.6 },
+    { kind: 'stroke', d: 'M12 11V6M9 7l3-2.5L15 7M7.5 9.5 12 4.5l4.5 5', width: 1.3 },
+  ],
+  // Brake pads worn: disc in brackets with dashed wear marks.
+  brakePads: [
+    { kind: 'stroke', d: 'M12 6a6 6 0 1 0 0 12a6 6 0 1 0 0-12z', width: 1.6 },
+    { kind: 'stroke', d: 'M4.5 6.5a8.5 8.5 0 0 0 0 11M19.5 6.5a8.5 8.5 0 0 1 0 11', width: 1.6 },
+    { kind: 'stroke', d: 'M2 12h1.5M20.5 12H22M12 9v6', width: 1.4 },
+  ],
+  // Bulb failure: lamp bulb with an exclamation mark.
+  bulb: [
+    {
+      kind: 'stroke',
+      d: 'M9 17h6M9.5 19.5h5M8.5 15c-1.6-1.3-2.5-3-2.5-5a6 6 0 0 1 12 0c0 2-.9 3.7-2.5 5z',
+      width: 1.6,
+    },
+    { kind: 'stroke', d: 'M12 6.5v4', width: 1.8 },
+    { kind: 'fill', d: 'M11.1 11.7h1.8v1.8h-1.8z' },
+  ],
+  // Key battery: key fob with a small battery.
+  key: [
+    {
+      kind: 'stroke',
+      d: 'M7 3.5h6a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2z',
+      width: 1.6,
+    },
+    { kind: 'stroke', d: 'M17.5 8.5h3.5v6h-3.5zM18.5 7.5h1.5', width: 1.3 },
+    { kind: 'fill', d: 'M8 7h4v2.2H8z' },
+  ],
+  // Service due: spanner.
+  service: [
+    {
+      kind: 'stroke',
+      d: 'M14.5 4a4.5 4.5 0 0 0-4.3 5.8L3.7 16.3a1.6 1.6 0 0 0 2.3 2.3l6.5-6.5A4.5 4.5 0 0 0 18.4 8l-2.6 2.6-2.4-.6-.6-2.4L15.4 5A4.5 4.5 0 0 0 14.5 4z',
+      width: 1.6,
+    },
+  ],
+  // Vehicle messages waiting: warning triangle.
+  message: [
+    { kind: 'stroke', d: 'M12 3.5 21.5 20h-19z', width: 1.7 },
+    { kind: 'stroke', d: 'M12 9.5v5', width: 1.9 },
+    { kind: 'fill', d: 'M11 16.2h2v2h-2z' },
+  ],
+  // Bonnet open: car from the side with the front lid raised.
+  hood: [
+    { kind: 'stroke', d: 'M3 17h18v-3.5l-3-1-3-4H9.5', width: 1.6 },
+    { kind: 'stroke', d: 'M3 17v-3l6-1.5L4 7', width: 1.6 },
+    { kind: 'stroke', d: 'M7 19a1.5 1.5 0 1 0 0-.01M17 19a1.5 1.5 0 1 0 0-.01', width: 1.5 },
+  ],
+  // Coolant level: tank with a level line and waves.
+  coolantLevel: [
+    { kind: 'stroke', d: 'M6 4h12v11H6zM6 9h12', width: 1.6 },
+    { kind: 'stroke', d: 'M4 20c1.3-.9 2.7-.9 4 0s2.7.9 4 0 2.7-.9 4 0 2.7.9 4 0', width: 1.5 },
   ],
   // Speed limiter: speedometer arc with a stop bar at the top.
   limiter: [

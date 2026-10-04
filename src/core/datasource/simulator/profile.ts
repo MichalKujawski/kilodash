@@ -70,6 +70,10 @@ export interface VehicleProfile {
   tachoMaxRpm: number;
   /** Tyre pressure monitoring fitted. */
   tpms: boolean;
+  /** Direct (sensors in the wheels: pressures + temperatures) or indirect (warning only). */
+  tpmsType?: 'direct' | 'indirect';
+  /** Service due in km / days when the simulation starts. */
+  service?: { km: number; days: number };
   equipment?: Equipment;
   /** Mode 01 PIDs the engine ECU answers (hex, e.g. "0C"). Drives the supported-PID bitmaps. */
   obdPids: string[];

@@ -43,8 +43,7 @@ describe('AlertEngine', () => {
     const { engine, set, advance, now } = setup();
     set(S.AmbientTemp, -2);
     set(S.MIL, 1);
-    set(S.Seatbelt, 0);
-    set(S.Speed, 40);
+    set(S.SeatbeltReminder, 2); // the reminder's chime phase
     advance(1500);
     expect(engine.list().map((a) => a.rule.id)).toEqual(['seatbelt', 'checkEngine', 'ice']);
     expect(engine.current(now())?.rule.id).toBe('seatbelt');
@@ -72,9 +71,36 @@ describe('AlertEngine', () => {
     const { engine, set, advance } = setup();
     let reminders = 0;
     engine.reminded.on(() => reminders++);
-    set(S.Seatbelt, 0);
-    set(S.Speed, 50);
+    set(S.SeatbeltReminder, 2);
     advance(13_000);
-    expect(reminders).toBe(2);
+    // A chime every 2 s during the flashing phase.
+    expect(reminders).toBe(6);
+  });
+
+  it('brings an acknowledged warning back after five minutes', () => {
+    const { engine, set, advance, raised, now } = setup();
+    set(S.WasherFluidLow, 1);
+    advance(400);
+    engine.acknowledge('washerFluid', now());
+    expect(engine.current(now())).toBeUndefined();
+    advance(4 * 60_000);
+    expect(engine.current(now())).toBeUndefined();
+    advance(61_000);
+    expect(engine.current(now())?.rule.id).toBe('washerFluid');
+    expect(raised.filter((r) => r === 'washerFluid')).toHaveLength(2);
+  });
+
+  it('lets several warnings take turns', () => {
+    const { engine, set, advance, now } = setup();
+    set(S.WasherFluidLow, 1);
+    set(S.BrakePadsWorn, 1);
+    advance(400);
+    const seen = new Set<string>();
+    // Two turns within the 10 s a warning stays on screen.
+    for (let i = 0; i < 2; i++) {
+      seen.add(engine.current(now())!.rule.id);
+      advance(5_000);
+    }
+    expect(seen).toEqual(new Set(['washerFluid', 'brakePads']));
   });
 });
