@@ -33,7 +33,7 @@ const GLYPHS: Record<string, string> = {
   power: 'M12 3v8M7 6a8 8 0 1 0 10 0',
 };
 
-function Glyph({ name, size = 18 }: { name: string; size?: number }) {
+export function Glyph({ name, size = 18 }: { name: string; size?: number }) {
   return (
     <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden>
       <path

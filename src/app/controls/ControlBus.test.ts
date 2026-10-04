@@ -35,6 +35,18 @@ describe('ControlBus', () => {
     expect(source.sim.inputs.leftIndicator).toBe(false);
   });
 
+  it('lifting off the accelerator brings the pedal all the way back to zero', () => {
+    const { source, bus } = setup();
+    bus.press('throttle');
+    vi.advanceTimersByTime(400);
+    source.fastForward(0.02);
+    expect(source.sim.inputs.throttle).toBeGreaterThan(0.5);
+    bus.release('throttle');
+    vi.advanceTimersByTime(400);
+    source.fastForward(0.02);
+    expect(source.sim.inputs.throttle).toBe(0);
+  });
+
   it('distinguishes OK short press from long press', () => {
     const { bus, keys } = setup();
     bus.click('ok');

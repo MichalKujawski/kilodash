@@ -10,7 +10,8 @@ turn them into decisions (alerts, assists, derived values), and a **canvas rende
 
 ## Where to start reading
 
-1. `src/app/App.tsx`: the page. Creates a `ClusterSession`, mounts `ClusterView`, wires the keyboard.
+1. `src/app/App.tsx`: the page. Creates a `ClusterSession`, mounts `ClusterView`, wires the keyboard,
+   and switches between Watch (guided demo), Drive (control dock) and Engineer.
 2. `src/app/session.ts`: one vehicle session. It connects the data source to the store and runs the
    derived engine and alert engine on timers.
 3. `src/core/datasource/simulator/SimulatorSource.ts`: the simulated car seen as a `DataSource`. It
@@ -65,6 +66,9 @@ flowchart LR
 | `cluster/renderer/startup.ts`             | Ignition choreography: needle sweep, bulb check, trip summary.                         |
 | `cluster/layouts/classic.ts`              | Layout as data: slots, rects, candidate widgets, telltale positions.                   |
 | `cluster/themes/midnight.ts`              | Every colour, size and effect strength as tokens.                                      |
+| `app/director/`                           | Watch: chapters as data; `Director` fires their events into the live simulator.       |
+| `app/dock/`                               | Drive: stalk, wheel, selector, pedals over `ControlBus`; moving parts animate via rAF. |
+| `app/controls/ControlBus.ts`              | Any input (key, pointer, pad) → car action with real tap/hold semantics.              |
 
 ## How to add things
 

@@ -21,6 +21,7 @@ stateDiagram-v2
 ```
 
 **Thresholds and choices.**
+
 - The Director ticks at 10 Hz on wall-clock time, capped at 0.25 s per tick so a hidden tab does not fire
   a burst of events.
 - Safety: the driver looks down for 7 s and keeps the accelerator steady (≤ 35 %). The car ahead brakes

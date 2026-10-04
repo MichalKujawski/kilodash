@@ -1,0 +1,510 @@
+/* Drive dock: the car's controls at rest, on one baseline under the cockpit. */
+.dock {
+  position: relative;
+  max-width: 1180px;
+  margin: 0 auto;
+  --backlight: rgba(255, 255, 255, 0.9);
+  --backlight-dim: rgba(255, 255, 255, 0.2);
+}
+
+.dock-tools {
+  position: absolute;
+  right: 0;
+  top: -6px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  z-index: 2;
+}
+
+.dock-tools .more-toggle {
+  margin: 0;
+}
+
+.dock-row {
+  display: grid;
+  grid-template-columns: 130px minmax(0, 470px) 100px 140px;
+  justify-content: space-between;
+  align-items: end;
+  gap: 28px;
+  padding: 6px 24px 0;
+}
+
+.dock-item {
+  position: relative;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* One baseline: every label sits on the same line under its control. */
+.dock-item figcaption {
+  margin-top: 10px;
+  height: 16px;
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: 0.02em;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+
+.dock-pedals figcaption {
+  display: flex;
+  gap: 30px;
+}
+
+/* ---- Buttons: piano-black caps with a backlit glyph ---- */
+.hb {
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 9px;
+  background: linear-gradient(#1b1e23, #0d0f12);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    0 2px 4px rgba(0, 0, 0, 0.6);
+  color: var(--backlight-dim);
+  font:
+    600 11px Inter,
+    system-ui,
+    sans-serif;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  touch-action: none;
+  transition:
+    color 400ms var(--ease),
+    filter 400ms var(--ease),
+    transform 80ms;
+}
+
+.hb-lit {
+  color: var(--backlight);
+  filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.18));
+}
+
+.hb[aria-disabled='true'] {
+  cursor: default;
+}
+
+.hb:not([aria-disabled='true']):active {
+  transform: translateY(1px);
+  background: linear-gradient(#15181c, #0b0c0f);
+}
+
+.hb:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.5);
+  outline-offset: 2px;
+}
+
+/* Function on: a small green lamp in the cap, like real wheel buttons. */
+.hb-active::before {
+  content: '';
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  width: 10px;
+  height: 2px;
+  margin-left: -5px;
+  border-radius: 1px;
+  background: var(--on);
+  box-shadow: 0 0 6px var(--on);
+}
+
+/* Keyboard hint: only on hover. */
+.hb::after {
+  content: attr(data-key);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(20, 22, 26, 0.95);
+  border: 1px solid var(--hairline);
+  color: var(--text-1);
+  font:
+    500 11px Inter,
+    system-ui,
+    sans-serif;
+  letter-spacing: 0;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms;
+  z-index: 3;
+}
+
+.hb:hover::after {
+  opacity: 1;
+  transition-delay: 300ms;
+}
+
+.hb[aria-disabled='true']::after {
+  display: none;
+}
+
+/* ---- Wheel ---- */
+.dock-wheel {
+  width: 100%;
+}
+
+.wheel2 {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 640 / 260;
+  transform-origin: 50% 100%;
+  will-change: transform;
+}
+
+.wheel2-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  /* The lower rim disappears behind the dash. */
+  mask-image: linear-gradient(#000 78%, transparent 100%);
+}
+
+.wheel2 .spoke-btn,
+.wheel2 .rocker {
+  position: absolute;
+}
+
+.spoke-text {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+
+.rocker {
+  display: grid;
+  grid-template-rows: 1fr 1.1fr 1fr;
+  border-radius: 12px;
+  overflow: visible;
+}
+
+.rocker .hb {
+  border-radius: 0;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.rocker .rocker-up {
+  border-radius: 12px 12px 0 0;
+}
+
+.rocker .rocker-down {
+  border-radius: 0 0 12px 12px;
+}
+
+/* Two-way rocker (cruise): the halves share the height. */
+.rocker:has(> :nth-child(2):last-child) {
+  grid-template-rows: 1fr 1fr;
+}
+
+.rocker-ok {
+  font-size: 11px;
+}
+
+/* ---- Stalk ---- */
+.stalk2 {
+  position: relative;
+  width: 130px;
+  aspect-ratio: 170 / 140;
+}
+
+.stalk2-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.stalk2-art g {
+  transition: transform 120ms var(--ease);
+}
+
+.arrow {
+  fill: rgba(255, 255, 255, 0.08);
+  stroke: rgba(255, 255, 255, 0.12);
+}
+
+.arrow.arrow-on {
+  fill: var(--on);
+  stroke: var(--on);
+  filter: drop-shadow(0 0 5px rgba(34, 211, 107, 0.7));
+}
+
+.stalk-zone {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 50%;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.stalk-zone:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.stalk-up {
+  top: 0;
+  border-radius: 12px 12px 0 0;
+}
+
+.stalk-down {
+  bottom: 0;
+  border-radius: 0 0 12px 12px;
+}
+
+/* ---- Gear lever ---- */
+.lever {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.gate2 {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  border-radius: 16px;
+  background: linear-gradient(#15181c, #0b0c0f);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.gate2-pos {
+  width: 44px;
+  height: 22px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  box-shadow: none;
+  font-size: 15px;
+  letter-spacing: 0;
+  color: rgba(255, 255, 255, 0.3);
+  filter: none;
+}
+
+.gate2-pos.hb-active {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
+}
+
+.gate2-pos.hb-active::before {
+  display: none;
+}
+
+.console-btn {
+  display: flex;
+  gap: 6px;
+  padding: 0 12px;
+  height: 30px;
+  border-radius: 999px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+.console-start {
+  color: var(--on);
+}
+
+/* ---- Pedals ---- */
+.pedals2 {
+  display: flex;
+  align-items: flex-end;
+  gap: 18px;
+}
+
+.pedal2 {
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  box-shadow: none;
+  filter: none;
+}
+
+.pedal2-brake svg {
+  width: 64px;
+  height: 88px;
+}
+
+.pedal2-gas svg {
+  width: 40px;
+  height: 88px;
+}
+
+.pad {
+  transition: transform 60ms linear;
+}
+
+.pad-face {
+  fill: #23272d;
+  stroke: rgba(255, 255, 255, 0.1);
+}
+
+.pad-rib {
+  stroke: rgba(0, 0, 0, 0.55);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+.pad-pressed .pad-face {
+  fill: #2c3138;
+  stroke: rgba(255, 255, 255, 0.22);
+}
+
+/* ---- Coach marks (first visit) ---- */
+.coach {
+  position: absolute;
+  top: -30px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(34, 211, 107, 0.14);
+  border: 1px solid rgba(34, 211, 107, 0.4);
+  color: var(--text-1);
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: coach-in 600ms var(--ease) both;
+}
+
+.dock-wheel .coach {
+  left: 24%;
+}
+
+@keyframes coach-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 6px);
+  }
+}
+
+/* ---- "?" overlay ---- */
+.keyhelp-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(3, 4, 5, 0.72);
+  backdrop-filter: blur(6px);
+}
+
+.keyhelp {
+  width: min(920px, 100%);
+  max-height: 86vh;
+  overflow: auto;
+  padding: 24px 28px 28px;
+  border-radius: 18px;
+  background: #0d0f12;
+  border: 1px solid var(--hairline);
+}
+
+.keyhelp-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.keyhelp h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.keyhelp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 22px 32px;
+  margin-top: 18px;
+}
+
+.keyhelp h3 {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.keyhelp-row {
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  gap: 10px;
+  align-items: baseline;
+  padding: 3px 0;
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.keyhelp kbd {
+  justify-self: start;
+  min-width: 22px;
+  padding: 1px 6px;
+  border-radius: 5px;
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+  color: var(--text-1);
+  font:
+    500 12px Inter,
+    system-ui,
+    sans-serif;
+  text-align: center;
+}
+
+@media (max-width: 900px) {
+  .dock-row {
+    grid-template-columns: 90px minmax(0, 1fr) 70px 100px;
+    gap: 10px;
+    padding: 0 8px;
+  }
+  .dock-item figcaption,
+  .coach {
+    display: none;
+  }
+  .stalk2 {
+    width: 90px;
+  }
+  .gate2-pos {
+    width: 36px;
+    height: 18px;
+    font-size: 12px;
+  }
+  .console-btn span {
+    display: none;
+  }
+  .pedal2-brake svg {
+    width: 50px;
+    height: 68px;
+  }
+  .pedal2-gas svg {
+    width: 30px;
+    height: 66px;
+  }
+  .dock-tools {
+    position: static;
+    justify-content: flex-end;
+    margin-bottom: 4px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wheel2,
+  .pad,
+  .coach {
+    transition: none;
+    animation: none;
+  }
+}

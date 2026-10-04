@@ -30,6 +30,8 @@ export class ControlBus {
     throttle: null,
     brake: null,
   };
+  /** A non-zero pedal position was sent; the return to zero must be sent once too. */
+  private pedalsSent = false;
   private timer: ReturnType<typeof setInterval>;
   private last = performance.now();
 
@@ -82,7 +84,14 @@ export class ControlBus {
           : Math.max(0, this.pedals[k] - step * 3);
     }
     const p = this.pedalState;
-    if (p.throttle > 0 || p.brake > 0) this.source.setManualInput(p);
+    if (p.throttle > 0 || p.brake > 0) {
+      this.source.setManualInput(p);
+      this.pedalsSent = true;
+    } else if (this.pedalsSent) {
+      // Foot fully off: send the zero, or the last ramp value would stick.
+      this.source.setManualInput(p);
+      this.pedalsSent = false;
+    }
     // A held indicator stalk latches after the long-press time.
     for (const side of ['indicatorLeft', 'indicatorRight'] as const) {
       const t = this.down.get(side);

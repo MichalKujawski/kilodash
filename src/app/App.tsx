@@ -9,6 +9,7 @@ import { useClusterAudio } from './audio/useClusterAudio';
 import { ClusterView } from './ClusterView';
 import { ControlBus } from './controls/ControlBus';
 import { ControlPanel } from './controls/ControlPanel';
+import { DriveDock } from './dock/DriveDock';
 import { Director } from './director/Director';
 import { useDirector } from './director/useDirector';
 import { WatchPanel } from './director/WatchPanel';
@@ -256,10 +257,14 @@ export function App() {
             onHowItWorks={() => setMode('engineer')}
           />
         )}
-        {mode === 'drive' && (
-          <button className="more-toggle" onClick={() => setMoreOpen((o) => !o)}>
-            More controls {moreOpen ? '▾' : '▴'}
-          </button>
+        {mode === 'drive' && session && bus && (
+          <DriveDock
+            bus={bus}
+            source={session.source}
+            store={session.store}
+            moreOpen={moreOpen}
+            onMore={() => setMoreOpen((o) => !o)}
+          />
         )}
         {mode === 'watch' && <span className="scroll-hint">SCROLL TO LEARN MORE ↓</span>}
       </Stage>

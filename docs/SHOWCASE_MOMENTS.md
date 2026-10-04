@@ -26,3 +26,11 @@ One entry per finished feature, for building a guided demo. Keep each entry shor
   jolt, then automatic braking; the driver looks up and takes over.
 - **Caption:** "Traffic ahead brakes hard. Warning, brake jolt, then automatic braking."
 - **Duration:** ~15 s
+
+### Take the wheel (Drive dock)
+
+- **Demo:** the visitor clicks Take the wheel on the motorway. The cruise buttons on the right spoke light
+  up. Pressing the cruise button and SET shows the set speed in the cluster. Tapping the stalk blinks the
+  green arrows in step with the cluster's lamps.
+- **Caption:** "Your turn: the same buttons a real wheel has, lit where they work."
+- **Duration:** ~15 s

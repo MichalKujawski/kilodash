@@ -45,3 +45,28 @@ test('guided demo: chapters from the URL, captions, Space pauses, Take the wheel
   await page.getByRole('button', { name: 'Take the wheel →' }).click();
   await expect(page).toHaveURL(/mode=drive/);
 });
+
+test('Drive dock: at most 8 controls at rest, "?" lists the keys, Esc closes it', async ({
+  page,
+}) => {
+  await page.goto('/?mode=drive');
+  const dock = page.locator('.dock');
+  await expect(dock).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Selector D' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  // Groups at rest: stalk, scroll rocker, View, selector + console button, brake, accelerator,
+  // More controls, "?" (cruise buttons are always drawn but only usable on fast roads).
+  const groups = await dock.evaluate(
+    (el) =>
+      el.querySelectorAll(
+        '.stalk2, .dock-wheel .rocker:first-of-type, [aria-label="View"], .lever, .pedal2, .dock-tools button',
+      ).length,
+  );
+  expect(groups).toBeLessThanOrEqual(8);
+  await page.keyboard.press('?');
+  await expect(page.getByRole('dialog', { name: 'Keyboard controls' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+});

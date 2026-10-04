@@ -169,8 +169,8 @@ _Last updated: 2026-10-04_
 | 1 | Shell: header with Watch/Drive/Engineer, stage (light, hood, feathered display, glow by drive mode, reflection), rolling start at midday, larger cluster text | done |
 | 2 | 3D map (tilted, extruded buildings, labels, glowing route) | done |
 | 3 | Demo Director: 9 chapters (2:36), captions, chapter bar, Space/←/→, `?chapter=`, Take the wheel | done |
-| 4 | Drive dock (wheel with spoke buttons, stalk, lever, pedals, contextual cruise) | next |
-| 5 | Engineer mode | |
+| 4 | Drive dock (wheel with spoke buttons, stalk, lever, pedals, contextual cruise, "?" overlay, coach marks) | done |
+| 5 | Engineer mode | next |
 | 6–11 | Intro, landing sections, responsive, recording, analytics, polish | |
 
 - `node scripts/site-shots.mjs docs/design/progress name=query@WxH` screenshots the site and reports
@@ -180,6 +180,9 @@ _Last updated: 2026-10-04_
   The Demo driver gained `scripted` (no lane changes of its own), `lookAway()` and
   `requestOvertake()`; it waits for a gap before changing lanes. Docs: `docs/features/guided-demo.md`.
   "How it works →" opens Engineer for now; step 5 gives it the explanation sheet.
+- Step 4: `src/app/dock/` (feature doc `docs/features/drive-dock.md`). The old ControlPanel is the More
+  controls sheet. Fixed: after a key or pointer release, the pedal value stuck at its last ramp value
+  (the zero was never sent).
 
 ## Known issues / open questions
 
