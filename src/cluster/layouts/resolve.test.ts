@@ -15,6 +15,7 @@ describe('resolveLayout', () => {
       S.CoolantTemp,
       S.ShiftLight,
       S.BeltStatusVisible,
+      S.ParkAssistState,
     ]);
     expect(Object.values(r).every((v) => v !== null)).toBe(true);
   });
