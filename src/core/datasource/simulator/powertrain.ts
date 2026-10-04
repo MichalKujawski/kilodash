@@ -238,7 +238,8 @@ export class CombustionPowertrain implements Powertrain {
     const s = this.sim.state;
     const e = this.e;
     if (this.shiftState || this.cooldown > 0) return;
-    const t = s.throttle;
+    // The S program shifts as if the pedal were at least 60 % down: holds gears longer.
+    const t = this.sim.gearProgram === 'S' ? Math.max(s.throttle, 0.6) : s.throttle;
     const upRpm = lerp(1750, e.redlineRpm - 150, Math.pow(t, 1.8));
     const downRpm = lerp(1100, e.redlineRpm * 0.5, Math.pow(t, 1.6));
     if (s.coupled && s.rpm > upRpm && s.gear < this.sim.gearCount) {

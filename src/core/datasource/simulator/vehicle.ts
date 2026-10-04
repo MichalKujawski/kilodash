@@ -40,13 +40,31 @@ export const FAULTS: FaultKind[] = [
 /** 0 OFF, 1 ACC, 2 ON, 3 START (cranking), matching VSS LowVoltageSystemState order. */
 export type IgnitionLevel = 0 | 1 | 2 | 3;
 
+export type LightSwitch = 'off' | 'auto' | 'parking' | 'low';
+export type WiperMode = 'off' | 'auto' | 'interval' | 'slow' | 'fast';
+/** D = normal automatic, S = sport program, M = manual (paddles). */
+export type GearProgram = 'D' | 'S' | 'M';
+
+/** Flashes in a comfort blink (stalk tapped, not latched). */
+export const COMFORT_FLASHES = 3;
+
 export interface BodyState {
-  /** Driver's light switch: auto low beam follows ambient light when false. */
-  lowBeamForced: boolean;
+  lightSwitch: LightSwitch;
+  /** Outputs computed from the switch, light sensor and rain. */
   lowBeam: boolean;
+  parkingLights: boolean;
   highBeam: boolean;
+  /** Stalk pushed forward (high beam latched). */
+  highBeamLatched: boolean;
+  /** Stalk pulled (headlight flash, momentary). */
+  highBeamFlash: boolean;
+  autoHighBeam: boolean;
+  /** Front fog lights. */
   fog: boolean;
+  fogRear: boolean;
   hazard: boolean;
+  wipers: WiperMode;
+  washer: boolean;
   /** FL, FR, RL, RR. */
   doors: [boolean, boolean, boolean, boolean];
   trunk: boolean;
@@ -108,6 +126,8 @@ export interface VehicleState {
 export interface Environment {
   ambientC: number;
   lightIntensity: number;
+  /** Rain on the windscreen, 0–1 (rain sensor). */
+  rain: number;
   /** Tyre-road friction coefficient (1 dry, ~0.4 icy). */
   grip: number;
 }
@@ -141,6 +161,8 @@ export class VehicleSimulator {
   readonly rng: () => number;
 
   private crankT = 0;
+  private comfort: { side: 'left' | 'right'; left: number } | null = null;
+  gearProgram: GearProgram = 'D';
   private curvature = 0;
   private gradient = 0;
   private accelFiltered = 0;
@@ -154,7 +176,7 @@ export class VehicleSimulator {
     this.profile = profile;
     this.rng = createRng(seed);
     this.voltNoise = new SmoothNoise(this.rng, 0.7);
-    this.env = { ambientC: 14, lightIntensity: 85, grip: 1, ...env };
+    this.env = { ambientC: 14, lightIntensity: 85, rain: 0, grip: 1, ...env };
     const e = profile.engine;
     this.state = {
       timeS: 0,
@@ -199,11 +221,18 @@ export class VehicleSimulator {
       mil: false,
     };
     this.body = {
-      lowBeamForced: false,
+      lightSwitch: 'auto',
       lowBeam: false,
+      parkingLights: false,
       highBeam: false,
+      highBeamLatched: false,
+      highBeamFlash: false,
+      autoHighBeam: false,
       fog: false,
+      fogRear: false,
       hazard: false,
+      wipers: 'auto',
+      washer: false,
       doors: [false, false, false, false],
       trunk: false,
       seatbelt: true,
@@ -261,6 +290,43 @@ export class VehicleSimulator {
       s.ready = false;
       s.cruiseActive = false;
     }
+  }
+
+  /** Stalk tapped: three flashes (comfort blink); tapping the other way cancels. */
+  tapIndicator(side: 'left' | 'right'): void {
+    if (this.comfort && this.comfort.side !== side) {
+      this.comfort = null;
+      return;
+    }
+    // One flash period is 0.75 s (≈80/min).
+    this.comfort = { side, left: COMFORT_FLASHES * 0.75 - 0.2 };
+  }
+
+  /** Is the indicator on this side flashing (stalk latched, comfort blink or hazard)? */
+  indicating(side: 'left' | 'right'): boolean {
+    const latched = side === 'left' ? this.inputs.leftIndicator : this.inputs.rightIndicator;
+    return latched || this.comfort?.side === side;
+  }
+
+  /** D, S or M on the selector gate. M hands gear choice to the paddles. */
+  setGearProgram(p: GearProgram): void {
+    this.gearProgram = p;
+    this.mode = p === 'M' ? 'manual' : 'auto';
+  }
+
+  /**
+   * Keyless start button: without the brake it toggles the ignition; with the
+   * brake pressed it starts the engine; while running (and stopped) it switches
+   * everything off.
+   */
+  pressStart(brakePressed: boolean): void {
+    const s = this.state;
+    if (s.ready || s.ignition === 3) {
+      if (s.speedMs < 1) this.setIgnition(0);
+      return;
+    }
+    if (brakePressed) this.start();
+    else this.setIgnition(s.ignition >= 2 ? 0 : 2);
   }
 
   /** Crank the engine (ICE/hybrid) or switch to READY (EV). */
@@ -455,9 +521,19 @@ export class VehicleSimulator {
     const b = this.body;
     const on = s.ignition >= 2;
 
-    // Lights: automatic low beam in the dark; high beam needs low beam.
-    b.lowBeam = on && (b.lowBeamForced || s.lightIntensity < 40);
-    if (!b.lowBeam) b.highBeam = false;
+    // Lights: "auto" switches low beam on at dusk/in tunnels and with the wipers
+    // running (rain); high beam needs low beam, the headlight flash always works.
+    const wiping = b.wipers !== 'off' && (b.wipers !== 'auto' || this.env.rain > 0);
+    const dark = s.lightIntensity < 40;
+    b.lowBeam = on && (b.lightSwitch === 'low' || (b.lightSwitch === 'auto' && (dark || wiping)));
+    b.parkingLights = b.lightSwitch === 'parking' || b.lowBeam;
+    b.highBeam = (b.highBeamLatched && b.lowBeam) || (b.highBeamFlash && on);
+    if (!b.parkingLights) b.fog = false;
+    if (!b.lowBeam && !b.fog) b.fogRear = false;
+    if (this.comfort) {
+      this.comfort.left -= dt;
+      if (this.comfort.left <= 0) this.comfort = null;
+    }
 
     // Electrical system.
     const alternatorOk = !this.faults.has('alternator');

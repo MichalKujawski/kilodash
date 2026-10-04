@@ -362,3 +362,48 @@ kbd {
   width: 55%;
   accent-color: #3fa7ff;
 }
+
+.workshop {
+  width: min(100%, 1200px);
+  color: var(--dim);
+}
+
+.workshop summary {
+  cursor: pointer;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 6px 0;
+}
+
+.inspector {
+  max-height: 320px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.inspector table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.inspector th,
+.inspector td {
+  text-align: left;
+  padding: 3px 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  white-space: nowrap;
+}
+
+.inspector th {
+  position: sticky;
+  top: 0;
+  background: #0c0d10;
+}
+
+.inspector .num {
+  text-align: right;
+}

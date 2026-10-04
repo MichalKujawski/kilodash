@@ -13,6 +13,8 @@ export type IconId =
   | 'lowBeam'
   | 'highBeam'
   | 'fog'
+  | 'fogRear'
+  | 'parkingLights'
   | 'parkingBrake'
   | 'checkEngine'
   | 'battery'
@@ -51,6 +53,21 @@ export const ICONS: Record<IconId, IconPart[]> = {
     { kind: 'fill', d: lamp },
     { kind: 'stroke', d: 'M11 8H4M11 12H4M11 16H4', width: 1.6 },
     { kind: 'stroke', d: 'M8 5.5c1.5 1.6-1.5 3.2 0 4.8s-1.5 3.2 0 4.8 1.5 3.2 0 3.6', width: 1.4 },
+  ],
+  fogRear: [
+    // Lamp facing right (towards the rear), horizontal rays crossed by a wavy line.
+    { kind: 'fill', d: 'M10.5 5.5C5.5 5.5 3 8.5 3 12s2.5 6.5 7.5 6.5z' },
+    { kind: 'stroke', d: 'M13 8h7M13 12h7M13 16h7', width: 1.6 },
+    { kind: 'stroke', d: 'M16 5.5c1.5 1.6-1.5 3.2 0 4.8s-1.5 3.2 0 4.8 1.5 3.2 0 3.6', width: 1.4 },
+  ],
+  parkingLights: [
+    // Two small lamps facing away from each other with short rays.
+    { kind: 'stroke', d: 'M9.5 8a4 4 0 0 0 0 8M14.5 8a4 4 0 0 1 0 8', width: 1.8 },
+    {
+      kind: 'stroke',
+      d: 'M6 9.5 3 8.5M6 14.5l-3 1M18 9.5l3-1M18 14.5l3 1M5.5 12H2.5M18.5 12h3',
+      width: 1.5,
+    },
   ],
   parkingBrake: [
     { kind: 'stroke', d: 'M12 4.5a7.5 7.5 0 1 1 0 15a7.5 7.5 0 1 1 0-15z', width: 1.8 },

@@ -1,15 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ClusterRenderer } from '@/cluster/renderer/ClusterRenderer';
-import type { ClusterKey } from '@/cluster/renderer/types';
 import { classic } from '@/cluster/layouts/classic';
 import { DEFAULT_THEME, THEMES, THEME_BY_ID } from '@/cluster/themes';
 import type { Theme } from '@/cluster/themes/types';
 import { S } from '@/core/signals/catalog';
-import { DEFAULT_PROFILE } from '@/profiles';
+import { DEFAULT_PROFILE, profileById } from '@/profiles';
 import { AudioEngine } from './audio/AudioEngine';
 import { useClusterAudio } from './audio/useClusterAudio';
 import { ClusterView } from './ClusterView';
-import { DevPanel } from './DevPanel';
+import { ControlBus } from './controls/ControlBus';
+import { ControlPanel } from './controls/ControlPanel';
+import { useControlInputs } from './controls/useControlInputs';
+import { applyPose, poseFromUrl } from './poses';
+import { ClusterSession } from './session';
 import { ThemeEditor } from './ThemeEditor';
 import {
   loadSelectedThemeId,
@@ -17,28 +20,9 @@ import {
   saveSelectedThemeId,
   saveUserThemes,
 } from './themeStore';
-import { applyPose, poseFromUrl } from './poses';
-import { ClusterSession } from './session';
-import { useKeyboardDriving } from './useKeyboardDriving';
 import { usePoll } from './useSignal';
-
-const KEYS: [string, string][] = [
-  ['W / S', 'Throttle / brake'],
-  ['Q / E', 'Paddles'],
-  [', / .', 'Indicators'],
-  ['← / →', 'Pages'],
-  ['Enter', 'OK'],
-  ['P', 'Autopilot'],
-];
-
-const ARROWS: Record<string, ClusterKey> = {
-  ArrowLeft: 'left',
-  ArrowRight: 'right',
-  ArrowUp: 'up',
-  ArrowDown: 'down',
-  Enter: 'ok',
-  Escape: 'back',
-};
+import { Workshop } from './Workshop';
+import { WorldPanel } from './WorldPanel';
 
 const params = new URLSearchParams(window.location.search);
 const KIOSK = params.get('kiosk') === '1';
@@ -46,6 +30,7 @@ const LOW_POWER = params.get('lowpower') === '1';
 /** Experimental extras (other themes, theme editor) are only exposed with ?dev=1. */
 const DEV = params.get('dev') === '1';
 const POSE = poseFromUrl();
+
 function initialTheme(userThemes: Theme[]): Theme {
   // The public demo is the Midnight experience only.
   if (!DEV) return DEFAULT_THEME;
@@ -54,16 +39,22 @@ function initialTheme(userThemes: Theme[]): Theme {
 }
 
 export function App() {
+  const [profileId, setProfileId] = useState(DEFAULT_PROFILE.id);
   const [session, setSession] = useState<ClusterSession | null>(null);
+  const [bus, setBus] = useState<ControlBus | null>(null);
   const [renderer, setRenderer] = useState<ClusterRenderer | null>(null);
   const [fps, setFps] = useState(0);
   const [frameMs, setFrameMs] = useState(0);
+  const [dropped, setDropped] = useState(0);
   const [sound, setSound] = useState({ muted: false, engine: false });
   const [userThemes, setUserThemes] = useState<Theme[]>(() => loadUserThemes());
   const [theme, setThemeState] = useState<Theme>(() => initialTheme(userThemes));
   const [animateTheme, setAnimateTheme] = useState(true);
   const [editing, setEditing] = useState(false);
+  const rendererRef = useRef<ClusterRenderer | null>(null);
+  const audio = useMemo(() => new AudioEngine(), []);
   const allThemes = useMemo(() => [...THEMES, ...userThemes], [userThemes]);
+
   const setTheme = useCallback((next: Theme | ((cur: Theme) => Theme), animate = true) => {
     setAnimateTheme(animate);
     setThemeState((cur) => {
@@ -90,12 +81,16 @@ export function App() {
     },
     [setTheme],
   );
-  const rendererRef = useRef<ClusterRenderer | null>(null);
-  const audio = useMemo(() => new AudioEngine(), []);
-  const profile = DEFAULT_PROFILE;
 
   useEffect(() => {
-    const s = new ClusterSession(profile, POSE ? {} : { startOff: true, env: { realTime: true } });
+    const s = new ClusterSession(
+      profileById(profileId),
+      POSE ? {} : { startOff: true, env: { realTime: true } },
+    );
+    const b = new ControlBus(s.source, {
+      renderer: () => rendererRef.current,
+      toggleMute: () => setSound((x) => ({ ...x, muted: !x.muted })),
+    });
     let live = true;
     void s.start().then(() => {
       if (!live) return;
@@ -104,17 +99,21 @@ export function App() {
       if (import.meta.env.DEV || params.has('debug')) {
         (window as unknown as { __oc?: unknown }).__oc = {
           session: s,
+          bus: b,
           renderer: () => rendererRef.current,
         };
       }
       setSession(s);
+      setBus(b);
     });
     return () => {
       live = false;
+      b.dispose();
       void s.stop();
       setSession(null);
+      setBus(null);
     };
-  }, [profile]);
+  }, [profileId]);
 
   useEffect(() => {
     audio.setChimeStyle(theme.sounds.chime);
@@ -126,38 +125,31 @@ export function App() {
   }, [audio, sound]);
 
   useClusterAudio(session, audio);
-  useKeyboardDriving(session?.source, {
-    onAnyKey: () => audio.unlock(),
-    toggleMute: () => setSound((s) => ({ ...s, muted: !s.muted })),
-    toggleEngineSound: () => setSound((s) => ({ ...s, engine: !s.engine })),
-    cycleNight: () => rendererRef.current?.cycleNightMode(),
-    cycleTheme: () =>
-      DEV &&
-      setTheme(
-        (cur) =>
-          allThemes[(allThemes.findIndex((t) => t.id === cur.id) + 1) % allThemes.length] ??
-          DEFAULT_THEME,
-      ),
-  });
+  const unlockAudio = useCallback(() => audio.unlock(), [audio]);
+  useControlInputs(bus, unlockAudio);
 
   // Browsers only allow audio after a user gesture.
   useEffect(() => {
-    const unlock = (): void => audio.unlock();
-    window.addEventListener('pointerdown', unlock);
-    return () => window.removeEventListener('pointerdown', unlock);
-  }, [audio]);
+    window.addEventListener('pointerdown', unlockAudio);
+    return () => window.removeEventListener('pointerdown', unlockAudio);
+  }, [unlockAudio]);
 
-  // Steering-wheel navigation keys go into the cluster.
+  // Dev only: Shift+T cycles the experimental themes.
   useEffect(() => {
+    if (!DEV) return;
     const down = (e: KeyboardEvent): void => {
-      const key = ARROWS[e.key];
-      if (key && rendererRef.current?.input(key)) e.preventDefault();
+      if (e.key.toLowerCase() === 't' && e.shiftKey) {
+        setTheme(
+          (cur) =>
+            allThemes[(allThemes.findIndex((t) => t.id === cur.id) + 1) % allThemes.length] ??
+            DEFAULT_THEME,
+        );
+      }
     };
     window.addEventListener('keydown', down);
     return () => window.removeEventListener('keydown', down);
-  }, []);
+  }, [allThemes, setTheme]);
 
-  const [dropped, setDropped] = useState(0);
   const onFps = useCallback((f: number, ms: number, d: number) => {
     setDropped((x) => x + d);
     setFps(f);
@@ -210,17 +202,11 @@ export function App() {
           <div className="screen">{cluster ?? <div className="screen-boot">Starting…</div>}</div>
         </div>
 
-        <section className="hints" aria-label="Keyboard controls">
-          {KEYS.map(([k, label]) => (
-            <span key={k} className="hint">
-              <kbd>{k}</kbd>
-              {label}
-            </span>
-          ))}
-        </section>
+        {session && bus && <ControlPanel bus={bus} source={session.source} />}
         {session && (
-          <DevPanel session={session} renderer={renderer} sound={sound} onSound={setSound} />
+          <WorldPanel session={session} renderer={renderer} sound={sound} onSound={setSound} />
         )}
+        {session && <Workshop session={session} profileId={profileId} onProfile={setProfileId} />}
 
         {DEV && (
           <section className="theme-chooser" aria-label="Themes (experimental)">
@@ -266,14 +252,14 @@ export function App() {
 function StatusChips({ session, fps }: { session: ClusterSession; fps: number }) {
   usePoll(4);
   const src = session.source;
-  const manualGears = session.store.value(S.SelectedGear, 127) !== 127;
+  const sel = session.store.value(S.SelectedGear, 127);
   return (
     <div className="chips">
       <span className="chip">{session.profile.name}</span>
       <span className={`chip ${src.isAutopilotActive ? 'chip-on' : ''}`}>
-        Autopilot {src.isAutopilotActive ? 'on' : src.autopilot ? 'paused' : 'off'}
+        Demo drive {src.isAutopilotActive ? 'on' : src.autopilot ? 'paused' : 'off'}
       </span>
-      <span className="chip">{manualGears ? 'Manual' : 'Auto'} gears</span>
+      <span className="chip">{sel >= 1 && sel <= 20 ? 'Manual' : 'Auto'} gears</span>
       <span className="chip chip-mono">{fps.toFixed(0)} fps</span>
     </div>
   );

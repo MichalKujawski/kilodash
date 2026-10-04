@@ -1,0 +1,420 @@
+/* Car controls: original, generic shapes. Dark like a real interior. */
+.cockpit-controls {
+  width: min(100%, 1640px);
+  display: grid;
+  grid-template-columns: auto auto minmax(300px, 380px) auto auto auto;
+  align-items: center;
+  justify-content: center;
+  gap: 18px 22px;
+  padding: 18px 20px;
+  border-radius: 28px;
+  background: linear-gradient(180deg, #0d0f12, #08090b);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5) inset;
+}
+
+@media (max-width: 1100px) {
+  .cockpit-controls {
+    grid-template-columns: repeat(3, auto);
+  }
+
+  /* The wheel needs its full size for the button pads: give it its own row. */
+  .wheel {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    justify-self: center;
+    width: 340px;
+  }
+}
+
+@media (max-width: 700px) {
+  .cockpit-controls {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+}
+
+/* A physical key */
+.ck {
+  position: relative;
+  font: inherit;
+  font-size: 12px;
+  letter-spacing: 0.03em;
+  color: #b9c0c8;
+  background: linear-gradient(180deg, #23272d, #16191d);
+  border: 1px solid #2c3138;
+  border-bottom-color: #0b0c0e;
+  border-radius: 9px;
+  padding: 7px 10px;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  box-shadow:
+    0 2px 0 #050607,
+    0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  transition:
+    transform 0.06s,
+    box-shadow 0.06s,
+    color 0.15s;
+}
+
+.ck:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 0 #050607;
+}
+
+.ck:hover {
+  color: #eef1f4;
+}
+
+.ck:focus-visible {
+  outline: 2px solid #3fa7ff;
+  outline-offset: 2px;
+}
+
+.ck-on {
+  color: #f2f4f7;
+}
+
+.ck-sm {
+  min-width: 38px;
+  padding: 6px 8px;
+}
+
+.ck-xs {
+  min-height: 24px;
+  padding: 3px 8px;
+  font-size: 11px;
+}
+
+.ck-led {
+  position: absolute;
+  top: 4px;
+  right: 5px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #2a2e34;
+}
+
+.ck-led-on.ck-led-green {
+  background: #22d36b;
+  box-shadow: 0 0 6px #22d36b;
+}
+
+.ck-led-on.ck-led-amber {
+  background: #ffb000;
+  box-shadow: 0 0 6px #ffb000;
+}
+
+.ck-led-on.ck-led-blue {
+  background: #2f7bff;
+  box-shadow: 0 0 6px #2f7bff;
+}
+
+/* Keyboard shortcut badge, shown on hover / focus */
+.ck-hint {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 10px;
+  color: #e9edf2;
+  background: #2a2f36;
+  border-radius: 4px;
+  padding: 1px 5px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s;
+  z-index: 3;
+}
+
+.ck:hover .ck-hint,
+.ck:focus-visible .ck-hint {
+  opacity: 1;
+}
+
+.pad-row {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+}
+
+/* Steering wheel */
+.wheel {
+  position: relative;
+  width: 100%;
+  min-width: 320px;
+  aspect-ratio: 1;
+  max-width: 380px;
+}
+
+.wheel-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.2s;
+}
+
+.wheel-pad {
+  position: absolute;
+  top: 38%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+}
+
+.wheel-pad-left {
+  left: 8%;
+}
+
+.wheel-pad-right {
+  right: 8%;
+}
+
+.scroll {
+  display: flex;
+  flex-direction: column;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid #2c3138;
+}
+
+.scroll .ck {
+  border-radius: 0;
+  border: 0;
+  box-shadow: none;
+  min-height: 22px;
+}
+
+.scroll-ok {
+  background: repeating-linear-gradient(180deg, #2a2e35 0 2px, #1b1e22 2px 4px);
+  font-weight: 600;
+  min-height: 26px !important;
+}
+
+.roller {
+  display: flex;
+  flex-direction: column;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid #2c3138;
+}
+
+.roller .ck {
+  border-radius: 0;
+  border: 0;
+  box-shadow: none;
+  min-height: 18px;
+  padding: 2px 10px;
+}
+
+.paddle {
+  position: absolute;
+  top: 18%;
+  width: 34px;
+  min-height: 46px;
+  font-size: 18px;
+}
+
+.paddle-left {
+  left: -2%;
+}
+
+.paddle-right {
+  right: -2%;
+}
+
+/* Stalks */
+.stalk {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.stalk-svg {
+  width: 150px;
+}
+
+.stalk-keys {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 150px;
+}
+
+.wiper-gate {
+  display: grid;
+  grid-template-columns: repeat(5, auto);
+  gap: 3px;
+}
+
+/* Light switch */
+.lights {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.knob-wrap {
+  position: relative;
+  width: 140px;
+  height: 128px;
+}
+
+.knob {
+  width: 100%;
+  height: 100%;
+}
+
+.knob-pos {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font: inherit;
+  font-size: 10px;
+  color: #7d848d;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  padding: 3px;
+  display: inline-flex;
+}
+
+.knob-pos-on {
+  color: #22d36b;
+}
+
+/* Console */
+.console {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.selector {
+  display: flex;
+  gap: 6px;
+  padding: 8px;
+  border-radius: 14px;
+  background: #0b0c0e;
+  border: 1px solid #22262c;
+}
+
+.gate {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gate-side {
+  justify-content: flex-end;
+}
+
+.gate-pos {
+  min-width: 34px;
+  min-height: 26px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.gate-pos.ck-on {
+  color: #0b0c0e;
+  background: #e9edf2;
+}
+
+.console-grid {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  gap: 6px;
+}
+
+.ck-hazard {
+  color: #ff5a4f;
+}
+
+.ck-hazard.ck-on {
+  animation: hazard 0.75s steps(1) infinite;
+}
+
+@keyframes hazard {
+  0%,
+  55% {
+    color: #ff2a1f;
+    box-shadow: 0 0 12px rgba(255, 42, 31, 0.6);
+  }
+  56%,
+  100% {
+    color: #6e2420;
+  }
+}
+
+.start-btn {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  flex-direction: column;
+  font-size: 8px;
+  line-height: 1.2;
+  text-align: center;
+  background: radial-gradient(circle at 50% 35%, #2c3138, #121417);
+  border: 2px solid #3a4048;
+}
+
+/* Pedals */
+.pedals {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+}
+
+.pedal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.pedal-track {
+  position: relative;
+  width: 64px;
+  height: 150px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #0b0c0e, #121418);
+  border: 1px solid #22262c;
+  cursor: ns-resize;
+  touch-action: none;
+  perspective: 300px;
+}
+
+.pedal-throttle .pedal-track {
+  width: 46px;
+}
+
+.pedal-pad {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  top: 8px;
+  height: 46%;
+  border-radius: 8px;
+  background: repeating-linear-gradient(180deg, #2c3138 0 4px, #1c1f24 4px 8px);
+  border: 1px solid #3a4048;
+  transition: transform 0.05s;
+}
+
+.pedal-label {
+  font-size: 11px;
+  color: #7d848d;
+}

@@ -46,10 +46,17 @@ _Last updated: 2026-10-04_
   21 minutes per loop. "Jump to" places exist for demos and screenshots.
 - The steering wheel isn't simulated. The car follows the road, and an indicator held on a
   multi-lane road becomes a lane change.
-- A temporary world/car panel (`app/DevPanel.tsx`) stands in until step 2 replaces it with the
-  control panel.
 - The 2022 AWD family SUV profile is still to come (with drive modes, step 4). The default is still
   the sports coupé.
+
+## Notes from step 2
+
+- Controls: `app/controls/` (keymap, ControlBus semantics, keyboard + gamepad, on-screen panel).
+  Docs: `docs/features/controls.md`.
+- Buttons whose systems come later (ACC, lane assist, start-stop, Auto Hold, park assist, drive modes,
+  views) keep their state now. The assist pad drives plain cruise control until step 5.
+- World controls (time, weather, road, temperature, Demo drive, jumps) are in `app/WorldPanel.tsx`.
+  The Workshop drawer has faults, vehicle profile, hands-on-wheel and a data inspector.
 
 ## Known issues / open questions
 

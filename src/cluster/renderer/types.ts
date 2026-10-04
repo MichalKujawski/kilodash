@@ -18,7 +18,9 @@ export interface Rect {
 }
 
 /** Steering-wheel / keyboard navigation keys routed into the cluster. */
-export type ClusterKey = 'left' | 'right' | 'up' | 'down' | 'ok' | 'back';
+/** Left steering-wheel controls: scroll wheel (up/down/press/long press), arrows, view, menu/back, home. */
+export type ClusterKey =
+  'left' | 'right' | 'up' | 'down' | 'ok' | 'okLong' | 'back' | 'home' | 'view';
 
 export interface FrameContext {
   /** `performance.now()` ms. */

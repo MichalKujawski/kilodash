@@ -52,6 +52,10 @@ export class DemoDriver {
 
   /** Continue driving from wherever the car is (after a takeover or jump). */
   resume(sim: VehicleSimulator): void {
+    // The demo driver uses the normal automatic program and centres the stalks.
+    if (sim.gearProgram === 'M') sim.setGearProgram('D');
+    if (sim.state.selector !== 'D' && sim.state.speedMs < 0.5 && sim.state.ready)
+      sim.setSelector('D');
     this.vRef = sim.state.speedMs;
     this.integral = 0.15;
     if (this.phase !== 'drive' && this.phase !== 'parking') this.phase = 'drive';
