@@ -93,6 +93,13 @@ export const TELLTALES: TelltaleDefinition[] = [
   },
   { id: 'tcs', icon: 'tcs', color: 'caution', when: on(S.TCSActive), blink: 'warning' },
   { id: 'escOff', icon: 'escOff', color: 'caution', when: is(S.ESCMode, '>', 0) },
+  // Collision warning switched off (it is on again at every start).
+  {
+    id: 'fcwOff',
+    icon: 'collisionOff',
+    color: 'caution',
+    when: { all: [is(S.FcwState, '==', 0), is(S.Ignition, '>=', 2)] },
+  },
   {
     id: 'parkingLights',
     icon: 'parkingLights',

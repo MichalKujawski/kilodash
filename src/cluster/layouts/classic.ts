@@ -10,7 +10,16 @@ const TOP_Y = 46;
 const BOTTOM_Y = 670;
 
 /** Telltale row, grouped like real clusters: lights & driver aids left, vehicle warnings right. */
-const LEFT_GROUP = ['parkingLights', 'lowBeam', 'highBeam', 'fog', 'fogRear', 'tcs', 'escOff'];
+const LEFT_GROUP = [
+  'parkingLights',
+  'lowBeam',
+  'highBeam',
+  'fog',
+  'fogRear',
+  'tcs',
+  'escOff',
+  'fcwOff',
+];
 const RIGHT_GROUP = [
   'checkEngine',
   'oilPressure',

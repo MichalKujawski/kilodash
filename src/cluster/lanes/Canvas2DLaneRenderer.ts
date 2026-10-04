@@ -41,6 +41,7 @@ export class Canvas2DLaneRenderer implements LaneSceneRenderer {
     this.computeBend(m);
     this.drawSurface(ctx, m);
     for (const line of m.lines) this.drawLine(ctx, m, line, now);
+    this.drawBlindSpots(ctx, m, now);
     const objs = [...m.objects].sort((a, b) => b.z - a.z);
     for (const o of objs) if (o.z > 0) this.drawVehicle(ctx, m, o, theme, false);
     this.drawVehicle(
@@ -55,12 +56,27 @@ export class Canvas2DLaneRenderer implements LaneSceneRenderer {
         braking: false,
         oncoming: false,
         target: false,
+        danger: false,
       },
       theme,
       true,
     );
     // Cars beside us are drawn over our car only if they are nearer the camera.
     for (const o of objs) if (o.z <= 0) this.drawVehicle(ctx, m, o, theme, false);
+  }
+
+  /** Amber zones in the next lanes beside our car (blind-spot monitoring). */
+  private drawBlindSpots(ctx: CanvasRenderingContext2D, m: LaneViewModel, now: number): void {
+    for (const [state, side] of [
+      [m.blindSpot.left, -1],
+      [m.blindSpot.right, 1],
+    ] as const) {
+      if (state === 0) continue;
+      if (state === 2 && Math.floor(now / 180) % 2 === 1) continue;
+      const centre = m.laneCentre + side * 3.5;
+      const g = state === 2 ? 'rgba(255,176,0,0.42)' : 'rgba(255,176,0,0.22)';
+      this.strip(ctx, m, centre - 1.5, centre + 1.5, -12, 2, 0, g);
+    }
   }
 
   /** Lateral shift of the road centre at distance z from the bends ahead, m (+ = right). */
@@ -275,7 +291,7 @@ export class Canvas2DLaneRenderer implements LaneSceneRenderer {
       const p = this.project(m, o.x + x, y, z);
       return [p[0], p[1]];
     };
-    const base = ego ? '#c9d0da' : o.target ? '#9fd8b6' : '#7d8794';
+    const base = ego ? '#c9d0da' : o.danger ? '#e2493c' : o.target ? '#9fd8b6' : '#7d8794';
     const shade = (k: number): string => mix(base, '#0b0d10', k);
     ctx.globalAlpha = fade;
     if (o.target && !ego) {

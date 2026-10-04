@@ -124,6 +124,13 @@ export const S = {
   HandsOffStage: 'Vehicle.ADAS.LaneKeeping.HandsOffStage',
   /** ACC and lane centering working together. */
   AssistedDriving: 'Vehicle.ADAS.IsAssistedDriving',
+  /** 0 off, 1 ready, 2 distance warning, 3 pre-warning, 4 acute warning, 5 braking, 6 hold, 7 unavailable. */
+  FcwState: 'Vehicle.ADAS.ForwardCollision.State',
+  /** 0 clear, 1 occupied, 2 warning (indicating towards it). */
+  BlindSpotLeft: 'Vehicle.ADAS.BlindSpot.Left',
+  BlindSpotRight: 'Vehicle.ADAS.BlindSpot.Right',
+  /** Rear cross traffic: 0 none, 1 warning, 2 braking. */
+  CrossTraffic: 'Vehicle.ADAS.RearCrossTraffic.State',
   ABSActive: 'Vehicle.ADAS.ABS.IsEngaged',
   /** Hybrid/EV traction battery state of charge, %. */
   SoC: 'Vehicle.Powertrain.TractionBattery.StateOfCharge.Current',
@@ -429,6 +436,31 @@ const defs: SignalDefinition[] = [
   { id: S.LaneOffset, nameKey: 'signal.laneOffset', unit: 'm', min: -2, max: 2, expectedHz: 20 },
   { id: S.HandsOffStage, nameKey: 'signal.handsOff', unit: 'enum', min: 0, max: 4, expectedHz: 5 },
   bool(S.AssistedDriving, 'signal.assistedDriving', 2),
+  { id: S.FcwState, nameKey: 'signal.fcw', unit: 'enum', min: 0, max: 7, expectedHz: 10 },
+  {
+    id: S.BlindSpotLeft,
+    nameKey: 'signal.blindSpotLeft',
+    unit: 'enum',
+    min: 0,
+    max: 2,
+    expectedHz: 10,
+  },
+  {
+    id: S.BlindSpotRight,
+    nameKey: 'signal.blindSpotRight',
+    unit: 'enum',
+    min: 0,
+    max: 2,
+    expectedHz: 10,
+  },
+  {
+    id: S.CrossTraffic,
+    nameKey: 'signal.crossTraffic',
+    unit: 'enum',
+    min: 0,
+    max: 2,
+    expectedHz: 10,
+  },
   bool(S.ABSActive, 'signal.abs', 10),
   {
     id: S.SoC,
@@ -506,4 +538,8 @@ export const BODY_SIGNALS: SignalId[] = [
   S.LaneOffset,
   S.HandsOffStage,
   S.AssistedDriving,
+  S.FcwState,
+  S.BlindSpotLeft,
+  S.BlindSpotRight,
+  S.CrossTraffic,
 ];

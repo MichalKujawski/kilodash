@@ -16,6 +16,8 @@ export interface SceneObject {
   laneOffset: number;
   /** Speed, m/s (oncoming: speed towards us). */
   v: number;
+  /** Acceleration, m/s². */
+  a: number;
   braking: boolean;
   oncoming: boolean;
   length: number;
@@ -72,5 +74,7 @@ export interface SceneSnapshot {
   };
   /** Driving-mode list / Individual screen state (the car's own UI data). */
   driveModes?: DriveModeState;
+  /** Reversing out of a parking space: cars on the aisle heading for our path. */
+  crossTraffic: { distance: number; speed: number }[];
   efficiency?: EfficiencyState;
 }

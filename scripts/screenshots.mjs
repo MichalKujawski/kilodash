@@ -23,10 +23,18 @@ const poses = only.length
       'lanes',
       'departure',
       'handsoff',
+      'blindspot',
+      'aeb',
     ];
 const keys = (process.env.KEYS ?? '').split(',').filter(Boolean);
 // Poses that show a carousel page other than the map.
-const POSE_KEYS = { lanes: ['ArrowRight'], departure: ['ArrowRight'], handsoff: ['ArrowRight'] };
+const POSE_KEYS = {
+  lanes: ['ArrowRight'],
+  departure: ['ArrowRight'],
+  handsoff: ['ArrowRight'],
+  blindspot: ['ArrowRight'],
+  aeb: ['ArrowRight'],
+};
 
 // GPU rasterisation by default so fps numbers mean something (PW_GPU=0 for software).
 const gpuArgs = [

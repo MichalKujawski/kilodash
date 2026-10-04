@@ -111,6 +111,20 @@ export function Workshop({ session, profileId, onProfile }: Props) {
             Distracted driver
           </button>
           <button
+            className={`pill ${src.collision.enabled ? 'pill-on' : ''}`}
+            onClick={() => src.collision.toggle()}
+            title="Collision warning and emergency braking. Back on at every start."
+          >
+            Collision warning
+          </button>
+          <button
+            className={`pill ${src.buttons.sensorBlocked ? 'pill-on' : ''}`}
+            onClick={() => src.pressButton('sensorBlocked')}
+            title="Cover the front radar (dirt, snow)"
+          >
+            Sensor blocked
+          </button>
+          <button
             className={`pill ${src.sim.driveModes.rememberLast ? 'pill-on' : ''}`}
             onClick={() => src.sim.driveModes.toggleRememberLast()}
             title="Off: every start begins in Normal, as most cars do"

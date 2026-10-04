@@ -20,6 +20,8 @@ describe('Demo drive over the whole route', () => {
     let maxKmh = 0;
     let accS = 0;
     let agreeS = 0;
+    const fcw: Record<string, number> = {};
+    let lastStage = 'ready';
     let drivingS = 0;
     let takeovers = 0;
     let wasTakeover = false;
@@ -33,6 +35,9 @@ describe('Demo drive over the whole route', () => {
       const kmh = sim.speedKmh;
       maxKmh = Math.max(maxKmh, kmh);
       if (src.assist.controlling) accS += 0.1;
+      const stage = src.collision.stage;
+      if (stage !== lastStage) fcw[stage] = (fcw[stage] ?? 0) + 1;
+      lastStage = stage;
       if (kmh > 5) {
         drivingS += 0.1;
         if (src.recognized.limit === sc.legal.limit) agreeS += 0.1;
@@ -65,6 +70,7 @@ describe('Demo drive over the whole route', () => {
       maxKmh: maxKmh.toFixed(0),
       accS: accS.toFixed(0),
       recognitionAgreement: (agreeS / drivingS).toFixed(3),
+      fcw: JSON.stringify(fcw),
       takeovers,
       redRun,
       reversed,
@@ -79,6 +85,8 @@ describe('Demo drive over the whole route', () => {
     expect(accS).toBeGreaterThan(120);
     // Sign recognition is mostly right, but not always (missed and roadworks signs).
     expect(agreeS / drivingS).toBeGreaterThan(0.85);
+    // An attentive driver never needs emergency braking.
+    expect(fcw.braking ?? 0).toBe(0);
     expect(minGap).toBeGreaterThan(1.5);
     expect(overLimitS).toBeLessThan(20);
     expect(maxKmh).toBeGreaterThan(120);

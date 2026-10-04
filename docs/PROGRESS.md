@@ -24,8 +24,8 @@ _Last updated: 2026-10-04_
 | 5    | ACC, cruise, limiter                                                                                 | done  |
 | 6    | Speed-limit recognition / ISA                                                                        | done  |
 | 7    | Lane keeping/centering, hands-off staging, Driver Assistance view                                    | done  |
-| 8    | Collision warning/AEB, blind spot, rear cross traffic                                                | next  |
-| 9    | Start-stop, Auto Hold, gear recommendation, shift lights, diesel DPF/AdBlue                          |       |
+| 8    | Collision warning/AEB, blind spot, rear cross traffic                                                | done  |
+| 9    | Start-stop, Auto Hold, gear recommendation, shift lights, diesel DPF/AdBlue                          | next  |
 | 10   | Warnings catalogue, seatbelt escalation, TPMS, service                                               |       |
 | 11   | Fatigue, parking sensors + camera, auto high beam, lights/body/wipers                                |       |
 | 12   | Views (Classic, Navigation, Reduced, Driver Assistance, Sport, Auto view)                            |       |
@@ -117,6 +117,16 @@ _Last updated: 2026-10-04_
 - Workshop: "Distracted driver" toggle.
 - New poses: `lanes`, `departure`, `handsoff`. The screenshot script presses → for them to show the
   assist page.
+
+## Notes from step 8
+
+- `core/assist/CollisionAssist.ts`: FCW/AEB stages (distance → pre-warning → acute jolt → partial and
+  full braking → hold), blind spot, rear cross traffic. Docs: `docs/features/collision-assist.md`.
+- The distracted Demo driver glances at the road 0.6 s every 2.5 s, so warnings happen for real.
+- A car crosses the car-park aisle as we reverse out of the bay, which triggers RCTA in every loop.
+- `SimulatorSource.paused` freezes the simulation while the cluster keeps drawing. Review poses of
+  short events use it (`departure`, `blindspot`, `aeb`).
+- Workshop: "Collision warning", "Sensor blocked".
 
 ## Known issues / open questions
 

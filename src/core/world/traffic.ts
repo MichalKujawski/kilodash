@@ -117,6 +117,20 @@ export class Traffic {
     }
   }
 
+  /** A car placed at s in a lane at speed v (review poses). */
+  spawnAt(s: number, lane: number, v: number, kind: VehicleKind = 'car'): Vehicle {
+    const veh = this.spawn(s, lane, false, kind);
+    veh.v = v;
+    veh.cap = { v, until: s + 2000 };
+    return veh;
+  }
+
+  /** A car coming along the car-park aisle towards our parking space (cross traffic). */
+  spawnCrossing(s: number): void {
+    const veh = this.spawn(s, 0, true, 'car');
+    veh.v = 12 / 3.6;
+  }
+
   private spawn(s: number, lane: number, oncoming: boolean, kind?: VehicleKind): Vehicle {
     const r = this.rng();
     const k: VehicleKind = kind ?? (r < 0.12 ? 'truck' : r < 0.25 ? 'van' : 'car');

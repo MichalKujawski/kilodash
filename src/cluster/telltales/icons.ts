@@ -49,7 +49,12 @@ export type IconId =
   | 'acc'
   | 'limiter'
   | 'steering'
-  | 'assisted';
+  | 'assisted'
+  | 'collision'
+  | 'collisionOff'
+  | 'distance'
+  | 'blindSpot'
+  | 'crossTraffic';
 
 const lamp = 'M13.5 5.5C18.5 5.5 21 8.5 21 12s-2.5 6.5-7.5 6.5z';
 
@@ -280,6 +285,32 @@ export const ICONS: Record<IconId, IconPart[]> = {
     { kind: 'stroke', d: 'M2.5 21 6 3M21.5 21 18 3', width: 1.6 },
     { kind: 'stroke', d: 'M12 6.5a5.5 5.5 0 1 0 0 11a5.5 5.5 0 1 0 0-11z', width: 1.6 },
     { kind: 'stroke', d: 'M6.8 11.5h3.4l1 1.4h1.6l1-1.4h3.4M12 12.9v4.4', width: 1.4 },
+  ],
+  // Collision warning: car from behind with impact marks above.
+  collision: [
+    { kind: 'fill', d: 'M6.5 13.5 8.3 9h7.4l1.8 4.5v5h-2v-1.5h-7v1.5h-2z' },
+    { kind: 'stroke', d: 'M12 2.5v3.2M7.2 4l1.4 2.4M16.8 4l-1.4 2.4', width: 1.8 },
+  ],
+  collisionOff: [
+    { kind: 'fill', d: 'M3.5 13.5 5.3 9h7.4l1.8 4.5v5h-2v-1.5h-7v1.5h-2z' },
+    { kind: 'stroke', d: 'M9 2.5v3.2M4.2 4l1.4 2.4M13.8 4l-1.4 2.4', width: 1.6 },
+    { kind: 'text', text: 'OFF', x: 19, y: 23, size: 7, weight: 700 },
+  ],
+  // Distance warning: two cars one behind the other with a short gap.
+  distance: [
+    { kind: 'fill', d: 'M8.5 5.5 9.4 3h5.2l.9 2.5v3h-1.4v-1h-4.4v1H8.5z' },
+    { kind: 'fill', d: 'M6.5 13.5 8.3 9h7.4l1.8 4.5v5h-2v-1.5h-7v1.5h-2z' },
+    { kind: 'stroke', d: 'M4 11h1.5M18.5 11H20', width: 1.4 },
+  ],
+  // Blind spot: car with waves to the side.
+  blindSpot: [
+    { kind: 'fill', d: 'M9 6.5h6l1 2v10h-8v-10z' },
+    { kind: 'stroke', d: 'M18.5 9a5 5 0 0 1 0 7M21 7a8 8 0 0 1 0 11', width: 1.5 },
+  ],
+  // Rear cross traffic: car seen from above with arrows crossing behind it.
+  crossTraffic: [
+    { kind: 'fill', d: 'M9 2.5h6l1 2v9H8v-9z' },
+    { kind: 'stroke', d: 'M3 18h18M6 15.5 3 18l3 2.5M18 15.5l3 2.5-3 2.5', width: 1.6 },
   ],
   // Speed limiter: speedometer arc with a stop bar at the top.
   limiter: [

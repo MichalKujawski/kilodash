@@ -54,6 +54,8 @@ export class World {
   private lights: Feature[];
   private recentSigns: { sign: Sign; t: number }[] = [];
   private gust: SmoothNoise;
+  /** The car-park cross-traffic car has been sent (once per departure). */
+  private crossingSent = false;
 
   constructor(options: { seed?: number; env?: Partial<EnvironmentSettings> } = {}) {
     this.route = new Route(DEMO_ROUTE);
@@ -100,6 +102,7 @@ export class World {
       latV: 0,
     };
     this.recentSigns = [];
+    this.crossingSent = false;
     this.traffic.populate(this.egoState());
   }
 
@@ -151,6 +154,11 @@ export class World {
     this.time += dt;
     const e = this.ego;
     this.stepLateral(dt, speed, steer);
+    // As we start reversing out of the bay, a car comes along the aisle.
+    if (e.inBay && direction === -1 && speed > 0.3 && !this.crossingSent) {
+      this.crossingSent = true;
+      this.traffic.spawnCrossing(24);
+    }
     e.v = speed;
     e.direction = direction;
     const before = e.s;
@@ -280,6 +288,7 @@ export class World {
         dx: e.inBay ? dx + 50 : dx,
         laneOffset: v.oncoming ? 1 : v.lane - e.lane,
         v: v.v,
+        a: v.a,
         braking: v.a < -1,
         oncoming: v.oncoming,
         length: v.length,
@@ -327,6 +336,12 @@ export class World {
       trafficLight: light ? { distance: light.s - e.s, state: lightState(light, this.time) } : null,
       obstacleAhead,
       obstacleBehind: null,
+      crossTraffic:
+        e.inBay && e.direction === -1
+          ? this.traffic.vehicles
+              .filter((v) => v.oncoming && v.s > 0 && v.s < 50)
+              .map((v) => ({ distance: Math.max(0, v.s - 2), speed: v.v }))
+          : [],
       nav: this.nav.state(e.s),
       env: {
         hour: this.env.hour,

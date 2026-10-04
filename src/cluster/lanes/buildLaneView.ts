@@ -54,6 +54,8 @@ export function buildLaneView(f: FrameContext): LaneViewModel | null {
   const curvature: number[] = [];
   for (let d = 0; d <= VIEW_RANGE; d += STEP) curvature.push(sc.route.curvatureAt(sc.ego.s + d));
   const accTarget = st.value(S.AccTargetDistance, -1) >= 0 ? sc.lead?.id : undefined;
+  const fcw = st.value(S.FcwState);
+  const warning = fcw >= 3 && fcw <= 6;
   const objects: LaneObject[] = sc.objects
     .filter((o) => o.dx > -12 && o.dx < VIEW_RANGE)
     .map((o) => ({
@@ -65,6 +67,7 @@ export function buildLaneView(f: FrameContext): LaneViewModel | null {
       braking: o.braking,
       oncoming: o.oncoming,
       target: o.id === accTarget,
+      danger: warning && o.id === sc.lead?.id,
     }));
   return {
     lines,
@@ -76,6 +79,7 @@ export function buildLaneView(f: FrameContext): LaneViewModel | null {
     objects,
     assisted: st.value(S.AssistedDriving) > 0,
     laneCentre: (egoLane - near) * W,
+    blindSpot: { left: st.value(S.BlindSpotLeft), right: st.value(S.BlindSpotRight) },
     laneChange: Math.abs(egoLane - Math.round(egoLane)) > 0.02,
   };
 }

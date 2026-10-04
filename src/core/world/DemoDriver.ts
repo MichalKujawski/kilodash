@@ -34,6 +34,10 @@ export class DemoDriver {
   private t = 0;
   private pedals = new PedalController();
   private assist: SpeedAssist | null = null;
+  /** Workshop "distracted driver": looks at the phone, glances at the road now and then. */
+  distracted = false;
+  private glanceT = 0;
+  private seenLead: { dx: number; v: number; t: number } | null = null;
   /** Seconds since the last button press on the cruise pad (humans don't press instantly). */
   private accT = 0;
   private onAcc = false;
@@ -180,7 +184,8 @@ export class DemoDriver {
     if (toEnd < 90) this.phase = 'parking';
     let v0 = this.targetSpeed(world, scene);
     let a = this.idm(v, v0, null);
-    if (scene.lead) a = Math.min(a, this.idm(v, v0, scene.lead.dx, scene.lead.v));
+    const lead = this.perceivedLead(scene, v, dt);
+    if (lead) a = Math.min(a, this.idm(v, v0, lead.dx, lead.v));
     const light = scene.trafficLight;
     // Stop at red; at amber only if there's room to stop comfortably.
     if (light && light.state !== 'green') {
@@ -208,6 +213,33 @@ export class DemoDriver {
       this.pedals.out.throttle = this.pedals.out.brake = 0;
     } else this.pedalsFor(sim, v0, a, dt);
     this.signalAndLanes(sim, world, scene, v0, dt);
+  }
+
+  /**
+   * What the driver believes about the car ahead. Attentive: what is there.
+   * Distracted: looks up for 0.6 s every 2.5 s; in between assumes the car
+   * ahead kept its speed, so a sudden brake goes unnoticed until the next glance.
+   */
+  private perceivedLead(
+    scene: SceneSnapshot,
+    v: number,
+    dt: number,
+  ): { dx: number; v: number } | null {
+    const lead = scene.lead;
+    if (!this.distracted) {
+      this.seenLead = lead ? { dx: lead.dx, v: lead.v, t: 0 } : null;
+      return lead;
+    }
+    this.glanceT = (this.glanceT + dt) % 2.5;
+    if (this.glanceT < 0.6) {
+      this.seenLead = lead ? { dx: lead.dx, v: lead.v, t: 0 } : null;
+      return lead;
+    }
+    const seen = this.seenLead;
+    if (!seen) return null;
+    seen.t += dt;
+    seen.dx += (seen.v - v) * dt;
+    return { dx: seen.dx, v: seen.v };
   }
 
   /**

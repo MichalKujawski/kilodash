@@ -10,6 +10,14 @@ import {
   type RecognizedLimit,
 } from '../../assist/SpeedLimitRecognition';
 import { createRng, SmoothNoise } from '../../math';
+import {
+  BLIND_SPOT_STATES,
+  BlindSpot,
+  CollisionAssist,
+  CROSS_TRAFFIC_STATES,
+  CrossTraffic,
+  FCW_STAGES,
+} from '../../assist/CollisionAssist';
 import { driverSteer, LaneAssist, LANE_ASSIST_STATES, LINE_STATES } from '../../assist/LaneAssist';
 import { consumerFuelLh, ecoTip, type EfficiencyState } from '../../drive/efficiency';
 import { DRIVE_MODE_ORDER } from '../../drive/modes';
@@ -59,6 +67,8 @@ export interface CarButtons {
   handsOn: boolean;
   /** Workshop: the driver looks at their phone (weak, late steering and braking). */
   distracted: boolean;
+  /** Workshop: radar/camera covered (dirt, snow). */
+  sensorBlocked: boolean;
   volume: number;
 }
 
@@ -114,6 +124,10 @@ export class SimulatorSource implements DataSource {
   readonly isa = new IsaWarning();
   /** Lane keeping / centering with hands-off staging. */
   readonly lane = new LaneAssist();
+  /** Collision warning + emergency braking, blind spot, rear cross traffic. */
+  readonly collision = new CollisionAssist();
+  readonly blindSpot = new BlindSpot();
+  readonly crossTraffic = new CrossTraffic();
   private wander: SmoothNoise;
   /** The limit the car believes applies (what the cluster shows). */
   recognized: RecognizedLimit = {
@@ -128,6 +142,8 @@ export class SimulatorSource implements DataSource {
   private lastIgnition = 2;
   /** Demo drive enabled (resumes after inactivity). */
   autopilot = true;
+  /** Freeze the simulation (review poses of short events); the cluster keeps drawing. */
+  paused = false;
   readonly buttons: CarButtons = {
     laneAssist: true,
     startStopOff: false,
@@ -136,6 +152,7 @@ export class SimulatorSource implements DataSource {
     parkAssist: false,
     handsOn: true,
     distracted: false,
+    sensorBlocked: false,
     volume: 0.6,
   };
 
@@ -443,7 +460,14 @@ export class SimulatorSource implements DataSource {
   }
 
   pressButton(
-    b: 'laneAssist' | 'startStopOff' | 'autoHold' | 'parkAssist' | 'handsOn' | 'distracted',
+    b:
+      | 'laneAssist'
+      | 'startStopOff'
+      | 'autoHold'
+      | 'parkAssist'
+      | 'handsOn'
+      | 'distracted'
+      | 'sensorBlocked',
   ): void {
     this.buttons[b] = !this.buttons[b];
     if (b === 'laneAssist') this.lane.toggle();
@@ -496,6 +520,11 @@ export class SimulatorSource implements DataSource {
   tick(now = this.clock()): void {
     const elapsed = Math.min((now - this.lastTick) / 1000, MAX_STEPS_PER_TICK * STEP_S);
     this.lastTick = now;
+    if (this.paused) {
+      // Frozen moment (screenshots of short events): keep publishing so nothing goes stale.
+      this.emit(now, true);
+      return;
+    }
     this.accumulator += elapsed;
     while (this.accumulator >= STEP_S) {
       this.accumulator -= STEP_S;
@@ -527,6 +556,7 @@ export class SimulatorSource implements DataSource {
     const auto = this.isAutopilotActive;
     if (auto) {
       if (!this.wasAutopilot) this.demo.resume(sim);
+      this.demo.distracted = this.buttons.distracted;
       this.demo.update(sim, world, scene, STEP_S, this.assist);
     } else {
       sim.inputs.throttle = this.manual.throttle;
@@ -538,11 +568,14 @@ export class SimulatorSource implements DataSource {
         world.changeLane(-1);
     }
     this.wasAutopilot = auto;
+    // The human's own pedals, before any assist adds to them.
+    const human = { throttle: sim.inputs.throttle, brake: sim.inputs.brake };
     this.recognize(scene);
     this.applyAssist(scene);
     sim.inputs.curvature = world.curvature();
     sim.inputs.gradient = world.gradient() * sim.state.direction;
     const steer = this.applyLane(scene);
+    this.applyCollision(scene, human);
     this.syncEnvironment();
     sim.step(STEP_S);
     world.step(STEP_S, sim.state.speedMs, sim.state.direction, steer);
@@ -574,6 +607,59 @@ export class SimulatorSource implements DataSource {
   }
 
   private lastMode = '';
+
+  private autoHazard = false;
+  private lastIgnitionFcw = 2;
+
+  /**
+   * Forward collision warning / emergency braking, blind-spot monitoring and
+   * rear cross-traffic. AEB overrides the pedals (and cancels ACC); after an
+   * emergency stop from speed the hazards come on until the car drives off.
+   */
+  private applyCollision(scene: SceneSnapshot, human: { throttle: number; brake: number }): void {
+    const sim = this.sim;
+    const st = sim.state;
+    if (this.lastIgnitionFcw < 2 && st.ignition >= 2) this.collision.onIgnition();
+    this.lastIgnitionFcw = st.ignition;
+    const forward = st.direction === 1 && st.selector === 'D';
+    const lead = scene.lead;
+    const out = this.collision.step({
+      speedKmh: forward ? sim.speedKmh : 0,
+      lead: lead ? { gap: lead.dx, speed: lead.v, accel: lead.a } : null,
+      driverBrake: human.brake,
+      driverThrottle: human.throttle,
+      blocked: this.buttons.sensorBlocked,
+      dt: STEP_S,
+    });
+    if (out.brake !== null) {
+      sim.inputs.brake = Math.max(sim.inputs.brake, out.brake);
+      if (this.collision.stage === 'braking' || this.collision.stage === 'hold') {
+        sim.inputs.throttle = 0;
+        this.assist.cancel();
+      }
+    }
+    if (out.hazards && !this.autoHazard) {
+      this.autoHazard = true;
+      sim.body.hazard = true;
+    }
+    this.collision.clearHazards(sim.speedKmh);
+    if (this.autoHazard && !out.hazards) {
+      this.autoHazard = false;
+      sim.body.hazard = false;
+    }
+    const left = sim.indicating('left');
+    const right = sim.indicating('right');
+    this.blindSpot.step(
+      forward ? sim.speedKmh : 0,
+      scene.objects,
+      left ? 'left' : right ? 'right' : null,
+    );
+    const rearBrake = this.crossTraffic.step(st.direction === -1, sim.speedKmh, scene.crossTraffic);
+    if (rearBrake !== null) {
+      sim.inputs.throttle = 0;
+      sim.inputs.brake = Math.max(sim.inputs.brake, rearBrake);
+    }
+  }
 
   /** Lane markings the camera can see on each side of our lane. */
   private laneLines(scene: SceneSnapshot): { left: boolean; right: boolean } {
@@ -754,6 +840,10 @@ export class SimulatorSource implements DataSource {
     put(S.HandsOffStage, lo.handsOffStage);
     put(S.AssistedDriving, flag(lo.assisted));
     put(S.LaneOffset, this.lastScene?.ego.lateral ?? 0);
+    put(S.FcwState, FCW_STAGES.indexOf(this.collision.stage));
+    put(S.BlindSpotLeft, BLIND_SPOT_STATES.indexOf(this.blindSpot.left));
+    put(S.BlindSpotRight, BLIND_SPOT_STATES.indexOf(this.blindSpot.right));
+    put(S.CrossTraffic, CROSS_TRAFFIC_STATES.indexOf(this.crossTraffic.state));
     put(S.ABSActive, flag(st.abs));
     const as = this.assist;
     put(S.CruiseActive, flag(as.engaged));

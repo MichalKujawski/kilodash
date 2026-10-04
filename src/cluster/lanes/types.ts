@@ -25,6 +25,8 @@ export interface LaneObject {
   oncoming: boolean;
   /** ACC is following this car. */
   target: boolean;
+  /** Collision warning for this car (red). */
+  danger: boolean;
 }
 
 /**
@@ -48,6 +50,8 @@ export interface LaneViewModel {
   assisted: boolean;
   /** Centre of the lane we're in (or moving into), m right of our lane centre. */
   laneCentre: number;
+  /** Blind-spot zones: 0 clear, 1 occupied (amber), 2 warning (flashing). */
+  blindSpot: { left: number; right: number };
   /** Ego car outline colour state. */
   laneChange: boolean;
 }

@@ -383,6 +383,20 @@ export class ClusterRenderer {
   }
 
   private markT = 0;
+  private shakeT = 0;
+  private lastFcw = 0;
+
+  /** Content offset for the acute-warning jolt: a 0.4 s decaying shake, px. */
+  private shake(dt: number): [number, number] {
+    const fcw = this.store.value(S.FcwState);
+    if (fcw === 4 && this.lastFcw !== 4) this.shakeT = 0.4;
+    this.lastFcw = fcw;
+    if (this.shakeT <= 0) return [0, 0];
+    this.shakeT -= dt;
+    const k = Math.max(0, this.shakeT / 0.4) * 5;
+    const t = this.shakeT * 70;
+    return [Math.sin(t) * k, Math.cos(t * 1.3) * k * 0.6];
+  }
   private modeTint = { color: '', k: 0 };
 
   /**
@@ -417,6 +431,10 @@ export class ClusterRenderer {
     // Light themes hand over to their night variant when it gets dark.
     this.applyTheme(this.effectiveTheme(), true);
     if (this.staticDirty) this.renderStatic();
+    // Acute collision warning: the picture jolts briefly (the glass and mask stay put).
+    const [sx, sy] = this.shake(dt);
+    const ox = this.offsetX + sx * this.scale;
+    const oy = this.offsetY + sy * this.scale;
 
     const ctx = this.ctx;
     const theme = this.theme;
@@ -428,13 +446,13 @@ export class ClusterRenderer {
     if (this.backdrop.isAnimated(theme)) {
       // Animated backdrop sits under the static layer, which is then drawn with
       // its background cut away (see renderStatic).
-      ctx.setTransform(this.scale, 0, 0, this.scale, this.offsetX, this.offsetY);
+      ctx.setTransform(this.scale, 0, 0, this.scale, ox, oy);
       paintStaticBackdrop(ctx, theme);
       this.backdrop.draw(ctx, theme, dt, this.store.value(S.Speed), this.decorativeMotion);
       ctx.setTransform(1, 0, 0, 1, 0, 0);
     }
-    ctx.drawImage(this.staticLayer[0], this.offsetX, this.offsetY);
-    ctx.setTransform(this.scale, 0, 0, this.scale, this.offsetX, this.offsetY);
+    ctx.drawImage(this.staticLayer[0], ox, oy);
+    ctx.setTransform(this.scale, 0, 0, this.scale, ox, oy);
 
     // Ambient glow breathes gently while parked; paused while driving.
     const idle = this.store.value(S.Speed) < 1 && this.decorativeMotion;
@@ -516,7 +534,7 @@ export class ClusterRenderer {
       bctx.filter = 'none';
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = theme.effects.bloom;
-      ctx.drawImage(bc, this.offsetX, this.offsetY, W * this.scale, H * this.scale);
+      ctx.drawImage(bc, ox, oy, W * this.scale, H * this.scale);
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = 'source-over';
     }

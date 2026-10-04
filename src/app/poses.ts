@@ -17,6 +17,8 @@ export const POSES = [
   'lanes',
   'departure',
   'handsoff',
+  'blindspot',
+  'aeb',
 ] as const;
 export type Pose = (typeof POSES)[number];
 
@@ -122,7 +124,8 @@ export function applyPose(session: ClusterSession, pose: Pose): void {
       session.fastForward(15);
       const lo = src.lane.out;
       for (let i = 0; i < 600 && lo.left !== 'departure' && lo.right !== 'departure'; i++)
-        session.fastForward(0.1);
+        session.fastForward(0.05);
+      src.paused = true;
       break;
     }
     case 'handsoff':
@@ -132,6 +135,34 @@ export function applyPose(session: ClusterSession, pose: Pose): void {
       src.pressButton('handsOn');
       session.fastForward(27);
       break;
+    case 'blindspot': {
+      // A car alongside on the left while we indicate left: zone flashes, chime.
+      src.jumpTo('motorway');
+      session.fastForward(30);
+      src.setAutopilot(false);
+      const w = src.world;
+      w.traffic.spawnAt(w.ego.s - 2, w.ego.lane + 1, src.sim.state.speedMs);
+      src.setIndicator('left');
+      session.fastForward(0.5);
+      src.paused = true;
+      break;
+    }
+    case 'aeb': {
+      // Distracted, no ACC, towards the end of the roadworks queue: emergency braking.
+      src.pressButton('distracted');
+      src.jumpTo('roadworks');
+      session.fastForward(4);
+      src.assist.switchOff();
+      src.setAutopilot(false);
+      src.setManualInput({ throttle: 0.35 });
+      for (let i = 0; i < 1200 && src.collision.stage !== 'braking'; i++) {
+        if (src.assist.state !== 'off') src.assist.switchOff();
+        session.fastForward(0.05);
+      }
+      session.fastForward(0.3);
+      src.paused = true;
+      break;
+    }
     case 'redline': {
       src.jumpTo('motorway');
       src.setAutopilot(false);
