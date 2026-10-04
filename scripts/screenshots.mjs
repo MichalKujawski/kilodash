@@ -33,6 +33,8 @@ const poses = only.length
       'door',
       'service',
       'messages',
+      'reverse',
+      'parking',
     ];
 const keys = (process.env.KEYS ?? '').split(',').filter(Boolean);
 // Poses that show a carousel page other than the map.

@@ -47,7 +47,8 @@ export type FaultKind =
   | 'washerFluid'
   | 'brakePads'
   | 'bulb'
-  | 'keyBattery';
+  | 'keyBattery'
+  | 'parkSensor';
 
 export const FAULTS: FaultKind[] = [
   'overheat',
@@ -68,6 +69,7 @@ export const FAULTS: FaultKind[] = [
   'brakePads',
   'bulb',
   'keyBattery',
+  'parkSensor',
 ];
 
 /** 0 OFF, 1 ACC, 2 ON, 3 START (cranking), matching VSS LowVoltageSystemState order. */
@@ -92,6 +94,8 @@ export interface BodyState {
   /** Stalk pulled (headlight flash, momentary). */
   highBeamFlash: boolean;
   autoHighBeam: boolean;
+  /** Auto high beam has switched the high beam on (set by the camera logic). */
+  autoHighBeamOn: boolean;
   /** Front fog lights. */
   fog: boolean;
   fogRear: boolean;
@@ -301,6 +305,7 @@ export class VehicleSimulator {
       highBeamLatched: false,
       highBeamFlash: false,
       autoHighBeam: false,
+      autoHighBeamOn: false,
       fog: false,
       fogRear: false,
       hazard: false,
@@ -519,7 +524,8 @@ export class VehicleSimulator {
     const p = this.profile;
     s.timeS += dt;
     s.ambientC = this.env.ambientC;
-    s.lightIntensity += (this.env.lightIntensity - s.lightIntensity) * approach(dt, 3);
+    // The light sensor reacts within about a second (tunnels).
+    s.lightIntensity += (this.env.lightIntensity - s.lightIntensity) * approach(dt, 0.6);
 
     this.updateIgnition(dt);
     if (this.lastIgnition < 2 && s.ignition >= 2) this.driveModes.onIgnition();
@@ -721,7 +727,9 @@ export class VehicleSimulator {
     const dark = s.lightIntensity < 40;
     b.lowBeam = on && (b.lightSwitch === 'low' || (b.lightSwitch === 'auto' && (dark || wiping)));
     b.parkingLights = b.lightSwitch === 'parking' || b.lowBeam;
-    b.highBeam = (b.highBeamLatched && b.lowBeam) || (b.highBeamFlash && on);
+    b.highBeam =
+      ((b.highBeamLatched || (b.autoHighBeam && b.autoHighBeamOn)) && b.lowBeam) ||
+      (b.highBeamFlash && on);
     if (!b.parkingLights) b.fog = false;
     if (!b.lowBeam && !b.fog) b.fogRear = false;
     if (this.comfort) {

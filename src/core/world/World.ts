@@ -1,3 +1,4 @@
+import type { ParkDistances } from '../body/ParkAssist';
 import { createRng, SmoothNoise } from '../math';
 import { Environment, type EnvironmentSettings } from './environment';
 import { Navigation } from './navigation';
@@ -262,6 +263,58 @@ export class World {
     };
   }
 
+  /**
+   * Ultrasonic park-sensor view: cars parked beside us and the kerb ahead in
+   * the starting bay, the wall and neighbours in the destination bay, a car
+   * crossing behind, and close traffic in front/behind at walking pace.
+   */
+  private parkDistances(objects: SceneObject[]): ParkDistances {
+    const e = this.ego;
+    const d: ParkDistances = {
+      front: [null, null, null],
+      rear: [null, null, null],
+      left: null,
+      right: null,
+    };
+    const set = (arr: (number | null)[], k: number, v: number): void => {
+      if (v < 2.5 && (arr[k] === null || v < arr[k]!)) arr[k] = Math.max(0.05, v);
+    };
+    if (e.inBay) {
+      // Parked cars on both sides while we're between them, the kerb ahead.
+      if (e.bayPos > 2) {
+        d.left = 0.55;
+        d.right = 0.62;
+      }
+      const kerb = this.bayLength + 0.6 - e.bayPos;
+      set(d.front, 1, kerb);
+      set(d.front, 0, kerb + 0.15);
+      set(d.front, 2, kerb + 0.15);
+      // A car on the aisle passing behind us.
+      for (const v of this.traffic.vehicles) {
+        if (!v.oncoming || Math.abs(v.s) > 6) continue;
+        const gap = 0.9 + (this.bayLength - e.bayPos) * 0.1 + Math.abs(v.s) * 0.35;
+        set(d.rear, 1, gap);
+        set(d.rear, v.s > 0 ? 2 : 0, gap - 0.2);
+      }
+      return d;
+    }
+    const toEnd = this.route.length - e.s;
+    if (toEnd < 14) {
+      d.left = 0.6;
+      d.right = 0.65;
+      set(d.front, 1, toEnd - 0.2);
+      set(d.front, 0, toEnd - 0.05);
+      set(d.front, 2, toEnd - 0.05);
+    }
+    // Close traffic at walking pace (queues, junctions).
+    for (const o of objects) {
+      if (o.oncoming || Math.abs(o.laneOffset) > 0.5) continue;
+      if (o.dx >= 0) set(d.front, 1, o.dx);
+      else set(d.rear, 1, -(o.dx + o.length) - EGO_LENGTH);
+    }
+    return d;
+  }
+
   /** Distance of a lane's centre to the right of the road centre line, m. */
   laneOffset(s: number, lane: number): number {
     const kind = this.route.kindAt(s);
@@ -336,6 +389,7 @@ export class World {
       trafficLight: light ? { distance: light.s - e.s, state: lightState(light, this.time) } : null,
       obstacleAhead,
       obstacleBehind: null,
+      park: this.parkDistances(objects),
       crossTraffic:
         e.inBay && e.direction === -1
           ? this.traffic.vehicles

@@ -116,6 +116,18 @@ export const TELLTALES: TelltaleDefinition[] = [
   { id: 'tcs', icon: 'tcs', color: 'caution', when: on(S.TCSActive), blink: 'warning' },
   { id: 'escOff', icon: 'escOff', color: 'caution', when: is(S.ESCMode, '>', 0) },
   { id: 'autoHold', icon: 'autoHold', color: 'info', when: is(S.AutoHoldState, '==', 2) },
+  {
+    id: 'autoHighBeam',
+    icon: 'autoHighBeam',
+    color: 'info',
+    when: { all: [on(S.AutoHighBeamArmed), { not: on(S.HighBeam) }] },
+  },
+  {
+    id: 'wiperAuto',
+    icon: 'wiperAuto',
+    color: 'info',
+    when: { all: [is(S.Wipers, '==', 1), on(S.LowBeam)] },
+  },
   { id: 'dpf', icon: 'dpf', color: 'caution', when: is(S.DpfLoad, '>=', 80) },
   {
     id: 'def',

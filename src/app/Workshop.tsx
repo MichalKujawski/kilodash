@@ -23,6 +23,7 @@ const FAULT_LABELS: Record<FaultKind, string> = {
   brakePads: 'Brake pads',
   bulb: 'Bulb',
   keyBattery: 'Key battery',
+  parkSensor: 'Park sensor dirty',
 };
 
 const NEXT_SEAT = { empty: 'belted', belted: 'unbelted', unbelted: 'empty' } as const;
@@ -160,6 +161,13 @@ export function Workshop({ session, profileId, onProfile }: Props) {
             title="The driver looks at their phone: weak, late steering"
           >
             Distracted driver
+          </button>
+          <button
+            className={`pill ${src.buttons.tired ? 'pill-on' : ''}`}
+            onClick={() => src.pressButton('tired')}
+            title="Micro-sleeps every minute; fatigue detection warns after 15 min above 65 km/h"
+          >
+            Tired driver
           </button>
           <button
             className={`pill ${src.collision.enabled ? 'pill-on' : ''}`}

@@ -27,8 +27,8 @@ _Last updated: 2026-10-04_
 | 8    | Collision warning/AEB, blind spot, rear cross traffic                                                | done  |
 | 9    | Start-stop, Auto Hold, gear recommendation, shift lights, diesel DPF/AdBlue                          | done  |
 | 10   | Warnings catalogue, seatbelt escalation, TPMS, service                                               | done  |
-| 11   | Fatigue, parking sensors + camera, auto high beam, lights/body/wipers                                | next  |
-| 12   | Views (Classic, Navigation, Reduced, Driver Assistance, Sport, Auto view)                            |       |
+| 11   | Fatigue, parking sensors + camera, auto high beam, lights/body/wipers                                | done  |
+| 12   | Views (Classic, Navigation, Reduced, Driver Assistance, Sport, Auto view)                            | next  |
 
 ## Done earlier
 

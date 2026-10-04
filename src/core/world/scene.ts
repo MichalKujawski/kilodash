@@ -1,4 +1,5 @@
 import type { DriveModeState } from '../drive/DriveModeController';
+import type { ParkDistances } from '../body/ParkAssist';
 import type { EfficiencyState } from '../drive/efficiency';
 import type { LegalLimit, Route } from './route';
 import type { Weather, Surface } from './environment';
@@ -74,6 +75,8 @@ export interface SceneSnapshot {
   };
   /** Driving-mode list / Individual screen state (the car's own UI data). */
   driveModes?: DriveModeState;
+  /** What the ultrasonic park sensors would measure. */
+  park: ParkDistances;
   /** Reversing out of a parking space: cars on the aisle heading for our path. */
   crossTraffic: { distance: number; speed: number }[];
   efficiency?: EfficiencyState;

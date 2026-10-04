@@ -19,6 +19,8 @@ import {
   FCW_STAGES,
 } from '../../assist/CollisionAssist';
 import { IndirectTpms, SEAT_STATES, SeatbeltReminder, ServiceInterval } from '../../body/monitors';
+import { AutoHighBeam, FatigueMonitor } from '../../body/lights';
+import { ParkAssist } from '../../body/ParkAssist';
 import { ExhaustFluid, ParticulateFilter } from '../../drive/Diesel';
 import {
   AUTO_HOLD_STATES,
@@ -81,6 +83,8 @@ export interface CarButtons {
   distracted: boolean;
   /** Workshop: radar/camera covered (dirt, snow). */
   sensorBlocked: boolean;
+  /** Workshop: the driver is tired (micro-sleeps, then sharp corrections). */
+  tired: boolean;
   volume: number;
 }
 
@@ -150,6 +154,11 @@ export class SimulatorSource implements DataSource {
   readonly belts = new SeatbeltReminder();
   readonly tpmsIndirect = new IndirectTpms();
   readonly service: ServiceInterval;
+  /** Park distance control, auto high beam, fatigue detection. */
+  readonly park = new ParkAssist();
+  readonly highBeam = new AutoHighBeam();
+  readonly fatigue = new FatigueMonitor();
+  private sleepT = 0;
   private lastOdo = 0;
   private wander: SmoothNoise;
   /** The limit the car believes applies (what the cluster shows). */
@@ -176,6 +185,7 @@ export class SimulatorSource implements DataSource {
     handsOn: true,
     distracted: false,
     sensorBlocked: false,
+    tired: false,
     volume: 0.6,
   };
 
@@ -532,8 +542,14 @@ export class SimulatorSource implements DataSource {
       | 'parkAssist'
       | 'handsOn'
       | 'distracted'
-      | 'sensorBlocked',
+      | 'sensorBlocked'
+      | 'tired',
   ): void {
+    if (b === 'parkAssist') {
+      this.park.toggle(this.sim.speedKmh);
+      this.buttons.parkAssist = this.park.active;
+      return;
+    }
     this.buttons[b] = !this.buttons[b];
     if (b === 'laneAssist') this.lane.toggle();
   }
@@ -729,6 +745,42 @@ export class SimulatorSource implements DataSource {
         this.startStop.manualRestart();
     }
 
+    // Park distance control.
+    this.park.step({
+      reverse: st.selector === 'R',
+      speedKmh: sim.speedKmh,
+      distances: this.lastScene?.park ?? {
+        front: [null, null, null],
+        rear: [null, null, null],
+        left: null,
+        right: null,
+      },
+      fault: sim.faults.has('parkSensor'),
+    });
+    this.buttons.parkAssist = this.park.active;
+    // Auto high beam from the front camera's view of other lights.
+    const sc = this.lastScene;
+    if (sc) {
+      const oncoming = sc.objects.filter((o) => o.oncoming && o.dx > 0);
+      sim.body.autoHighBeamOn = this.highBeam.step({
+        enabled: b.autoHighBeam,
+        lowBeamOn: b.lowBeam,
+        light: st.lightIntensity,
+        speedKmh: sim.speedKmh,
+        inTown: !!sc.road.town || sc.road.kind === 'urban' || sc.road.kind === 'zone30',
+        oncoming: oncoming.length ? Math.min(...oncoming.map((o) => o.dx)) : null,
+        ahead: sc.lead ? sc.lead.dx : null,
+        dt: STEP_S,
+      });
+      this.fatigue.step({
+        speedKmh: sim.speedKmh,
+        engineOn: st.ready,
+        doorOpen,
+        lat: sc.ego.lateral,
+        latV: sc.ego.lateralV,
+        dt: STEP_S,
+      });
+    }
     this.belts.step({
       ignitionOn: st.ignition >= 2,
       speedKmh: sim.speedKmh,
@@ -865,12 +917,16 @@ export class SimulatorSource implements DataSource {
         sim.body.parkingBrake = true;
       }
     }
+    // A tired driver nods off for ~2 s every minute or so, then jerks the wheel.
+    this.sleepT = this.buttons.tired ? (this.sleepT + STEP_S) % 55 : 0;
     const human = driverSteer({
       lat,
       latV,
       handsOn: this.buttons.handsOn,
       distracted: this.buttons.distracted,
       wander: this.wander.next(STEP_S),
+      asleep: this.buttons.tired && this.sleepT > 40 && this.sleepT < 43,
+      startled: this.buttons.tired && this.sleepT >= 43 && this.sleepT < 44,
     });
     return human * out.driverWeight + out.steer;
   }
@@ -1118,6 +1174,23 @@ export class SimulatorSource implements DataSource {
     put(S.BulbFailure, flag(fl.has('bulb')));
     put(S.KeyBatteryLow, flag(fl.has('keyBattery')));
     put(S.SeatbeltReminder, this.belts.stage);
+    put(S.FatigueWarning, this.fatigue.stage);
+    put(S.AutoHighBeamArmed, flag(this.highBeam.armed && b.autoHighBeam));
+    const pd = this.lastScene?.park;
+    put(S.ParkAssistState, this.park.fault && this.park.active ? 2 : this.park.active ? 1 : 0);
+    if (pd) {
+      const dist = (v: number | null): number => (v === null ? -1 : v);
+      put(S.ParkFrontLeft, dist(pd.front[0]));
+      put(S.ParkFrontCentre, dist(pd.front[1]));
+      put(S.ParkFrontRight, dist(pd.front[2]));
+      put(S.ParkRearLeft, dist(pd.rear[0]));
+      put(S.ParkRearCentre, dist(pd.rear[1]));
+      put(S.ParkRearRight, dist(pd.rear[2]));
+      put(S.ParkLeft, dist(pd.left));
+      put(S.ParkRight, dist(pd.right));
+    }
+    put(S.ParkBeep, this.park.out.beep);
+    put(S.ParkBeepFront, flag(this.park.out.front));
     put(S.BeltStatusVisible, flag(this.belts.statusVisible));
     const seat = (present: boolean, belted: boolean): number => (!present ? 0 : belted ? 1 : 2);
     put(S.BeltPassenger, seat(b.passenger.present, b.passenger.belted));

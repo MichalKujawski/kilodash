@@ -27,6 +27,8 @@ export const POSES = [
   'door',
   'service',
   'messages',
+  'reverse',
+  'parking',
 ] as const;
 export type Pose = (typeof POSES)[number];
 
@@ -257,6 +259,21 @@ export function applyPose(session: ClusterSession, pose: Pose): void {
       src.setFault('washerFluid', true);
       src.setFault('brakePads', true);
       session.fastForward(1);
+      src.paused = true;
+      break;
+    case 'reverse':
+      // Reversing out of the bay as a car comes along the aisle.
+      src.parkAtStart();
+      for (let i = 0; i < 300 && src.crossTraffic.state === 'none'; i++) session.fastForward(0.1);
+      src.paused = true;
+      break;
+    case 'parking':
+      // Creeping into the destination bay towards the wall.
+      src.world.jumpTo(src.world.route.length - 9, 0);
+      src.demo.resume(src.sim);
+      src.sim.state.speedMs = 1.5;
+      for (let i = 0; i < 100 && (src.scene().park.front[1] ?? 9) > 0.7; i++)
+        session.fastForward(0.1);
       src.paused = true;
       break;
     case 'redline': {

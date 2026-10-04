@@ -195,7 +195,8 @@ export class Carousel implements Widget {
 
     // Make room for the start-up logo and for the driving-mode list.
     const dm = f.scene?.driveModes;
-    const behind = this.recede.update(!!dm && (!!dm.popup || !!dm.config), f.dt);
+    const parking = f.store.value(S.ParkAssistState) > 0;
+    const behind = this.recede.update((!!dm && (!!dm.popup || !!dm.config)) || parking, f.dt);
     ctx.globalAlpha = (1 - f.runtime.logoAlpha) * (1 - 0.85 * behind);
     ctx.drawImage(this.buffer, x, y, w, h);
     ctx.globalAlpha = 1;

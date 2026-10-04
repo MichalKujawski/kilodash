@@ -70,7 +70,11 @@ export type IconId =
   | 'service'
   | 'message'
   | 'hood'
-  | 'coolantLevel';
+  | 'coolantLevel'
+  | 'coffee'
+  | 'autoHighBeam'
+  | 'parkAssist'
+  | 'wiperAuto';
 
 const lamp = 'M13.5 5.5C18.5 5.5 21 8.5 21 12s-2.5 6.5-7.5 6.5z';
 
@@ -439,6 +443,39 @@ export const ICONS: Record<IconId, IconPart[]> = {
   coolantLevel: [
     { kind: 'stroke', d: 'M6 4h12v11H6zM6 9h12', width: 1.6 },
     { kind: 'stroke', d: 'M4 20c1.3-.9 2.7-.9 4 0s2.7.9 4 0 2.7-.9 4 0 2.7.9 4 0', width: 1.5 },
+  ],
+  // Fatigue: a cup of coffee with steam.
+  coffee: [
+    {
+      kind: 'stroke',
+      d: 'M4.5 10h11v4.5a5 5 0 0 1-5 5h-1a5 5 0 0 1-5-5zM15.5 11.5h1.8a2.2 2.2 0 0 1 0 4.4h-2.2',
+      width: 1.7,
+    },
+    {
+      kind: 'stroke',
+      d: 'M8 3.5c-1 1.5 1 2.5 0 4M11.5 3.5c-1 1.5 1 2.5 0 4M3 21.5h15',
+      width: 1.5,
+    },
+  ],
+  // Auto high beam: headlamp with straight rays and an A.
+  autoHighBeam: [
+    { kind: 'fill', d: 'M12.5 6C17 6 19.5 8.5 19.5 12s-2.5 6-7 6z' },
+    { kind: 'stroke', d: 'M3 7h7M3 10.3h7M3 13.7h7M3 17h7', width: 1.6 },
+    { kind: 'text', text: 'A', x: 15.8, y: 15.3, size: 8, weight: 800 },
+  ],
+  // Park assist: car from above with sensor arcs at both ends.
+  parkAssist: [
+    { kind: 'stroke', d: 'M9 6.5h6v11H9z', width: 1.6 },
+    {
+      kind: 'stroke',
+      d: 'M8 4a6 6 0 0 1 8 0M7 1.8a9 9 0 0 1 10 0M8 20a6 6 0 0 0 8 0M7 22.2a9 9 0 0 0 10 0',
+      width: 1.4,
+    },
+  ],
+  // Rain-sensing wipers active: wiper arc with an A.
+  wiperAuto: [
+    { kind: 'stroke', d: 'M3 17a10 10 0 0 1 18 0M12 17 6.5 9.5', width: 1.7 },
+    { kind: 'text', text: 'A', x: 15, y: 15.5, size: 8, weight: 800 },
   ],
   // Speed limiter: speedometer arc with a stop bar at the top.
   limiter: [

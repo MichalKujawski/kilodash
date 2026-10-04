@@ -14,6 +14,8 @@ export function useClusterAudio(session: ClusterSession | null, audio: AudioEngi
     const cylinders = session.profile.engine?.cylinders ?? 4;
     const last = { indicatorLeft: false, indicatorRight: false };
     let lastIsa = 0;
+    let nextBeep = 0;
+    let toneOn = false;
     const timer = setInterval(() => {
       const now = performance.now();
       const hazard = store.value(S.Hazard) > 0;
@@ -31,6 +33,18 @@ export function useClusterAudio(session: ClusterSession | null, audio: AudioEngi
       const isa = store.value(S.IsaState);
       if (isa === 3 && lastIsa !== 3) audio.chime('info');
       lastIsa = isa;
+      // Park distance beeps: interval from the car, continuous when very close.
+      const beep = store.value(S.ParkBeep);
+      const front = store.value(S.ParkBeepFront) > 0;
+      const continuous = beep < 0;
+      if (continuous !== toneOn) {
+        audio.parkTone(continuous, front);
+        toneOn = continuous;
+      }
+      if (beep > 0 && now >= nextBeep) {
+        audio.parkBeep(front);
+        nextBeep = now + beep * 1000;
+      } else if (beep === 0) nextBeep = 0;
       audio.updateEngine(
         store.value(S.EngineSpeed),
         store.value(S.EngineLoad),

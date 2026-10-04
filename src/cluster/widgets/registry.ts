@@ -6,6 +6,7 @@ import { sideGauge } from './SideGauge';
 import { bottomStrip, topStrip } from './StatusStrip';
 import { beltStatus } from './system/BeltStatus';
 import { driveModePopup } from './system/DriveModePopup';
+import { parkView } from './system/ParkView';
 import { telltales } from './Telltales';
 
 // Factories are heterogeneous in their props; the layout data supplies matching props.
@@ -25,5 +26,6 @@ export const WIDGETS: ReadonlyMap<string, AnyFactory> = new Map(
     driveModePopup,
     shiftLights,
     beltStatus,
+    parkView,
   ].map((f) => [f.type, f as AnyFactory]),
 );

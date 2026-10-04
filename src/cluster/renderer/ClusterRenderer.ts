@@ -475,6 +475,8 @@ export class ClusterRenderer {
       ectx.setTransform(s, 0, 0, s, 0, 0);
     }
 
+    // Rear-left bulb failure: the left indicator flashes at double rate.
+    this.flasher.setFast('indicatorLeft', this.store.value(S.BulbFailure) > 0);
     const runtime = this.startup.update(this.store, dt);
     const frame: FrameContext = {
       now,

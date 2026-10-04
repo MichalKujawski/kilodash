@@ -10,16 +10,17 @@ const TOP_Y = 46;
 const BOTTOM_Y = 670;
 
 /** Telltale row, grouped like real clusters: lights & driver aids left, vehicle warnings right. */
-const LEFT_GROUP = [
-  'parkingLights',
-  'lowBeam',
-  'highBeam',
+/** Lamps that are never lit together share a place (parking/low beam, auto/high beam). */
+const LEFT_GROUP: (string | string[])[] = [
+  ['parkingLights', 'lowBeam'],
+  ['autoHighBeam', 'highBeam'],
   'fog',
   'fogRear',
   'tcs',
   'escOff',
   'fcwOff',
   'autoHold',
+  'wiperAuto',
 ];
 const RIGHT_GROUP = [
   'checkEngine',
@@ -198,6 +199,12 @@ export const classic: LayoutDefinition = {
       ],
     },
     {
+      // Park distance view / rear camera (over the centre while parking).
+      id: 'park-view',
+      rect: { x: 640, y: 120, w: 640, h: 400 },
+      candidates: [{ type: 'park-view' }],
+    },
+    {
       // Seat-belt status card after the start.
       id: 'belt-status',
       rect: { x: 870, y: 470, w: 180, h: 120 },
@@ -226,7 +233,13 @@ export const classic: LayoutDefinition = {
               // Indicator arrows between the dial tops and the centre window.
               { id: 'indicatorLeft', x: 590, y: TOP_Y, size: 34 },
               { id: 'indicatorRight', x: 1330, y: TOP_Y, size: 34 },
-              ...LEFT_GROUP.map((id, i) => ({ id, x: 612 + i * 36, y: BOTTOM_Y })),
+              ...LEFT_GROUP.flatMap((ids, i) =>
+                (Array.isArray(ids) ? ids : [ids]).map((id) => ({
+                  id,
+                  x: 612 + i * 34,
+                  y: BOTTOM_Y,
+                })),
+              ),
               ...RIGHT_GROUP.map((id, i) => ({ id, x: 1022 + i * 32, y: BOTTOM_Y })),
               // The flashing seat-belt lamp shares the steady lamp's place.
               { id: 'seatbeltFlash', x: 1022 + RIGHT_GROUP.indexOf('seatbelt') * 32, y: BOTTOM_Y },

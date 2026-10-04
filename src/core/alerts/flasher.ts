@@ -9,6 +9,13 @@ export const FLASH_ON_MS = 420;
  */
 export class Flasher {
   private since = new Map<string, number>();
+  private fast = new Set<string>();
+
+  /** A failed indicator bulb doubles the flash rate on that side (tells the driver). */
+  setFast(key: string, fast: boolean): void {
+    if (fast) this.fast.add(key);
+    else this.fast.delete(key);
+  }
 
   /** Is lamp `key` lit at `now`, given whether its signal is active? */
   lit(key: string, active: boolean, now: number): boolean {
@@ -21,6 +28,7 @@ export class Flasher {
       t = now;
       this.since.set(key, t);
     }
-    return (now - t) % FLASH_PERIOD_MS < FLASH_ON_MS;
+    const k = this.fast.has(key) ? 2 : 1;
+    return (now - t) % (FLASH_PERIOD_MS / k) < FLASH_ON_MS / k;
   }
 }

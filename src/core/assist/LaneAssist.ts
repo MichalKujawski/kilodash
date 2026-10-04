@@ -237,6 +237,9 @@ export interface DriverSteerInput {
   distracted: boolean;
   /** Smooth noise −1…1 (the driver's natural wander). */
   wander: number;
+  /** Tired driver: a micro-sleep (no steering), then a startled over-correction. */
+  asleep?: boolean;
+  startled?: boolean;
 }
 
 /**
@@ -245,7 +248,8 @@ export interface DriverSteerInput {
  * late, so the car drifts towards the lines. Hands off: no steering at all.
  */
 export function driverSteer(i: DriverSteerInput): number {
-  if (!i.handsOn) return 0;
+  if (!i.handsOn || i.asleep) return 0;
+  if (i.startled) return -2.6 * i.lat - 1.2 * i.latV;
   const k = i.distracted ? 0.08 : 0.9;
   const d = i.distracted ? 0.2 : 1.7;
   const wander = i.wander * (i.distracted ? 0.35 : 0.22);

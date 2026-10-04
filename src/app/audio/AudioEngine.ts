@@ -127,6 +127,32 @@ export class AudioEngine {
     }
   }
 
+  private parkOsc: { osc: OscillatorNode; gain: GainNode } | null = null;
+
+  /** Park-distance beep: higher pitch for the front sensors. */
+  parkBeep(front: boolean): void {
+    const ctx = this.ctx;
+    if (!ctx || !this.master || !this.ready) return;
+    this.tone(front ? 1320 : 990, ctx.currentTime + 0.005, 0.07, 'sine', 0.28);
+  }
+
+  /** Continuous park-distance tone (very close). */
+  parkTone(on: boolean, front: boolean): void {
+    const ctx = this.ctx;
+    if (!ctx || !this.master || !this.ready) return;
+    if (!this.parkOsc) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      gain.gain.value = 0;
+      osc.connect(gain).connect(this.master);
+      osc.start();
+      this.parkOsc = { osc, gain };
+    }
+    const t = ctx.currentTime;
+    this.parkOsc.osc.frequency.setTargetAtTime(front ? 1320 : 990, t, 0.01);
+    this.parkOsc.gain.gain.setTargetAtTime(on ? 0.18 : 0, t, 0.02);
+  }
+
   /** Engine note: firing frequency from rpm and cylinder count; brighter under load. */
   updateEngine(rpm: number, load: number, running: boolean, cylinders: number): void {
     const ctx = this.ctx;
