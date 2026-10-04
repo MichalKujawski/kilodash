@@ -9,7 +9,7 @@ const BACK = 52;
 const HEIGHT = BACK * Math.tan(PITCH);
 /** How far the map is drawn, m (beyond is lost in the haze). */
 const REACH = 520;
-const BUILDING_REACH = 300;
+const BUILDING_REACH = 240;
 
 interface Cam {
   ex: number;
@@ -39,6 +39,17 @@ export class Map3D {
     private route: Route,
     private scenery: Scenery,
   ) {}
+
+  private cached: { x: number; y: number; polys: Polygon[]; roads: RoadLine[] } | null = null;
+
+  /** Scenery around a point; re-queried only after moving ~25 m (no per-frame garbage). */
+  private nearby(x: number, y: number): { polys: Polygon[]; roads: RoadLine[] } {
+    const c = this.cached;
+    if (c && Math.hypot(x - c.x, y - c.y) < 25) return c;
+    const q = this.scenery.query(x, y, REACH * 0.7);
+    this.cached = { x, y, ...q };
+    return this.cached;
+  }
 
   /** World point (m, height h) → screen x, y and depth (null when behind the camera). */
   private project(x: number, y: number, h = 0): P {
@@ -83,7 +94,7 @@ export class Map3D {
     ctx.fillRect(0, 0, w, h);
     const c = this.cam;
     const centre = { x: c.ex + c.fx * REACH * 0.4, y: c.ey + c.fy * REACH * 0.4 };
-    const { polys, roads } = this.scenery.query(centre.x, centre.y, REACH * 0.7);
+    const { polys, roads } = this.nearby(centre.x, centre.y);
     const visible = (p: Polygon): boolean => {
       const [x0, y0, x1, y1] = p.bbox;
       const mx = (x0 + x1) / 2;
@@ -94,7 +105,7 @@ export class Map3D {
     const ground = polys.filter(
       (p) => p.kind !== 'building' && p.kind !== 'parkedCar' && visible(p),
     );
-    for (const p of ground) this.flat(ctx, p.points, this.groundColor(p, m), p.shade);
+    this.ground(ctx, ground, m);
     this.roads(ctx, roads, m);
     this.routeRibbon(ctx, sc, m);
     const buildings = polys
@@ -103,7 +114,11 @@ export class Map3D {
       // Nothing beside or behind the car: it would loom over the bottom edge.
       .filter((b) => b.d > 0 && b.d < BUILDING_REACH + BACK && this.aheadOf(b.p) > 6)
       .sort((a, b) => b.d - a.d);
-    for (const { p } of buildings) this.extrude(ctx, p, m);
+    this.buildings(
+      ctx,
+      buildings.map((x) => x.p),
+      m,
+    );
     this.labels(ctx, sc, m);
     // Haze: the far map dissolves into the background.
     const horizon = c.cy - c.focal * Math.tan(PITCH);
@@ -149,23 +164,29 @@ export class Map3D {
     ctx.closePath();
   }
 
-  private flat(
-    ctx: CanvasRenderingContext2D,
-    points: Vec2[],
-    color: string,
-    variation: number,
-  ): void {
-    const pts: [number, number][] = [];
-    for (const p of points) {
-      const q = this.project(p.x, p.y);
-      if (!q) return;
-      pts.push([q[0], q[1]]);
+  /** Flat land use, one path per colour. */
+  private ground(ctx: CanvasRenderingContext2D, list: Polygon[], m: MapTokens): void {
+    const byColour = new Map<string, Path2D>();
+    for (const p of list) {
+      const pts: [number, number][] = [];
+      for (const pt of p.points) {
+        const q = this.project(pt.x, pt.y);
+        if (!q) break;
+        pts.push([q[0], q[1]]);
+      }
+      if (pts.length !== p.points.length) continue;
+      const colour = this.groundColor(p, m);
+      let path = byColour.get(colour);
+      if (!path) byColour.set(colour, (path = new Path2D()));
+      pts.forEach(([x, y], k) => (k === 0 ? path!.moveTo(x, y) : path!.lineTo(x, y)));
+      path.closePath();
     }
-    ctx.globalAlpha = 0.8 + variation * 0.2;
-    // Land use reads on the dark ground: a touch brighter than the flat map's tokens.
-    ctx.fillStyle = shade(color.startsWith('#') ? color : '#202630', 1.9);
-    this.path(ctx, pts);
-    ctx.fill();
+    ctx.globalAlpha = 0.9;
+    for (const [colour, path] of byColour) {
+      // Land use reads on the dark ground: a touch brighter than the flat map's tokens.
+      ctx.fillStyle = shade(colour.startsWith('#') ? colour : '#202630', 1.9);
+      ctx.fill(path);
+    }
     ctx.globalAlpha = 1;
   }
 
@@ -260,54 +281,89 @@ export class Map3D {
     ctx.globalAlpha = 1;
   }
 
-  /** A building as a prism: visible walls (lit by orientation), then the roof. */
-  private extrude(ctx: CanvasRenderingContext2D, p: Polygon, m: MapTokens): void {
-    const car = p.kind === 'parkedCar';
-    const height = car ? 1.5 : 7 + p.shade * 15;
-    const base: [number, number, number][] = [];
-    const top: [number, number, number][] = [];
-    for (const pt of p.points) {
-      const b = this.project(pt.x, pt.y, 0);
-      const t = this.project(pt.x, pt.y, height);
-      if (!b || !t) return;
-      base.push(b);
-      top.push(t);
+  /**
+   * Buildings as prisms: visible walls lit by orientation, then roofs. Drawn far
+   * to near in 20 m depth bands; inside a band all walls of one light level
+   * (and all roofs) are one path, which keeps fill calls in the dozens.
+   */
+  private buildings(ctx: CanvasRenderingContext2D, list: Polygon[], m: MapTokens): void {
+    const LEVELS = 5;
+    let band = -1;
+    let walls: Path2D[] = [];
+    let roofs = new Path2D();
+    let cars = new Path2D();
+    let alpha = 1;
+    const flush = (): void => {
+      if (band < 0) return;
+      ctx.globalAlpha = alpha;
+      walls.forEach((w, k) => {
+        ctx.fillStyle = shade(m.block, 0.9 + (0.7 * k) / (LEVELS - 1));
+        ctx.fill(w);
+      });
+      ctx.fillStyle = shade(m.roadMajor, 1.5);
+      ctx.fill(cars);
+      ctx.fillStyle = shade(m.block, 2.5);
+      ctx.fill(roofs);
+      ctx.strokeStyle = 'rgba(200,215,235,0.14)';
+      ctx.lineWidth = 1;
+      ctx.stroke(roofs);
+      ctx.globalAlpha = 1;
+    };
+    for (const p of list) {
+      const car = p.kind === 'parkedCar';
+      const height = car ? 1.5 : 7 + p.shade * 15;
+      const base: [number, number, number][] = [];
+      const top: [number, number, number][] = [];
+      let ok = true;
+      for (const pt of p.points) {
+        const bq = this.project(pt.x, pt.y, 0);
+        const tq = this.project(pt.x, pt.y, height);
+        if (!bq || !tq) {
+          ok = false;
+          break;
+        }
+        base.push(bq);
+        top.push(tq);
+      }
+      if (!ok) continue;
+      const depth = base[0]![2];
+      const b = Math.floor(depth / 20);
+      if (b !== band) {
+        flush();
+        band = b;
+        walls = Array.from({ length: LEVELS }, () => new Path2D());
+        roofs = new Path2D();
+        cars = new Path2D();
+        alpha = Math.max(0, Math.min(1, 1 - (depth - 200) / 140));
+      }
+      const n = base.length;
+      if (depth < 190) {
+        for (let i = 0; i < n; i++) {
+          const j = (i + 1) % n;
+          const b0 = base[i]!;
+          const b1 = base[j]!;
+          // Back faces wind the other way on screen: skip them.
+          const cross =
+            (b1[0] - b0[0]) * (top[i]![1] - b0[1]) - (b1[1] - b0[1]) * (top[i]![0] - b0[0]);
+          if (cross >= 0) continue;
+          const wx = p.points[j]!.x - p.points[i]!.x;
+          const wy = p.points[j]!.y - p.points[i]!.y;
+          const len = Math.hypot(wx, wy) || 1;
+          // Light from the upper left of the screen.
+          const light = ((wy / len) * 0.7 - (wx / len) * 0.7 + 1) * 0.5;
+          const target = car ? cars : walls[Math.round(light * (LEVELS - 1))]!;
+          target.moveTo(b0[0], b0[1]);
+          target.lineTo(b1[0], b1[1]);
+          target.lineTo(top[j]![0], top[j]![1]);
+          target.lineTo(top[i]![0], top[i]![1]);
+          target.closePath();
+        }
+      }
+      const roof = car ? cars : roofs;
+      top.forEach((q, k) => (k === 0 ? roof.moveTo(q[0], q[1]) : roof.lineTo(q[0], q[1])));
+      roof.closePath();
     }
-    const n = base.length;
-    const fade = Math.max(0, Math.min(1, 1 - (base[0]![2] - 230) / 160));
-    ctx.globalAlpha = fade;
-    // Light from the upper left of the screen.
-    for (let i = 0; i < n; i++) {
-      const j = (i + 1) % n;
-      const b0 = base[i]!;
-      const b1 = base[j]!;
-      // Back faces wind the other way on screen: skip them.
-      const cross = (b1[0] - b0[0]) * (top[i]![1] - b0[1]) - (b1[1] - b0[1]) * (top[i]![0] - b0[0]);
-      if (cross >= 0) continue;
-      const wx = p.points[j]!.x - p.points[i]!.x;
-      const wy = p.points[j]!.y - p.points[i]!.y;
-      const len = Math.hypot(wx, wy) || 1;
-      const light = 0.9 + 0.7 * ((wy / len) * 0.7 - (wx / len) * 0.7 + 1) * 0.5;
-      ctx.fillStyle = shade(car ? m.roadMajor : m.block, light);
-      this.path(ctx, [
-        [b0[0], b0[1]],
-        [b1[0], b1[1]],
-        [top[j]![0], top[j]![1]],
-        [top[i]![0], top[i]![1]],
-      ]);
-      ctx.fill();
-    }
-    ctx.fillStyle = shade(car ? m.roadMajor : m.block, car ? 1.5 : 2.5);
-    this.path(
-      ctx,
-      top.map((q) => [q[0], q[1]]),
-    );
-    ctx.fill();
-    // A faint lit edge along the roof.
-    ctx.strokeStyle = 'rgba(200,215,235,0.16)';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-    ctx.globalAlpha = 1;
+    flush();
   }
 
   /** Street and town names floating over the road ahead. */
