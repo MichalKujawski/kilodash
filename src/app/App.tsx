@@ -128,6 +128,7 @@ export function App() {
         (window as unknown as { __oc?: unknown }).__oc = {
           session: s,
           bus: b,
+          audio,
           renderer: () => rendererRef.current,
         };
       }
@@ -142,7 +143,7 @@ export function App() {
       setBus(null);
       setDirector(null);
     };
-  }, [profileId]);
+  }, [profileId, audio]);
 
   // The guided demo plays in Watch (and keeps the car moving behind Engineer);
   // Drive hands the car over exactly where it is.

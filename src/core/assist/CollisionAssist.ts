@@ -25,6 +25,10 @@ export const DISTANCE_WARNING = { min: 60, max: 210, gapS: 0.9, afterS: 3 };
 /** City emergency braking brakes without warning in this band, km/h. */
 export const CITY_BAND = { min: 5, max: 30 };
 /** Time-to-collision thresholds, s. */
+/** Closing speed counted as "matched" to the car ahead, m/s (≈ 1 km/h). */
+const SPEED_MATCHED_MS = 0.3;
+/** Beyond this gap an intervention ends even while still closing slowly, m. */
+const MATCH_RANGE_M = 40;
 export const TTC = { prewarn: 2.6, acute: 1.8, partial: 1.3, full: 0.8, city: 1.0 };
 /** Brake pedal equivalent of ~1 g. */
 const BRAKE_PER_MS2 = 1 / 10.3;
@@ -102,8 +106,11 @@ export class CollisionAssist {
     if (inBand && ttc < TTC.prewarn && aReq > 2.5) stage = 'prewarn';
     if (inBand && ttc < TTC.acute && aReq > 4) stage = 'acute';
     if ((inBand && ttc < TTC.partial) || (city && ttc < TTC.city)) stage = 'braking';
-    // Once braking, keep braking until stopped or the threat is gone (not just out of the band).
-    if (this.stage === 'braking' && closing > 0.05 && ttc < 3) stage = 'braking';
+    // Once braking, keep braking until stopped or matched to the car ahead (not just out of the
+    // band): AEB on a moving target brakes down to its speed, then hands back to the driver.
+    const matched = vl > 1 && closing <= SPEED_MATCHED_MS;
+    if (this.stage === 'braking' && closing > 0.05 && !matched && gap < MATCH_RANGE_M)
+      stage = 'braking';
     // Following too closely (no danger yet): distance warning after a few seconds.
     const tooClose =
       kmh >= DISTANCE_WARNING.min && kmh <= DISTANCE_WARNING.max && gap / v < DISTANCE_WARNING.gapS;

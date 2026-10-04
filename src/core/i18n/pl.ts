@@ -13,6 +13,8 @@ export const pl: Record<string, string> = {
   'alert.handsOff3.message': 'Samochód zatrzyma się, jeśli nie zareagujesz.',
   'alert.emergencyStop.title': 'Zatrzymanie awaryjne',
   'alert.emergencyStop.message': 'Brak reakcji kierowcy. Samochód zatrzymuje się na pasie.',
+  'alert.collisionPrewarn.title': 'Pojazd z przodu hamuje',
+  'alert.collisionPrewarn.message': 'Przygotuj się do hamowania.',
   'alert.collisionWarning.title': 'Hamuj!',
   'alert.collisionWarning.message': 'Ryzyko kolizji z przodu.',
   'alert.emergencyBraking.title': 'Hamowanie awaryjne',

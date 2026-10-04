@@ -50,17 +50,38 @@ describe('Director', () => {
     expect(src.world.ego.lane).toBe(1);
   });
 
-  it('safety: traffic ahead brakes hard; the car warns, jolts and brakes itself in time', () => {
-    const stages = new Set<string>();
+  it('safety: warning stages are each on screen, and braking ends matched to the car ahead', () => {
+    const now = 0;
+    const src = new SimulatorSource(DEFAULT_PROFILE, { startOff: true }, () => now);
+    const d = new Director(src, () => null);
+    d.goto('safety');
+    const time: Record<string, number> = {};
+    let stage = src.collision.stage;
+    let atEnd: { ego: number; lead: number; gap: number } | null = null;
     let minGap = Infinity;
-    const { src } = play('safety', (s) => {
-      stages.add(s.collision.stage);
-      const lead = s.scene().lead;
+    let driverBrakedBlind = false;
+    for (let i = 0; i < Math.round(d.chapter.duration * 20) - 1; i++) {
+      d.tick(0.05);
+      src.fastForward(0.05);
+      const st = src.collision.stage;
+      time[st] = (time[st] ?? 0) + 0.05;
+      const lead = src.scene().lead;
       if (lead) minGap = Math.min(minGap, lead.dx);
-    });
-    expect([...stages]).toEqual(expect.arrayContaining(['acute', 'braking']));
+      if (stage === 'braking' && st !== 'braking' && lead)
+        atEnd = { ego: src.sim.speedKmh, lead: lead.v * 3.6, gap: lead.dx };
+      // Looking away (2.6–9.6 s): no braking from the driver before the system acts.
+      if (d.t > 2.6 && d.t < 5 && src.sim.inputs.brake > 0.05) driverBrakedBlind = true;
+      stage = st;
+    }
+    expect(driverBrakedBlind).toBe(false);
+    // Long enough to see: pre-warning, then the red warning with the jolt, then braking.
+    expect(time.prewarn).toBeGreaterThanOrEqual(0.5);
+    expect(time.acute).toBeGreaterThanOrEqual(0.5);
+    expect(time.braking).toBeGreaterThanOrEqual(1.5);
+    // Emergency braking on a moving target brakes down to its speed, then hands back.
+    expect(atEnd).not.toBeNull();
+    expect(Math.abs(atEnd!.ego - atEnd!.lead)).toBeLessThanOrEqual(3);
     expect(minGap).toBeGreaterThan(2);
-    expect(src.sim.speedKmh).toBeLessThan(50);
   });
 
   it('drive modes: Eco, then Sport', () => {
@@ -87,6 +108,40 @@ describe('Director', () => {
       src.fastForward(0.1);
     }
     expect(d.index).toBe(0);
+  });
+
+  it('taking the wheel mid-chapter hands over cleanly: no jump, no script left running', () => {
+    for (const [id, at] of [
+      ['motorway', 19],
+      ['safety', 7],
+    ] as const) {
+      const src = new SimulatorSource(DEFAULT_PROFILE, { startOff: true }, () => 0);
+      const d = new Director(src, () => null);
+      d.goto(id);
+      for (let i = 0; i < at * 10; i++) {
+        d.tick(0.1);
+        src.fastForward(0.1);
+      }
+      d.toggle(); // paused, then the visitor clicks Take the wheel
+      const before = { s: src.world.ego.s, kmh: src.sim.speedKmh, acc: src.assist.state };
+      d.release();
+      src.fastForward(0.1);
+      expect(src.paused, id).toBe(false);
+      expect(src.autopilot, id).toBe(false);
+      expect(src.demo.scripted, id).toBe(false);
+      expect(src.demo.cruiseAllowed, id).toBe(true);
+      expect(src.buttons.distracted, id).toBe(false);
+      // Same place, same speed: the world just carries on.
+      expect(src.world.ego.s - before.s, id).toBeGreaterThan(0);
+      expect(src.world.ego.s - before.s, id).toBeLessThan(5);
+      expect(Math.abs(src.sim.speedKmh - before.kmh), id).toBeLessThan(3);
+      // Cruise stays as it was (on the motorway it keeps driving for you).
+      expect(src.assist.state, id).toBe(before.acc);
+      // The Director no longer acts, even if ticked.
+      const t = d.t;
+      d.tick(5);
+      expect(d.t, id).toBe(t);
+    }
   });
 
   it('pausing freezes the simulation; taking the wheel hands over control', () => {

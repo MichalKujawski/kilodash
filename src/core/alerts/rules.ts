@@ -17,6 +17,8 @@ export interface AlertRule {
   messageKey: string;
   /** Re-chime every N seconds while active (critical safety reminders). */
   repeatChimeS?: number;
+  /** Pulse the card's edge (the most urgent warnings: act now). */
+  pulse?: boolean;
 }
 
 const anyDoor: Condition = {
@@ -51,13 +53,25 @@ export const ALERT_RULES: AlertRule[] = [
     repeatChimeS: 1.5,
   },
   {
+    // Stage 1: the car ahead is closing fast; amber, chime, no jolt yet.
+    id: 'collisionPrewarn',
+    severity: 'warning',
+    when: is(S.FcwState, '==', 3),
+    icon: 'collision',
+    titleKey: 'alert.collisionPrewarn.title',
+    messageKey: 'alert.collisionPrewarn.message',
+    repeatChimeS: 0.8,
+  },
+  {
+    // Stage 2: brake now; red, pulsing, with the brake jolt.
     id: 'collisionWarning',
     severity: 'critical',
-    when: { any: [is(S.FcwState, '==', 3), is(S.FcwState, '==', 4)] },
+    when: is(S.FcwState, '==', 4),
     icon: 'collision',
     titleKey: 'alert.collisionWarning.title',
     messageKey: 'alert.collisionWarning.message',
-    repeatChimeS: 0.8,
+    repeatChimeS: 0.4,
+    pulse: true,
   },
   {
     id: 'emergencyBraking',

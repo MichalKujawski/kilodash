@@ -6,6 +6,9 @@ import type { Severity } from '@/core/alerts/rules';
  * rpm and load. Browsers require a user gesture before audio can start, so call
  * `unlock()` from an input handler.
  */
+/** Overall cockpit volume (leaves headroom for chimes over the engine). */
+const MASTER_GAIN = 0.6;
+
 export class AudioEngine {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
@@ -32,7 +35,8 @@ export class AudioEngine {
       if (!Ctor) return;
       this.ctx = new Ctor();
       this.master = this.ctx.createGain();
-      this.master.gain.value = 0.6;
+      // Created on the first click anywhere: it must respect a mute set before that.
+      this.master.gain.value = this.muted ? 0 : MASTER_GAIN;
       this.master.connect(this.ctx.destination);
       const len = Math.floor(this.ctx.sampleRate * 0.03);
       this.noise = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
@@ -53,7 +57,7 @@ export class AudioEngine {
   setMuted(m: boolean): void {
     this.muted = m;
     if (this.master && this.ctx)
-      this.master.gain.setTargetAtTime(m ? 0 : 0.6, this.ctx.currentTime, 0.02);
+      this.master.gain.setTargetAtTime(m ? 0 : MASTER_GAIN, this.ctx.currentTime, 0.02);
   }
 
   /** Flasher relay: a sharp "tick" when the lamp lights, a softer "tock" when it goes out. */

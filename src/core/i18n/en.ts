@@ -13,6 +13,8 @@ export const en: Record<string, string> = {
   'alert.handsOff3.message': 'The car will stop if you do not respond.',
   'alert.emergencyStop.title': 'Emergency stop',
   'alert.emergencyStop.message': 'No driver response. The car is stopping in its lane.',
+  'alert.collisionPrewarn.title': 'Car ahead braking',
+  'alert.collisionPrewarn.message': 'Get ready to brake.',
   'alert.collisionWarning.title': 'Brake!',
   'alert.collisionWarning.message': 'Risk of collision ahead.',
   'alert.emergencyBraking.title': 'Emergency braking',

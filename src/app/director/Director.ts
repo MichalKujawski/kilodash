@@ -89,6 +89,7 @@ export class Director {
     this.src.paused = false;
     this.src.buttons.distracted = false;
     this.src.demo.scripted = false;
+    this.src.demo.cruiseAllowed = true;
     this.src.setAutopilot(false);
   }
 
@@ -113,6 +114,7 @@ export class Director {
     const sim = src.sim;
     src.buttons.distracted = false;
     src.buttons.handsOn = true;
+    src.demo.cruiseAllowed = true;
     src.assist.switchOff();
     sim.body.autoHighBeam = false;
     src.setEnvironment({
@@ -182,7 +184,9 @@ export class Director {
         src.assist.setSpeed(e.kmh);
         break;
       case 'accOff':
+        // And the driver keeps it off: this chapter is driven by hand.
         src.assist.switchOff();
+        src.demo.cruiseAllowed = false;
         break;
       case 'view':
         this.renderer()?.selectView(e.view);

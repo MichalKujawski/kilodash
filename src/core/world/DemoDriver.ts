@@ -39,6 +39,8 @@ export class DemoDriver {
   private glanceT = 0;
   /** Guided demo: lane changes only when the script asks (no overtaking on its own). */
   scripted = false;
+  /** Guided demo: may the driver use cruise control on the Autobahn (off for the Safety chapter). */
+  cruiseAllowed = true;
   /** Guided demo: seconds left with the eyes fully off the road. */
   private eyesOff = 0;
   private seenLead: { dx: number; v: number; t: number } | null = null;
@@ -195,6 +197,9 @@ export class DemoDriver {
         DRIVER.s0 +
         Math.max(0, v * DRIVER.T + (v * (v - vl)) / (2 * Math.sqrt(DRIVER.aMax * DRIVER.b)));
       a -= DRIVER.aMax * Math.pow(sStar / Math.max(gap, 0.1), 2);
+      // Too close but not closing in (e.g. after emergency braking matched its speed): plain IDM
+      // would brake very hard; people drop back gently instead (as in the improved IDM).
+      if (vl >= v) a = Math.max(a, -DRIVER.b);
     }
     return a;
   }
@@ -285,7 +290,7 @@ export class DemoDriver {
     dt: number,
   ): boolean {
     const acc = this.assist;
-    if (!acc || acc.fn === 'limiter') return false;
+    if (!acc || acc.fn === 'limiter' || !this.cruiseAllowed) return false;
     this.accT += dt;
     const v = sim.state.speedMs;
     const exit = scene.nav.current?.kind === 'exit' ? scene.nav.distance : Infinity;

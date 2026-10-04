@@ -55,7 +55,9 @@ export class AlertPopup implements Widget {
   draw(ctx: CanvasRenderingContext2D, f: FrameContext): void {
     this.alertsRef = f.alerts;
     const cur = f.runtime.phase === 'on' ? f.alerts?.current(f.now) : undefined;
-    if (cur && cur !== this.shown && this.anim.value < 0.05) this.shown = cur;
+    // A new alert waits for the old card to leave; a critical one replaces it on the spot.
+    if (cur && cur !== this.shown && (this.anim.value < 0.05 || cur.rule.severity === 'critical'))
+      this.shown = cur;
     const target = cur && cur === this.shown ? 1 : 0;
     const k = this.anim.update(target, f.dt);
     if (k < 0.01 || !this.shown) {
@@ -85,6 +87,18 @@ export class AlertPopup implements Widget {
     edge.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = edge;
     ctx.fillRect(x + 30, y, w - 60, 2);
+    if (a.rule.pulse) {
+      // Act-now warnings: the whole edge pulses red, about 3 times a second.
+      const p = 0.5 + 0.5 * Math.sin(f.now * 0.019);
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 3;
+      ctx.globalAlpha = Math.min(1, k) * (0.35 + 0.65 * p);
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 18 * p;
+      ctx.stroke(card);
+      ctx.restore();
+    }
 
     if (a.rule.icon === 'doorOpen' || a.rule.icon === 'hood') {
       // Doors, boot and bonnet: a small car from above with the open parts in the alert colour.

@@ -125,6 +125,28 @@ describe('in the car', () => {
     expect(r.stoppedGap).toBeGreaterThan(0.3);
   });
 
+  it('on a slower moving car it brakes down to its speed, then hands back', () => {
+    const sim = new VehicleSimulator(DEFAULT_PROFILE);
+    sim.state.coolantC = 90;
+    sim.state.speedMs = 100 / 3.6;
+    const c = new CollisionAssist();
+    const vl = 40 / 3.6;
+    let gap = 45;
+    let released: { ego: number; gap: number } | null = null;
+    for (let t = 0; t < 15 && !released; t += DT) {
+      const out = c.step({ ...base, speedKmh: sim.speedKmh, lead: lead(gap, 40) });
+      sim.inputs.throttle = out.brake === null ? 0.3 : 0;
+      sim.inputs.brake = out.brake ?? 0;
+      const was = c.stage;
+      sim.step(DT);
+      gap -= (sim.state.speedMs - vl) * DT;
+      expect(gap).toBeGreaterThan(0);
+      if (t > 1 && was !== 'braking' && sim.speedKmh < 60) released = { ego: sim.speedKmh, gap };
+    }
+    expect(released).not.toBeNull();
+    expect(Math.abs(released!.ego - 40)).toBeLessThanOrEqual(3);
+  });
+
   it('from 100 km/h it at least cuts the impact speed by more than a third', () => {
     expect(towardsStoppedCar(100).impactKmh).toBeLessThan(65);
   });

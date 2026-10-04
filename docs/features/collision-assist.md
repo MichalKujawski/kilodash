@@ -5,12 +5,14 @@
 - **Forward collision warning and autonomous emergency braking** (mandatory in the EU since 2022):
   - **Distance warning:** following closer than about 0.9 s at 60–210 km/h for a few seconds shows
     a distance symbol.
-  - **Pre-warning** (30–210 km/h): when a collision becomes likely, a chime sounds, a red symbol
-    appears and the brakes are prefilled.
-  - **Acute warning:** a short brake jolt, and the cluster picture jolts with it. Light pre-braking
-    follows.
+  - **Pre-warning** (30–210 km/h): when a collision becomes likely, a chime sounds, an amber "Car
+    ahead braking" card appears and the brakes are prefilled.
+  - **Acute warning:** a red "Brake!" card with a pulsing edge, a faster chime and a short brake
+    jolt; the cluster picture jolts with it. Light pre-braking follows.
   - **Automatic braking:** partial at first, full shortly before impact. If the driver brakes too
-    softly, brake assist adds the rest.
+    softly, brake assist adds the rest. On a stopped car it brakes to a standstill; on a slower
+    moving car it brakes until our speed matches it (within about 1 km/h), then hands back to the
+    driver. Each stage replaces the previous card at once (critical cards don't wait for a fade).
   - **City emergency braking** (5–30 km/h) brakes without a warning first.
   - After stopping, the car holds for 1.5 s. After an emergency stop from above 50 km/h the hazards
     come on, and go off once the car drives off.
@@ -89,7 +91,8 @@ Results from the tests:
 
 ## Where it appears
 
-- **Alerts:** "Brake!" (critical, fast repeating chime), "Emergency braking", "Distance warning",
+- **Alerts:** "Car ahead braking" (amber), "Brake!" (critical, pulsing, fast repeating chime),
+  "Emergency braking", "Distance warning",
   "Collision warning unavailable", "Vehicle in blind spot", "Cross traffic".
 - **Telltale row:** the amber collision "OFF" symbol while switched off.
 - **Lane view:** the car ahead turns red during a warning; amber zones mark the blind spots and flash

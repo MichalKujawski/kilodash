@@ -183,6 +183,25 @@ _Last updated: 2026-10-04_
 - Step 4: `src/app/dock/` (feature doc `docs/features/drive-dock.md`). The old ControlPanel is the More
   controls sheet. Fixed: after a key or pointer release, the pedal value stuck at its last ramp value
   (the zero was never sent).
+- Fixes after step 4 (owner review):
+  - **Touch targets:** each wheel button has an invisible ≥ 44×44 px target (e2e-measured). There are
+    two geometry limits at the current wheel size. OK sits between up and down (45×16). RES+/SET− sit
+    between buttons 31 px apart (33×45). A bigger rocker or wheel would fix both.
+  - **Brake pedal:** redrawn as a rubber pad in a metal bezel.
+- The three owner checks, verified and fixed:
+  1. **Safety braking and warning stages.** Two fixes:
+     - The demo driver had switched cruise back on during Safety; the Director now keeps it off.
+     - AEB on a moving car now brakes until our speed matches it (it used to release while still
+       closing at 5 km/h).
+
+     The stages are now visibly different: amber pre-warning, pulsing red "Brake!" with the jolt,
+     then "Emergency braking", which replaces it at once. After AEB, the driver drops back gently
+     (improved-IDM braking limit) instead of braking hard to 24 km/h. Tests: `Director.test.ts`,
+     `CollisionAssist.test.ts`.
+  2. **Clean handover mid-chapter.** Verified in unit and e2e tests: same place and speed, demo
+     driver off, no script state left, and cruise stays as it was.
+  3. **Muted autoplay.** Fixed: the first click anywhere unlocked audio at full volume although the
+     header showed muted. The e2e test checks that the gain stays 0 until the sound toggle.
 
 ## Known issues / open questions
 
