@@ -47,7 +47,9 @@ export type IconId =
   | 'chargeLevel'
   | 'check'
   | 'acc'
-  | 'limiter';
+  | 'limiter'
+  | 'steering'
+  | 'assisted';
 
 const lamp = 'M13.5 5.5C18.5 5.5 21 8.5 21 12s-2.5 6.5-7.5 6.5z';
 
@@ -267,6 +269,17 @@ export const ICONS: Record<IconId, IconPart[]> = {
     { kind: 'stroke', d: 'M3.5 19a8.5 8.5 0 0 1 17 0', width: 1.7 },
     { kind: 'stroke', d: 'M12 18.5 15.5 13', width: 1.9 },
     { kind: 'fill', d: 'M8.6 3h6.8l1.1 2.6v3H15v-1H9v1H7.5v-3z' },
+  ],
+  // Steering wheel (hands-off warnings).
+  steering: [
+    { kind: 'stroke', d: 'M12 3.5a8.5 8.5 0 1 0 0 17a8.5 8.5 0 1 0 0-17z', width: 1.8 },
+    { kind: 'stroke', d: 'M3.8 11.2h5.4l1.6 2.3h2.4l1.6-2.3h5.4M12 13.5v6.8', width: 1.8 },
+  ],
+  // Assisted driving: steering wheel between lane lines.
+  assisted: [
+    { kind: 'stroke', d: 'M2.5 21 6 3M21.5 21 18 3', width: 1.6 },
+    { kind: 'stroke', d: 'M12 6.5a5.5 5.5 0 1 0 0 11a5.5 5.5 0 1 0 0-11z', width: 1.6 },
+    { kind: 'stroke', d: 'M6.8 11.5h3.4l1 1.4h1.6l1-1.4h3.4M12 12.9v4.4', width: 1.4 },
   ],
   // Speed limiter: speedometer arc with a stop bar at the top.
   limiter: [

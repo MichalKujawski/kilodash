@@ -113,6 +113,17 @@ export const S = {
   /** 0 on, 1 traction control off, 2 ESC sport. */
   ESCMode: 'Vehicle.ADAS.ESC.Mode',
   LaneAssistEnabled: 'Vehicle.ADAS.LaneDepartureDetection.IsEnabled',
+  /** 0 off, 1 standby, 2 ready (lane keeping), 3 centering, 4 emergency stop. */
+  LaneAssistState: 'Vehicle.ADAS.LaneKeeping.State',
+  /** Left/right line: 0 not detected, 1 detected, 2 assisting, 3 departure. */
+  LaneLeft: 'Vehicle.ADAS.LaneKeeping.LeftLine',
+  LaneRight: 'Vehicle.ADAS.LaneKeeping.RightLine',
+  /** Offset from the lane centre, m (+ = left). */
+  LaneOffset: 'Vehicle.ADAS.LaneKeeping.LateralOffset',
+  /** Hands-off escalation: 0 none, 1 message, 2 urgent, 3 brake jolt, 4 emergency stop. */
+  HandsOffStage: 'Vehicle.ADAS.LaneKeeping.HandsOffStage',
+  /** ACC and lane centering working together. */
+  AssistedDriving: 'Vehicle.ADAS.IsAssistedDriving',
   ABSActive: 'Vehicle.ADAS.ABS.IsEngaged',
   /** Hybrid/EV traction battery state of charge, %. */
   SoC: 'Vehicle.Powertrain.TractionBattery.StateOfCharge.Current',
@@ -405,6 +416,19 @@ const defs: SignalDefinition[] = [
   bool(S.TCSActive, 'signal.tcs', 10),
   { id: S.ESCMode, nameKey: 'signal.escMode', unit: 'enum', min: 0, max: 2, expectedHz: 1 },
   bool(S.LaneAssistEnabled, 'signal.laneAssist', 1),
+  {
+    id: S.LaneAssistState,
+    nameKey: 'signal.laneAssistState',
+    unit: 'enum',
+    min: 0,
+    max: 4,
+    expectedHz: 10,
+  },
+  { id: S.LaneLeft, nameKey: 'signal.laneLeft', unit: 'enum', min: 0, max: 3, expectedHz: 10 },
+  { id: S.LaneRight, nameKey: 'signal.laneRight', unit: 'enum', min: 0, max: 3, expectedHz: 10 },
+  { id: S.LaneOffset, nameKey: 'signal.laneOffset', unit: 'm', min: -2, max: 2, expectedHz: 20 },
+  { id: S.HandsOffStage, nameKey: 'signal.handsOff', unit: 'enum', min: 0, max: 4, expectedHz: 5 },
+  bool(S.AssistedDriving, 'signal.assistedDriving', 2),
   bool(S.ABSActive, 'signal.abs', 10),
   {
     id: S.SoC,
@@ -476,4 +500,10 @@ export const BODY_SIGNALS: SignalId[] = [
   S.ABSActive,
   S.ESCMode,
   S.LaneAssistEnabled,
+  S.LaneAssistState,
+  S.LaneLeft,
+  S.LaneRight,
+  S.LaneOffset,
+  S.HandsOffStage,
+  S.AssistedDriving,
 ];

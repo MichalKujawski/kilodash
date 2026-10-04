@@ -3,6 +3,7 @@ import { Spring } from '@/core/smoothing/spring';
 import { modeId } from '../driveMode';
 import { Fade } from '../../renderer/draw';
 import type { ClusterKey, FrameContext, Rect, Widget, WidgetFactory } from '../../renderer/types';
+import { AssistPage } from './AssistPage';
 import { CarPage } from './CarPage';
 import { EfficiencyPage } from './EfficiencyPage';
 import { MapPage } from './MapPage';
@@ -10,10 +11,11 @@ import { OffroadPage } from './OffroadPage';
 import { TripPage } from './TripPage';
 import type { CenterPage } from './types';
 
-export type PageId = 'map' | 'car' | 'trip' | 'efficiency' | 'offroad';
+export type PageId = 'map' | 'assist' | 'car' | 'trip' | 'efficiency' | 'offroad';
 
 const PAGE_FACTORIES: Record<PageId, () => CenterPage> = {
   map: () => new MapPage(),
+  assist: () => new AssistPage(),
   car: () => new CarPage(),
   trip: () => new TripPage(),
   efficiency: () => new EfficiencyPage(),

@@ -23,8 +23,8 @@ _Last updated: 2026-10-04_
 | 4    | Drive modes (Eco coasting, Sport, Individual, Snow/Off-road, EV power meter/regen)                   | done  |
 | 5    | ACC, cruise, limiter                                                                                 | done  |
 | 6    | Speed-limit recognition / ISA                                                                        | done  |
-| 7    | Lane keeping/centering, hands-off staging, Driver Assistance view                                    | next  |
-| 8    | Collision warning/AEB, blind spot, rear cross traffic                                                |       |
+| 7    | Lane keeping/centering, hands-off staging, Driver Assistance view                                    | done  |
+| 8    | Collision warning/AEB, blind spot, rear cross traffic                                                | next  |
 | 9    | Start-stop, Auto Hold, gear recommendation, shift lights, diesel DPF/AdBlue                          |       |
 | 10   | Warnings catalogue, seatbelt escalation, TPMS, service                                               |       |
 | 11   | Fatigue, parking sensors + camera, auto high beam, lights/body/wipers                                |       |
@@ -103,6 +103,20 @@ _Last updated: 2026-10-04_
 - Fixed: the town-exit limit now applies from the sign, not from the next segment.
 - New poses: `isa` (56 in a 50, red ring), `rain` (130 with the "when wet" plate). New jump place:
   `wetLimit`.
+
+## Notes from step 7
+
+- The world now has lateral motion (`World.stepLateral`). Driver and lane assist steer through a
+  lateral acceleration passed to `World.step`.
+- `core/assist/LaneAssist.ts`: lane keeping, centering (with ACC), hands-off staging up to the
+  emergency stop. The driver steering model is `driverSteer`. Docs:
+  `docs/features/lane-assist.md`.
+- The lane view is `cluster/lanes/`: a plain view model plus `Canvas2DLaneRenderer` behind the
+  `LaneSceneRenderer` interface, so Three.js can replace it. For now it is the "assist" carousel
+  page; the full Driver Assistance _view_ (its own layout) comes with step 12.
+- Workshop: "Distracted driver" toggle.
+- New poses: `lanes`, `departure`, `handsoff`. The screenshot script presses → for them to show the
+  assist page.
 
 ## Known issues / open questions
 

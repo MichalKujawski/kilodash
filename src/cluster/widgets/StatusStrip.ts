@@ -15,9 +15,6 @@ function groupThousands(n: number): string {
     .replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 }
 
-/** Lane keeping works above this speed (typical systems: 60–65 km/h). */
-const LANE_ASSIST_MIN_KMH = 60;
-
 export interface TopStripProps {
   /** x positions of the items, logical px. */
   sign: number;
@@ -116,14 +113,33 @@ export class TopStrip implements Widget {
       ctx.globalAlpha = 1;
     }
 
-    // Lane assist: grey standby, green active above its minimum speed.
-    const laneOn = st.value(S.LaneAssistEnabled, 1) > 0;
-    if (laneOn && on) {
-      const lane = this.laneActive.update(st.value(S.Speed) > LANE_ASSIST_MIN_KMH, f.dt);
-      ctx.globalAlpha = 1 - lane;
-      drawIcon(ctx, 'laneAssist', p.lane, y, 22, t.text.tertiary, t.fonts.primary);
-      ctx.globalAlpha = lane;
-      drawIcon(ctx, 'laneAssist', p.lane, y, 22, SAFETY_COLORS.info, t.fonts.primary);
+    // Lane assist: grey standby, green ready/centering, amber while steering
+    // back from a line; "assisted driving" symbol with ACC + centering.
+    const laneState = st.value(S.LaneAssistState);
+    const hands = st.value(S.HandsOffStage);
+    if (hands > 0 && on) {
+      // Hands-off: the steering wheel takes the assist symbol's place, white then red flashing.
+      const flash = hands >= 2 && Math.floor(f.now / 300) % 2 === 1;
+      if (!flash)
+        drawIcon(
+          ctx,
+          'steering',
+          p.lane,
+          y,
+          24,
+          hands >= 2 ? SAFETY_COLORS.danger : t.text.primary,
+          t.fonts.primary,
+        );
+    } else if (on && st.value(S.LaneAssistEnabled, 1) > 0 && laneState > 0) {
+      const departure = st.value(S.LaneLeft) === 3 || st.value(S.LaneRight) === 3;
+      const active = this.laneActive.update(laneState >= 2, f.dt);
+      const assisted = st.value(S.AssistedDriving) > 0;
+      const icon: IconId = assisted ? 'assisted' : 'laneAssist';
+      const col = departure ? SAFETY_COLORS.caution : SAFETY_COLORS.info;
+      ctx.globalAlpha = 1 - active;
+      drawIcon(ctx, icon, p.lane, y, 22, t.text.tertiary, t.fonts.primary);
+      ctx.globalAlpha = active;
+      drawIcon(ctx, icon, p.lane, y, 22, col, t.fonts.primary);
       ctx.globalAlpha = 1;
     }
 

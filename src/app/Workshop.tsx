@@ -104,6 +104,13 @@ export function Workshop({ session, profileId, onProfile }: Props) {
             Hands on wheel
           </button>
           <button
+            className={`pill ${src.buttons.distracted ? 'pill-on' : ''}`}
+            onClick={() => src.pressButton('distracted')}
+            title="The driver looks at their phone: weak, late steering"
+          >
+            Distracted driver
+          </button>
+          <button
             className={`pill ${src.sim.driveModes.rememberLast ? 'pill-on' : ''}`}
             onClick={() => src.sim.driveModes.toggleRememberLast()}
             title="Off: every start begins in Normal, as most cars do"

@@ -14,6 +14,9 @@ export const POSES = [
   'limiter',
   'isa',
   'rain',
+  'lanes',
+  'departure',
+  'handsoff',
 ] as const;
 export type Pose = (typeof POSES)[number];
 
@@ -106,6 +109,28 @@ export function applyPose(session: ClusterSession, pose: Pose): void {
       // Rain on the Autobahn: the "130 when wet" sign applies and shows its plate.
       src.jumpTo('wetLimit');
       session.fastForward(22);
+      break;
+    case 'lanes':
+      // Autobahn with ACC and lane centering (assisted driving).
+      src.jumpTo('motorway');
+      session.fastForward(40);
+      break;
+    case 'departure': {
+      // Distracted driver on the rural road: lane keeping steers back from the line.
+      src.jumpTo('rural');
+      src.pressButton('distracted');
+      session.fastForward(15);
+      const lo = src.lane.out;
+      for (let i = 0; i < 600 && lo.left !== 'departure' && lo.right !== 'departure'; i++)
+        session.fastForward(0.1);
+      break;
+    }
+    case 'handsoff':
+      // Hands off with assisted driving: second stage, red wheel.
+      src.jumpTo('motorway');
+      session.fastForward(30);
+      src.pressButton('handsOn');
+      session.fastForward(27);
       break;
     case 'redline': {
       src.jumpTo('motorway');

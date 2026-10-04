@@ -35,6 +35,8 @@ export interface SceneSnapshot {
     heading: number;
     /** Lateral offset from the lane centre, m (+ = left). */
     lateral: number;
+    /** Lateral speed, m/s (+ = moving left). */
+    lateralV: number;
     direction: 1 | -1;
     /** Still in the starting bay manoeuvre. */
     inBay: boolean;

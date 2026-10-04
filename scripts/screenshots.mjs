@@ -20,8 +20,13 @@ const poses = only.length
       'limiter',
       'isa',
       'rain',
+      'lanes',
+      'departure',
+      'handsoff',
     ];
 const keys = (process.env.KEYS ?? '').split(',').filter(Boolean);
+// Poses that show a carousel page other than the map.
+const POSE_KEYS = { lanes: ['ArrowRight'], departure: ['ArrowRight'], handsoff: ['ArrowRight'] };
 
 // GPU rasterisation by default so fps numbers mean something (PW_GPU=0 for software).
 const gpuArgs = [
@@ -40,7 +45,7 @@ page.on('pageerror', (e) => errors.push(e.message));
 for (const pose of poses) {
   await page.goto(`${BASE}/?kiosk=1&pose=${pose}${process.env.QUERY ?? ''}`);
   await page.waitForTimeout(1500);
-  for (const k of keys) {
+  for (const k of [...(POSE_KEYS[pose] ?? []), ...keys]) {
     await page.keyboard.press(k);
     await page.waitForTimeout(700);
   }

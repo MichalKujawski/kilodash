@@ -1,3 +1,4 @@
+import { createRng, SmoothNoise } from '../math';
 import { Environment, type EnvironmentSettings } from './environment';
 import { Navigation } from './navigation';
 import { Route, type Pose } from './route';
@@ -31,6 +32,9 @@ export interface Ego {
   bayPos: number;
   inBay: boolean;
   v: number;
+  /** Lateral offset from the lane centre, m (+ = left), and its rate, m/s. */
+  lat: number;
+  latV: number;
 }
 
 /**
@@ -49,11 +53,13 @@ export class World {
   ego: Ego;
   private lights: Feature[];
   private recentSigns: { sign: Sign; t: number }[] = [];
+  private gust: SmoothNoise;
 
   constructor(options: { seed?: number; env?: Partial<EnvironmentSettings> } = {}) {
     this.route = new Route(DEMO_ROUTE);
     this.env = new Environment(options.env);
     this.traffic = new Traffic(this.route, options.seed ?? 5);
+    this.gust = new SmoothNoise(createRng((options.seed ?? 5) + 3), 0.3);
     this.nav = new Navigation(this.route);
     this.lights = this.route.features.filter((f) => f.kind === 'trafficLight');
     const bay = this.route.startBay;
@@ -61,7 +67,17 @@ export class World {
     for (let i = 1; i < bay.length; i++)
       len += Math.hypot(bay[i]!.x - bay[i - 1]!.x, bay[i]!.y - bay[i - 1]!.y);
     this.bayLength = len;
-    this.ego = { s: 0, lane: 0, targetLane: 0, direction: 1, bayPos: len, inBay: true, v: 0 };
+    this.ego = {
+      s: 0,
+      lane: 0,
+      targetLane: 0,
+      direction: 1,
+      bayPos: len,
+      inBay: true,
+      v: 0,
+      lat: 0,
+      latV: 0,
+    };
     this.traffic.populate(this.egoState());
   }
 
@@ -80,6 +96,8 @@ export class World {
       inBay: true,
       direction: 1,
       v: 0,
+      lat: 0,
+      latV: 0,
     };
     this.recentSigns = [];
     this.traffic.populate(this.egoState());
@@ -87,7 +105,17 @@ export class World {
 
   /** Put the car somewhere on the route (demo jumps, screenshots). */
   jumpTo(s: number, lane = 0): void {
-    this.ego = { ...this.ego, s, lane, targetLane: lane, inBay: false, bayPos: 0, direction: 1 };
+    this.ego = {
+      ...this.ego,
+      s,
+      lane,
+      targetLane: lane,
+      inBay: false,
+      bayPos: 0,
+      direction: 1,
+      lat: 0,
+      latV: 0,
+    };
     this.recentSigns = [];
     this.traffic.populate(this.egoState());
   }
@@ -114,10 +142,15 @@ export class World {
       .map((f) => ({ s: f.s - 3 }));
   }
 
-  /** Advance the world by dt with the ego car moving at `speed` (m/s) in `direction`. */
-  step(dt: number, speed: number, direction: 1 | -1): void {
+  /**
+   * Advance the world by dt with the ego car moving at `speed` (m/s) in
+   * `direction`; `steer` is the lateral acceleration from the driver and the
+   * lane assist (m/s², + = left).
+   */
+  step(dt: number, speed: number, direction: 1 | -1, steer = 0): void {
     this.time += dt;
     const e = this.ego;
+    this.stepLateral(dt, speed, steer);
     e.v = speed;
     e.direction = direction;
     const before = e.s;
@@ -164,6 +197,31 @@ export class World {
     });
   }
 
+  /**
+   * Lateral motion in the lane. Without steering the car drifts: road camber
+   * pulls it right, bends push it outwards, gusts nudge it. Driver and lane
+   * assist steer against that. At the line the wheels run onto the rumble
+   * strip and the car is held there (the simulator has no road edge crash).
+   */
+  private stepLateral(dt: number, speed: number, steer: number): void {
+    const e = this.ego;
+    if (e.inBay || speed < 1.5) {
+      e.lat *= Math.max(0, 1 - dt * 2);
+      e.latV = 0;
+      return;
+    }
+    const gust = this.gust.next(dt) * 0.12;
+    const camber = -0.06;
+    const bend = 0.05 * speed * speed * this.route.curvatureAt(e.s);
+    e.latV += (steer + camber + bend + gust) * dt;
+    e.latV -= e.latV * 0.15 * dt;
+    e.lat += e.latV * dt;
+    if (Math.abs(e.lat) > 1.6) {
+      e.lat = Math.sign(e.lat) * 1.6;
+      e.latV = 0;
+    }
+  }
+
   /** Ego pose on the map: in the bay, or on its lane. */
   egoPose(): Pose & { lateral: number } {
     const e = this.ego;
@@ -187,12 +245,12 @@ export class World {
       }
     }
     const p = this.route.pointAt(e.s);
-    const off = this.laneOffset(e.s, e.lane);
+    const off = this.laneOffset(e.s, e.lane) - e.lat;
     return {
       x: p.x - Math.sin(p.heading) * off,
       y: p.y + Math.cos(p.heading) * off,
       heading: p.heading,
-      lateral: 0,
+      lateral: e.lat,
     };
   }
 
@@ -248,7 +306,8 @@ export class World {
         x: pose.x,
         y: pose.y,
         heading: pose.heading,
-        lateral: 0,
+        lateral: e.lat,
+        lateralV: e.latV,
         direction: e.direction,
         inBay: e.inBay,
       },

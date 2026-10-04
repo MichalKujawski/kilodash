@@ -9,7 +9,8 @@ import {
   SpeedLimitRecognition,
   type RecognizedLimit,
 } from '../../assist/SpeedLimitRecognition';
-import { createRng } from '../../math';
+import { createRng, SmoothNoise } from '../../math';
+import { driverSteer, LaneAssist, LANE_ASSIST_STATES, LINE_STATES } from '../../assist/LaneAssist';
 import { consumerFuelLh, ecoTip, type EfficiencyState } from '../../drive/efficiency';
 import { DRIVE_MODE_ORDER } from '../../drive/modes';
 import { DemoDriver } from '../../world/DemoDriver';
@@ -34,6 +35,7 @@ import {
   type LightSwitch,
   type Selector,
   type WiperMode,
+  G,
 } from './vehicle';
 
 const STEP_S = 0.01;
@@ -53,8 +55,10 @@ export interface CarButtons {
   esc: 'on' | 'tcsOff' | 'sport';
   autoHold: boolean;
   parkAssist: boolean;
-  /** Steering-wheel "hands on" (for hands-off detection later). */
+  /** Steering-wheel "hands on" (hands-off detection). */
   handsOn: boolean;
+  /** Workshop: the driver looks at their phone (weak, late steering and braking). */
+  distracted: boolean;
   volume: number;
 }
 
@@ -108,6 +112,9 @@ export class SimulatorSource implements DataSource {
   /** Traffic-sign recognition + map, and the speed warning (ISA). */
   readonly recognition: SpeedLimitRecognition;
   readonly isa = new IsaWarning();
+  /** Lane keeping / centering with hands-off staging. */
+  readonly lane = new LaneAssist();
+  private wander: SmoothNoise;
   /** The limit the car believes applies (what the cluster shows). */
   recognized: RecognizedLimit = {
     limit: undefined,
@@ -128,6 +135,7 @@ export class SimulatorSource implements DataSource {
     autoHold: false,
     parkAssist: false,
     handsOn: true,
+    distracted: false,
     volume: 0.6,
   };
 
@@ -153,6 +161,7 @@ export class SimulatorSource implements DataSource {
     this.demo = new DemoDriver();
     this.assist = new SpeedAssist(!!profile.equipment?.acc);
     this.recognition = new SpeedLimitRecognition(createRng((options.seed ?? 1) + 10));
+    this.wander = new SmoothNoise(createRng((options.seed ?? 1) + 21), 0.25);
     for (const s of profileSignals(profile)) {
       this.sources.set(s.id, s.source);
       this.wanted.add(s.id);
@@ -433,8 +442,11 @@ export class SimulatorSource implements DataSource {
     this.assist.pressDistance();
   }
 
-  pressButton(b: 'laneAssist' | 'startStopOff' | 'autoHold' | 'parkAssist' | 'handsOn'): void {
+  pressButton(
+    b: 'laneAssist' | 'startStopOff' | 'autoHold' | 'parkAssist' | 'handsOn' | 'distracted',
+  ): void {
     this.buttons[b] = !this.buttons[b];
+    if (b === 'laneAssist') this.lane.toggle();
   }
 
   /** ESC button: short press toggles traction control off, long press = ESC sport. */
@@ -530,9 +542,10 @@ export class SimulatorSource implements DataSource {
     this.applyAssist(scene);
     sim.inputs.curvature = world.curvature();
     sim.inputs.gradient = world.gradient() * sim.state.direction;
+    const steer = this.applyLane(scene);
     this.syncEnvironment();
     sim.step(STEP_S);
-    world.step(STEP_S, sim.state.speedMs, sim.state.direction);
+    world.step(STEP_S, sim.state.speedMs, sim.state.direction, steer);
     // Never drive through the car ahead (emergency braking comes with the assist systems).
     const lead = scene.lead;
     if (lead && lead.dx < 0.4 && sim.state.direction === 1)
@@ -561,6 +574,73 @@ export class SimulatorSource implements DataSource {
   }
 
   private lastMode = '';
+
+  /** Lane markings the camera can see on each side of our lane. */
+  private laneLines(scene: SceneSnapshot): { left: boolean; right: boolean } {
+    const env = scene.env;
+    // Snow-covered or fog-hidden markings aren't found.
+    if (env.surface === 'icy' || env.weather === 'fog' || scene.ego.inBay)
+      return { left: false, right: false };
+    switch (scene.road.kind) {
+      case 'motorway':
+      case 'ramp':
+      case 'rural':
+        return { left: true, right: true };
+      case 'urban':
+        // Town streets: a centre line, but a kerb rather than a line on the right.
+        return { left: true, right: false };
+      default:
+        return { left: false, right: false };
+    }
+  }
+
+  /**
+   * Lane keeping/centering plus the driver's own steering; returns the lateral
+   * acceleration for the world. Hands-off escalation can jolt the brakes or
+   * stop the car (hazards on, parking brake once stopped).
+   */
+  private applyLane(scene: SceneSnapshot): number {
+    const sim = this.sim;
+    const st = sim.state;
+    if (this.lastIgnitionLane < 2 && st.ignition >= 2) this.lane.reset();
+    this.lastIgnitionLane = st.ignition;
+    const lat = scene.ego.lateral;
+    const latV = scene.ego.lateralV;
+    const left = sim.indicating('left');
+    const right = sim.indicating('right');
+    const out = this.lane.step({
+      speedKmh: sim.speedKmh,
+      lat,
+      latV,
+      lines: this.laneLines(scene),
+      indicating: left ? 'left' : right ? 'right' : null,
+      changingLane: this.world.ego.targetLane !== this.world.ego.lane,
+      accEngaged: this.assist.engaged && this.assist.fn !== 'limiter',
+      handsOn: this.buttons.handsOn,
+      dt: STEP_S,
+    });
+    if (out.jolt) sim.inputs.brake = Math.max(sim.inputs.brake, 0.35);
+    if (out.emergencyDecel !== null) {
+      this.assist.cancel();
+      sim.body.hazard = true;
+      sim.inputs.throttle = 0;
+      sim.inputs.brake = out.emergencyDecel / (G * 1.05);
+      if (st.speedMs < 0.3) {
+        sim.inputs.brake = 0.5;
+        sim.body.parkingBrake = true;
+      }
+    }
+    const human = driverSteer({
+      lat,
+      latV,
+      handsOn: this.buttons.handsOn,
+      distracted: this.buttons.distracted,
+      wander: this.wander.next(STEP_S),
+    });
+    return human * out.driverWeight + out.steer;
+  }
+
+  private lastIgnitionLane = 2;
 
   /** Camera + map speed-limit recognition and the ISA warning. */
   private recognize(scene: SceneSnapshot): void {
@@ -666,7 +746,14 @@ export class SimulatorSource implements DataSource {
     put(S.Hazard, flag(b.hazard));
     put(S.TCSActive, flag(st.tcs));
     put(S.ESCMode, ['on', 'tcsOff', 'sport'].indexOf(this.buttons.esc));
-    put(S.LaneAssistEnabled, flag(this.buttons.laneAssist));
+    put(S.LaneAssistEnabled, flag(this.lane.enabled));
+    const lo = this.lane.out;
+    put(S.LaneAssistState, LANE_ASSIST_STATES.indexOf(this.lane.state));
+    put(S.LaneLeft, LINE_STATES.indexOf(lo.left));
+    put(S.LaneRight, LINE_STATES.indexOf(lo.right));
+    put(S.HandsOffStage, lo.handsOffStage);
+    put(S.AssistedDriving, flag(lo.assisted));
+    put(S.LaneOffset, this.lastScene?.ego.lateral ?? 0);
     put(S.ABSActive, flag(st.abs));
     const as = this.assist;
     put(S.CruiseActive, flag(as.engaged));

@@ -50,7 +50,7 @@ export const classic: LayoutDefinition = {
         {
           type: 'carousel',
           props: {
-            pages: ['map', 'car', 'trip', 'efficiency', 'offroad'],
+            pages: ['map', 'assist', 'car', 'trip', 'efficiency', 'offroad'],
             edgeFade: 0.13,
             cutouts: [
               { ...LEFT, r: R },
