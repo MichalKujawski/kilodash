@@ -52,6 +52,11 @@ something big and rough.
   assumption in `docs/features/<feature>.md`.
 - **Every feature gets `docs/features/<feature>.md`:** real behaviour, how it's simulated, a Mermaid
   state diagram, thresholds, and where it appears.
+- **No new visible buttons on the control panel.** Any new control goes into the collapsible
+  "More controls" drawer.
+- **Every finished feature gets an entry in `docs/SHOWCASE_MOMENTS.md`:** feature name, how it would
+  be shown in a guided demo (what happens in the world, what appears on the cluster), a one-line
+  caption for visitors, and roughly how many seconds it needs.
 - **Ask the owner** before large refactors, heavy dependencies, or changes to the public site's
   structure.
 - **End of every task/session:** update `docs/PROGRESS.md` and `docs/WALKTHROUGH.md` if the
