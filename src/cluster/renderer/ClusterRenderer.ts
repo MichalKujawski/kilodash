@@ -1,4 +1,5 @@
 import { modeAccent } from '../widgets/driveMode';
+import { autoLayout, LAYOUTS, VIEW_NAMES, VIEWS, type ViewId } from '../layouts/views';
 import type { AlertEngine } from '@/core/alerts/AlertEngine';
 import { Flasher } from '@/core/alerts/flasher';
 import type { ConsumptionHistory } from '@/core/derived/ConsumptionHistory';
@@ -206,9 +207,39 @@ export class ClusterRenderer {
     this.glassOffset = { x, y };
   }
 
+  private buildView: ((l: LayoutDefinition) => Widget[]) | null = null;
+  view: ViewId = 'classic';
+  private viewLabelT = 0;
+
+  /** Enable the View button: `build` turns a layout into widgets for this car. */
+  setViews(build: (l: LayoutDefinition) => Widget[], initial: ViewId = 'classic'): void {
+    this.buildView = build;
+    this.selectView(initial, false);
+  }
+
+  selectView(view: ViewId, announce = true): void {
+    this.view = view;
+    if (announce) this.viewLabelT = 1.6;
+    const layout = view === 'auto' ? autoLayout(this.store.value(S.DriveMode, 2)) : LAYOUTS[view];
+    this.applyView(layout);
+  }
+
+  private applyView(layout: LayoutDefinition): void {
+    if (!this.buildView || layout === this.layout) return;
+    this.setLayout(layout, this.buildView(layout));
+    // Views without the centre carousel: the next turn goes to the top strip.
+    // (Sport keeps the strip clear for its shift lights.)
+    const hasCentre = layout.slots.some((sl) => sl.id === 'center');
+    this.ui.centerPage = hasCentre || layout.id === 'sport' ? 'map' : '';
+  }
+
   /** Route a steering-wheel key to the first widget that consumes it. */
   input(key: ClusterKey): boolean {
     for (const w of [...this.system, ...this.widgets]) if (w.onInput?.(key)) return true;
+    if (key === 'view' && this.buildView) {
+      this.selectView(VIEWS[(VIEWS.indexOf(this.view) + 1) % VIEWS.length]!);
+      return true;
+    }
     return false;
   }
 
@@ -465,6 +496,8 @@ export class ClusterRenderer {
     }
 
     this.paintModeTint(ctx, dt);
+    // Auto view follows the driving mode.
+    if (this.view === 'auto') this.applyView(autoLayout(this.store.value(S.DriveMode, 2)));
 
     const bloomOn = !this.lowPower && theme.effects.bloom > 0;
     const [ec, ectx] = this.emissive;
@@ -565,6 +598,18 @@ export class ClusterRenderer {
       ctx.drawImage(this.overlayLayer[0], this.offsetX, this.offsetY);
     }
     this.mark('overlay');
+
+    // The view's name, briefly, after pressing View.
+    if (this.viewLabelT > 0) {
+      this.viewLabelT -= dt;
+      ctx.setTransform(this.scale, 0, 0, this.scale, this.offsetX, this.offsetY);
+      ctx.globalAlpha = Math.min(1, this.viewLabelT * 2);
+      ctx.font = `500 22px ${theme.fonts.primary}`;
+      ctx.fillStyle = theme.text.primary;
+      ctx.textAlign = 'center';
+      ctx.fillText(VIEW_NAMES[this.view], W / 2, 110);
+      ctx.globalAlpha = 1;
+    }
 
     // Theme cross-fade: the previous look dissolves over the new one.
     if (this.fadeT < THEME_FADE_S) {

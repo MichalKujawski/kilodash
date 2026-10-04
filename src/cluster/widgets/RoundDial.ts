@@ -31,6 +31,8 @@ export interface RoundDialProps {
   zones?: { from: number; to: number; color: string; label?: string; labelAt?: number }[];
   /** Explicit numeral positions (default: every `labelStep`). */
   numeralValues?: number[];
+  /** Sport view: the digital speed above the gear in the hub. */
+  speedInHub?: boolean;
 }
 
 /** Rows of text in the open bottom gap, as fractions of the radius below the centre. */
@@ -478,6 +480,20 @@ export class RoundDial implements Widget {
 
     if (p.center === 'readout') this.drawReadout(ctx, f, g, raw, available);
     else if (p.center === 'gear') this.drawGear(ctx, f, g);
+    if (p.speedInHub) {
+      const v = Math.max(0, Math.round(this.readout.update(f.store.value(S.Speed), f.dt)));
+      readoutText(ctx, f, String(v), g.cx, g.cy - g.r * 0.3, 64, t.dial.hub.text);
+      label(
+        ctx,
+        'km/h',
+        g.cx,
+        g.cy - g.r * 0.3 + 20,
+        13,
+        t.fonts.primary,
+        t.text.tertiary,
+        'center',
+      );
+    }
   }
 
   private needlePath(

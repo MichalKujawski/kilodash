@@ -28,7 +28,7 @@ _Last updated: 2026-10-04_
 | 9    | Start-stop, Auto Hold, gear recommendation, shift lights, diesel DPF/AdBlue                          | done  |
 | 10   | Warnings catalogue, seatbelt escalation, TPMS, service                                               | done  |
 | 11   | Fatigue, parking sensors + camera, auto high beam, lights/body/wipers                                | done  |
-| 12   | Views (Classic, Navigation, Reduced, Driver Assistance, Sport, Auto view)                            | next  |
+| 12   | Views (Classic, Navigation, Reduced, Driver Assistance, Sport, Auto view)                            | done  |
 
 ## Done earlier
 
@@ -152,6 +152,14 @@ _Last updated: 2026-10-04_
 - The right telltale group now holds 16 lamps at 32 px spacing; the odometer moved to x = 1690.
 - Info popups are white (neutral). Colour is kept for warnings and dangers.
 - New poses: `belts`, `door`, `service`, `messages`.
+
+## Notes from steps 11–12
+
+- Step 11: `core/body/ParkAssist.ts`, `core/body/lights.ts` (auto high beam, fatigue), park view
+  with rear camera. Docs: `docs/features/parking-lights-fatigue.md`.
+- Step 12: the views in `cluster/layouts/views.ts` and the View button. Docs:
+  `docs/features/views.md`.
+- All twelve Realism v2 steps are done.
 
 ## Known issues / open questions
 

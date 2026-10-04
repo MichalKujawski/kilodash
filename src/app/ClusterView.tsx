@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { ClusterRenderer } from '@/cluster/renderer/ClusterRenderer';
 import { buildWidgets } from '@/cluster/layouts/resolve';
 import type { LayoutDefinition } from '@/cluster/layouts/types';
+import { VIEWS } from '@/cluster/layouts/views';
 import type { Theme } from '@/cluster/themes/types';
 import type { ClusterSession } from './session';
 
@@ -73,7 +74,15 @@ export function ClusterView({
   }, [theme]);
 
   useEffect(() => {
-    rendererRef.current?.setLayout(layout, buildWidgets(layout, session.available, session.env()));
+    const r = rendererRef.current;
+    if (!r) return;
+    r.setLayout(layout, buildWidgets(layout, session.available, session.env()));
+    // The View button switches between the layouts built for this car.
+    const view = new URLSearchParams(window.location.search).get('view');
+    r.setViews(
+      (l) => buildWidgets(l, session.available, session.env()),
+      VIEWS.find((v) => v === view) ?? 'classic',
+    );
   }, [layout, session]);
 
   useEffect(() => {
