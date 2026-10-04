@@ -133,6 +133,9 @@ body {
   width: 100%;
   background: #000;
   position: relative;
+  /* Follow the visor's curve so the display's square corners never poke out. */
+  border-radius: 50% 50% 18px 18px / clamp(26px, 5vw, 80px) clamp(26px, 5vw, 80px) 18px 18px;
+  overflow: hidden;
 }
 
 .kiosk {

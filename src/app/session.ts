@@ -1,6 +1,7 @@
 import { AlertEngine } from '@/core/alerts/AlertEngine';
 import { Flasher } from '@/core/alerts/flasher';
 import { ALERT_RULES } from '@/core/alerts/rules';
+import type { HistorySnapshot } from '@/core/derived/ConsumptionHistory';
 import { DerivedEngine, type TripState } from '@/core/derived/DerivedEngine';
 import type { CapabilityProfile } from '@/core/datasource/types';
 import type { VehicleProfile } from '@/core/datasource/simulator/profile';
@@ -29,11 +30,21 @@ function loadTrip(profileId: string): TripState | undefined {
   }
 }
 
-function saveTrip(profileId: string, trip: TripState): void {
+function saveTrip(profileId: string, trip: TripState, history?: HistorySnapshot): void {
   try {
     localStorage.setItem(`opencluster.trip.${profileId}`, JSON.stringify(trip));
+    if (history) localStorage.setItem(`opencluster.history.${profileId}`, JSON.stringify(history));
   } catch {
     // Storage unavailable (private mode): trips are simply not persisted.
+  }
+}
+
+function loadHistory(profileId: string): HistorySnapshot | undefined {
+  try {
+    const raw = localStorage.getItem(`opencluster.history.${profileId}`);
+    return raw ? (JSON.parse(raw) as HistorySnapshot) : undefined;
+  } catch {
+    return undefined;
   }
 }
 
@@ -64,7 +75,12 @@ export class ClusterSession {
       tankL: profile.tankL,
       trip: loadTrip(profile.id),
     });
+    this.derived.history.restore(loadHistory(profile.id));
     this.alerts = new AlertEngine(this.store, ALERT_RULES);
+  }
+
+  private persist(): void {
+    saveTrip(this.profile.id, this.derived.trip, this.derived.history.snapshot());
   }
 
   async start(): Promise<void> {
@@ -76,21 +92,35 @@ export class ClusterSession {
     this.timers.push(
       setInterval(() => this.derived.tick(performance.now()), 1000 / DERIVED_HZ),
       setInterval(() => this.alerts.update(performance.now()), 1000 / ALERTS_HZ),
-      setInterval(() => saveTrip(this.profile.id, this.derived.trip), TRIP_SAVE_MS),
+      setInterval(() => this.persist(), TRIP_SAVE_MS),
     );
   }
 
   async stop(): Promise<void> {
     for (const t of this.timers) clearInterval(t);
     this.timers = [];
-    saveTrip(this.profile.id, this.derived.trip);
+    this.persist();
     this.unsub?.();
     await this.source.disconnect();
   }
 
-  resetTrip(): void {
+  resetTrip(clearHistory = false): void {
     this.derived.resetTrip();
-    saveTrip(this.profile.id, this.derived.trip);
+    if (clearHistory) this.derived.history.restore({ buckets: [], recent: [] });
+    this.persist();
+  }
+
+  /**
+   * Run the simulation ahead instantly while the derived engine keeps up
+   * (tests and screenshots): trip computer and history fill as if driven.
+   */
+  fastForward(seconds: number, each?: () => void): void {
+    const stepS = 0.1;
+    const steps = Math.round(seconds / stepS);
+    for (let i = 0; i < steps; i++) {
+      this.source.fastForward(stepS, each);
+      this.derived.step(performance.now(), stepS);
+    }
   }
 
   env(): VehicleEnv {

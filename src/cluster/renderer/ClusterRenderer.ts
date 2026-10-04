@@ -1,5 +1,6 @@
 import type { AlertEngine } from '@/core/alerts/AlertEngine';
 import { Flasher } from '@/core/alerts/flasher';
+import type { ConsumptionHistory } from '@/core/derived/ConsumptionHistory';
 import { S } from '@/core/signals/catalog';
 import type { SignalStore } from '@/core/signals/store';
 import type { LayoutDefinition } from '../layouts/types';
@@ -25,10 +26,11 @@ export interface RendererOptions {
   /** Draw the glass reflection layer (dev toggle). */
   glass?: boolean;
   /** Called about twice a second with the measured frame rate. */
-  onFps?: (fps: number, frameMs: number) => void;
+  onFps?: (fps: number, frameMs: number, droppedFrames: number) => void;
   /** Share a flasher so audio ticks stay in phase with the arrows. */
   flasher?: Flasher;
   alerts?: AlertEngine | null;
+  history?: ConsumptionHistory | null;
 }
 
 export type NightMode = 'auto' | 'on' | 'off';
@@ -79,6 +81,8 @@ export class ClusterRenderer {
   private offsetY = 0;
   private resizeObserver: ResizeObserver;
   private fpsFrames = 0;
+  /** Frames since the last report that took longer than 1.5 vsync intervals. */
+  private dropped = 0;
   private fpsSince = 0;
   private glassOffset = { x: 0, y: 0 };
   private breathT = 0;
@@ -383,7 +387,9 @@ export class ClusterRenderer {
 
   private drawFrame(now: number): void {
     this.markT = performance.now();
-    const dt = Math.min((now - this.lastFrame) / 1000, 0.1);
+    const interval = now - this.lastFrame;
+    if (interval > 25 && this.fpsFrames > 0) this.dropped++;
+    const dt = Math.min(interval / 1000, 0.1);
     this.lastFrame = now;
     // Light themes hand over to their night variant when it gets dark.
     this.applyTheme(this.effectiveTheme(), true);
@@ -439,6 +445,7 @@ export class ClusterRenderer {
       flasher: this.flasher,
       runtime,
       alerts: this.alerts,
+      history: this.options.history ?? null,
     };
     this.mark('base');
     const drawAll = (list: Widget[]): void => {
@@ -524,8 +531,13 @@ export class ClusterRenderer {
 
     this.fpsFrames++;
     if (now - this.fpsSince >= 500) {
-      this.options.onFps?.((this.fpsFrames * 1000) / (now - this.fpsSince), this.frameMs);
+      this.options.onFps?.(
+        (this.fpsFrames * 1000) / (now - this.fpsSince),
+        this.frameMs,
+        this.dropped,
+      );
       this.fpsFrames = 0;
+      this.dropped = 0;
       this.fpsSince = now;
     }
   }

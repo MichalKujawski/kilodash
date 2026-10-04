@@ -9,7 +9,7 @@ interface Props {
   session: ClusterSession;
   layout: LayoutDefinition;
   theme: Theme;
-  onFps?: (fps: number, frameMs: number) => void;
+  onFps?: (fps: number, frameMs: number, dropped: number) => void;
   onRenderer?: (r: ClusterRenderer | null) => void;
   /** Move the glass reflection a few px with the pointer (website only). */
   parallax?: boolean;
@@ -48,7 +48,8 @@ export function ClusterView({
       lowPower,
       flasher: session.flasher,
       alerts: session.alerts,
-      onFps: (f, ms) => onFpsRef.current?.(f, ms),
+      history: session.derived.history,
+      onFps: (f, ms, d) => onFpsRef.current?.(f, ms, d),
     });
     rendererRef.current = r;
     if (new URLSearchParams(window.location.search).has('profile')) {

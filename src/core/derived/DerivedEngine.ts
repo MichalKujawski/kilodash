@@ -2,6 +2,7 @@ import type { FuelType } from '../datasource/types';
 import { S } from '../signals/catalog';
 import type { SignalStore } from '../signals/store';
 import type { SignalId } from '../signals/types';
+import { ConsumptionHistory } from './ConsumptionHistory';
 import { fuelRateFromMaf, litresPer100km } from './fuel';
 
 /** Fallback consumption for range estimates before the trip has enough data. */
@@ -26,6 +27,8 @@ export interface DerivedOptions {
  */
 export class DerivedEngine {
   trip: TripState;
+  /** Rolling consumption history for the trip-computer graphs. */
+  readonly history = new ConsumptionHistory();
   private lastNow: number | undefined;
   private avgWindow: number | undefined;
 
@@ -60,8 +63,14 @@ export class DerivedEngine {
   }
 
   tick(now: number): void {
-    const dt = this.lastNow === undefined ? 0 : Math.min((now - this.lastNow) / 1000, 1);
+    const dt =
+      this.lastNow === undefined ? 0 : Math.max(0, Math.min((now - this.lastNow) / 1000, 1));
     this.lastNow = now;
+    this.step(now, dt);
+  }
+
+  /** Integrate `dt` seconds of driving (used directly when fast-forwarding). */
+  step(now: number, dt: number): void {
     const st = this.store;
     if (!st.has(S.Speed)) return;
     const speed = st.value(S.Speed);
@@ -88,6 +97,7 @@ export class DerivedEngine {
       const inst = litresPer100km(rate, speed);
       // Stationary: publish NaN so widgets can switch to L/h.
       put(S.InstantConsumption, inst ?? Number.NaN);
+      if (running) this.history.update(inst ?? Number.NaN, dt);
       if (this.trip.distanceKm > 0.2) {
         avg = (this.trip.fuelUsedL / this.trip.distanceKm) * 100;
         put(S.AverageConsumption, avg);

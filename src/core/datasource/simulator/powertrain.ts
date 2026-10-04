@@ -80,7 +80,8 @@ export class CombustionPowertrain implements Powertrain {
     private sim: VehicleSimulator,
     private e: EngineSpec,
   ) {
-    this.idleNoise = new SmoothNoise(sim.rng, 3);
+    // ~2 Hz wander, slow enough for the needle spring to show it.
+    this.idleNoise = new SmoothNoise(sim.rng, 2);
   }
 
   onStart(): void {
@@ -133,7 +134,7 @@ export class CombustionPowertrain implements Powertrain {
     const cold = clamp((45 - s.coolantC) / 45, 0, 1) * 320;
     const misfire = sim.faults.has('checkEngine');
     const idleTarget =
-      e.idleRpm + cold + this.flare * 650 + this.idleNoise.next(dt) * (misfire ? 55 : 12);
+      e.idleRpm + cold + this.flare * 650 + this.idleNoise.next(dt) * (misfire ? 60 : 24);
     const idleThrottle = clamp(0.035 + (idleTarget - s.rpm) * 0.0004, 0, 0.25);
     const pedalOff = s.throttle < 0.02;
     const fuelCut = pedalOff && s.coupled && s.rpm > e.idleRpm + 350;

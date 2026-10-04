@@ -2,7 +2,6 @@ import { Spring } from '@/core/smoothing/spring';
 import type { ClusterKey, FrameContext, Rect, Widget, WidgetFactory } from '../../renderer/types';
 import { CarPage } from './CarPage';
 import { EfficiencyPage } from './EfficiencyPage';
-import { History } from './history';
 import { MapPage } from './MapPage';
 import { TripPage } from './TripPage';
 import type { CenterPage } from './types';
@@ -32,7 +31,6 @@ export class Carousel implements Widget {
   private pages: CenterPage[];
   private index = 0;
   private pos = new Spring(0, { stiffness: 70, damping: 16 });
-  private history = new History();
   private buffer: HTMLCanvasElement | null = null;
   private bctx: CanvasRenderingContext2D | null = null;
   private mask: HTMLCanvasElement | null = null;
@@ -120,8 +118,7 @@ export class Carousel implements Widget {
 
   draw(ctx: CanvasRenderingContext2D, f: FrameContext): void {
     const { x, y, w, h } = this.rect;
-    this.history.update(f.store, f.dt);
-    for (const p of this.pages) p.update?.(f, this.history);
+    for (const p of this.pages) p.update?.(f);
 
     const b = this.ensureBuffer(f.pxScale);
     if (!b || !this.buffer) return;
@@ -142,7 +139,7 @@ export class Carousel implements Widget {
       b.beginPath();
       b.rect(0, 0, w, h);
       b.clip();
-      page.draw(b, f, w, h, this.history);
+      page.draw(b, f, w, h);
       b.restore();
     }
 

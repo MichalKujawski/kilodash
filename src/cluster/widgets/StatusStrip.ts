@@ -14,8 +14,13 @@ function groupThousands(n: number): string {
  * Top status strip: range, drive mode, assist icons, connectivity. Small, muted,
  * evenly spaced across `rect`.
  */
+/** Lane keeping works above this speed (typical systems: 60–65 km/h). */
+const LANE_ASSIST_MIN_KMH = 60;
+
 export class TopStrip implements Widget {
   private cruiseFade = new Fade(5);
+  private laneActive = new Fade(3);
+  private modeFade = new Fade(2);
 
   constructor(readonly rect: Rect) {}
 
@@ -35,22 +40,23 @@ export class TopStrip implements Widget {
     const rw = tabular(ctx, range, slots[0]! - 20, cy + 1, 'left');
     label(ctx, 'km', slots[0]! - 14 + rw, cy + 6, 13, t.fonts.primary, t.text.tertiary);
 
-    // Drive mode.
+    // Drive mode: fades in once the start-up sequence has finished.
     const auto = !st.has(S.SelectedGear) || st.value(S.SelectedGear) === 127;
     ctx.textBaseline = 'alphabetic';
-    label(
-      ctx,
-      auto ? 'Comfort' : 'Dynamic',
-      slots[1]!,
-      cy + 6,
-      15,
-      t.fonts.primary,
-      t.text.secondary,
-      'center',
-    );
+    ctx.globalAlpha = this.modeFade.update(f.runtime.phase === 'on', f.dt);
+    const mode = auto ? 'Comfort' : 'Dynamic';
+    label(ctx, mode, slots[1]!, cy + 6, 15, t.fonts.primary, t.text.secondary, 'center');
+    ctx.globalAlpha = 1;
 
-    // Assist: lane assist available (muted), cruise control when active (green).
-    drawIcon(ctx, 'laneAssist', slots[2]! - 16, cy, 20, t.text.tertiary, t.fonts.primary);
+    // Assist: lane assist in standby (grey) cross-fades to active (green) above its
+    // minimum speed; cruise control appears when engaged.
+    const lane = this.laneActive.update(st.value(S.Speed) > LANE_ASSIST_MIN_KMH, f.dt);
+    const laneX = slots[2]! - 16;
+    ctx.globalAlpha = 1 - lane;
+    drawIcon(ctx, 'laneAssist', laneX, cy, 20, t.text.tertiary, t.fonts.primary);
+    ctx.globalAlpha = lane;
+    drawIcon(ctx, 'laneAssist', laneX, cy, 20, SAFETY_COLORS.info, t.fonts.primary);
+    ctx.globalAlpha = 1;
     const cruise = this.cruiseFade.update(st.value(S.CruiseActive) > 0, f.dt);
     if (cruise > 0) {
       ctx.globalAlpha = cruise;

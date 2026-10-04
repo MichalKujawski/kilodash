@@ -72,7 +72,11 @@ export class AlertPopup implements Widget {
     // Card: near-black surface so it reads on any page, thin severity edge on top.
     const card = new Path2D();
     card.roundRect(x, y, w, h, 20);
-    ctx.fillStyle = 'rgb(6, 7, 9)';
+    // Opaque, with a gentle top-down gradient so the card isn't a flat slab.
+    const surface = ctx.createLinearGradient(0, y, 0, y + h);
+    surface.addColorStop(0, '#0e1013');
+    surface.addColorStop(1, '#050607');
+    ctx.fillStyle = surface;
     ctx.fill(card);
     const edge = ctx.createLinearGradient(x, 0, x + w, 0);
     edge.addColorStop(0, 'rgba(0,0,0,0)');

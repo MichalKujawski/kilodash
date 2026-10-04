@@ -1,5 +1,6 @@
 import type { AlertEngine } from '@/core/alerts/AlertEngine';
 import type { Flasher } from '@/core/alerts/flasher';
+import type { ConsumptionHistory } from '@/core/derived/ConsumptionHistory';
 import type { SignalStore } from '@/core/signals/store';
 import type { SignalId } from '@/core/signals/types';
 import type { Theme } from '../themes/types';
@@ -40,6 +41,8 @@ export interface FrameContext {
   /** Start-up / shut-down choreography state. */
   runtime: ClusterRuntime;
   alerts: AlertEngine | null;
+  /** Trip-computer consumption history (from the derived engine). */
+  history: ConsumptionHistory | null;
 }
 
 export interface StaticContext {

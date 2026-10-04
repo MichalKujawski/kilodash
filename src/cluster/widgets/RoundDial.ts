@@ -131,6 +131,7 @@ export class RoundDial implements Widget {
     txt: string,
     deg: number,
     g: Geometry,
+    knockout?: string,
   ): void {
     const d = t.dial;
     const size = Math.round(g.r * d.numerals.size);
@@ -145,9 +146,30 @@ export class RoundDial implements Widget {
       const a = deg + 90;
       const n = ((a % 360) + 360) % 360;
       ctx.rotate((n > 90 && n < 270 ? a + 180 : a) * DEG);
+      if (knockout) this.knockout(ctx, txt, 0, 1, knockout, size);
       ctx.fillText(txt, 0, 1);
       ctx.restore();
-    } else ctx.fillText(txt, x, y + 1);
+    } else {
+      if (knockout) this.knockout(ctx, txt, x, y + 1, knockout, size);
+      ctx.fillText(txt, x, y + 1);
+    }
+  }
+
+  /** Outline in the face colour so a numeral stays legible on top of the needle. */
+  private knockout(
+    ctx: CanvasRenderingContext2D,
+    txt: string,
+    x: number,
+    y: number,
+    color: string,
+    size: number,
+  ): void {
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = Math.max(3, size * 0.18);
+    ctx.lineJoin = 'round';
+    ctx.strokeText(txt, x, y);
+    ctx.restore();
   }
 
   drawStatic(ctx: CanvasRenderingContext2D, sc: StaticContext): void {
@@ -379,24 +401,6 @@ export class RoundDial implements Widget {
       }
     }
 
-    // Numerals brighten as the needle passes.
-    for (const n of this.numerals()) {
-      const nd = this.deg(this.frac(n.value), d);
-      const k = 1 - Math.abs(nd - deg) / d.numerals.litRangeDeg;
-      if (k <= 0) continue;
-      const inRed = p.redFrom !== undefined && n.value >= p.redFrom;
-      ctx.globalAlpha = k * alpha;
-      ctx.fillStyle = inRed ? '#ff6a5c' : d.numerals.lit;
-      this.drawNumeral(ctx, t, n.text, nd, g);
-      if (em) {
-        em.globalAlpha = k * 0.35;
-        em.fillStyle = d.numerals.lit;
-        this.drawNumeral(em, t, n.text, nd, g);
-        em.globalAlpha = 1;
-      }
-    }
-    ctx.globalAlpha = 1;
-
     if (segmented) {
       ctx.globalAlpha = alpha;
       this.drawSegmentBars(ctx, em, g, d, frac);
@@ -421,6 +425,26 @@ export class RoundDial implements Widget {
       }
       this.drawNeedle(ctx, em, g, deg, t, alpha);
     }
+
+    // Numerals brighten as the needle passes. They are drawn on top of the needle
+    // with a face-coloured outline, as digital clusters do, so a resting or
+    // passing needle never hides a number.
+    for (const n of this.numerals()) {
+      const nd = this.deg(this.frac(n.value), d);
+      const k = 1 - Math.abs(nd - deg) / d.numerals.litRangeDeg;
+      if (k <= 0) continue;
+      const inRed = p.redFrom !== undefined && n.value >= p.redFrom;
+      ctx.globalAlpha = k * alpha;
+      ctx.fillStyle = inRed ? '#ff6a5c' : d.numerals.lit;
+      this.drawNumeral(ctx, t, n.text, nd, g, segmented ? undefined : d.face.edge);
+      if (em) {
+        em.globalAlpha = k * 0.35;
+        em.fillStyle = d.numerals.lit;
+        this.drawNumeral(em, t, n.text, nd, g);
+        em.globalAlpha = 1;
+      }
+    }
+    ctx.globalAlpha = 1;
 
     if (p.center === 'readout') this.drawReadout(ctx, f, g, raw, available);
     else if (p.center === 'gear') this.drawGear(ctx, f, g);

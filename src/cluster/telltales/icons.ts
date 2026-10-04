@@ -169,8 +169,9 @@ export const ICONS: Record<IconId, IconPart[]> = {
   ],
   signal: [{ kind: 'fill', d: 'M3 17h3v3H3zM8 13h3v7H8zM13 9h3v11h-3zM18 5h3v15h-3z' }],
   laneAssist: [
-    { kind: 'stroke', d: 'M6 21 9 3M18 21 15 3', width: 1.8 },
-    { kind: 'stroke', d: 'M12 5v3M12 11v3M12 17v3', width: 1.6 },
+    // Lane markings in perspective with the car between them.
+    { kind: 'stroke', d: 'M3.5 21 8 4M20.5 21 16 4', width: 1.8 },
+    { kind: 'fill', d: 'M9.2 13.5h5.6l1 3v3.5h-1.6v-1.2H9.8v1.2H8.2V16.5z' },
   ],
 };
 

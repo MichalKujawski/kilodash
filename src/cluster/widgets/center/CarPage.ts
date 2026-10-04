@@ -2,6 +2,7 @@ import { S } from '@/core/signals/catalog';
 import { label } from '../../renderer/draw';
 import type { FrameContext } from '../../renderer/types';
 import { SAFETY_COLORS } from '../../themes/types';
+import { pageSurface } from './TripPage';
 import type { CenterPage } from './types';
 
 const DOORS = [
@@ -31,6 +32,7 @@ export class CarPage implements CenterPage {
     const W = L * 0.44;
     const top = cy - L / 2;
     const on = (id: string): boolean => st.value(id) > 0;
+    pageSurface(ctx, f, w, h);
 
     label(ctx, 'Vehicle status', cx, 58, 16, t.fonts.primary, t.text.tertiary, 'center');
 

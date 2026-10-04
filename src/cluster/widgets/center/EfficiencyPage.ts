@@ -3,8 +3,7 @@ import { clamp } from '@/core/math';
 import { ReadoutValue, Spring } from '@/core/smoothing/spring';
 import { annulus, DEG, label, polar } from '../../renderer/draw';
 import type { FrameContext } from '../../renderer/types';
-import type { History } from './history';
-import { valueWithUnit } from './TripPage';
+import { pageSurface, valueWithUnit } from './TripPage';
 import type { CenterPage } from './types';
 
 const MAX_L100 = 20;
@@ -15,18 +14,13 @@ export class EfficiencyPage implements CenterPage {
   private spring = new Spring(0, { stiffness: 30, damping: 10 });
   private readout = new ReadoutValue(3, 0.4);
 
-  draw(
-    ctx: CanvasRenderingContext2D,
-    f: FrameContext,
-    w: number,
-    h: number,
-    history: History,
-  ): void {
+  draw(ctx: CanvasRenderingContext2D, f: FrameContext, w: number, h: number): void {
     const t = f.theme;
     const st = f.store;
     const cx = w / 2;
     const cy = 270;
     const r = 150;
+    pageSurface(ctx, f, w, h);
     const inst = st.value(S.InstantConsumption, Number.NaN);
     const moving = Number.isFinite(inst);
     const frac = this.spring.update(moving ? clamp(inst / MAX_L100, 0, 1) : 0, f.dt);
@@ -65,8 +59,8 @@ export class EfficiencyPage implements CenterPage {
       label(
         ctx,
         'Ø',
-        x1 + Math.cos(a * DEG) * 12,
-        y1 + Math.sin(a * DEG) * 12,
+        x0 - Math.cos(a * DEG) * 12,
+        y0 - Math.sin(a * DEG) * 12 + 4,
         13,
         t.fonts.primary,
         t.text.secondary,
@@ -80,7 +74,7 @@ export class EfficiencyPage implements CenterPage {
     label(ctx, 'Instant', cx, cy + 14, 14, t.fonts.primary, t.text.tertiary, 'center');
 
     // Rolling graph of the last minute.
-    const vals = history.recent.values();
+    const vals = f.history?.recent.values() ?? [];
     const gx = cx - 190;
     const gw = 380;
     const gy = h - 40;
@@ -92,7 +86,7 @@ export class EfficiencyPage implements CenterPage {
     ctx.lineTo(gx + gw, gy);
     ctx.stroke();
     if (vals.length > 1) {
-      const n = history.recent.size;
+      const n = f.history?.recent.size ?? 120;
       const px = (i: number): number => gx + gw - (vals.length - 1 - i) * (gw / (n - 1));
       const py = (v: number): number => gy - (clamp(v, 0, MAX_L100 * 1.5) / (MAX_L100 * 1.5)) * gh;
       ctx.beginPath();

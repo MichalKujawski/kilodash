@@ -7,8 +7,16 @@ const [outDir = 'docs/screenshots', ...only] = process.argv.slice(2);
 const poses = only.length ? only : ['idle', 'city', 'highway', 'redline', 'night'];
 const keys = (process.env.KEYS ?? '').split(',').filter(Boolean);
 
+// GPU rasterisation by default so fps numbers mean something (PW_GPU=0 for software).
+const gpuArgs = [
+  '--ignore-gpu-blocklist',
+  '--enable-gpu',
+  '--use-angle=vulkan',
+  '--enable-features=Vulkan',
+];
 const browser = await chromium.launch({
   ...(process.env.PW_CHROME === '0' ? {} : { channel: 'chrome' }),
+  args: process.env.PW_GPU === '0' ? [] : gpuArgs,
 });
 const page = await browser.newPage({ viewport: { width: 1920, height: 720 } });
 const errors = [];
@@ -20,12 +28,14 @@ for (const pose of poses) {
     await page.keyboard.press(k);
     await page.waitForTimeout(700);
   }
-  await page.waitForTimeout(2500);
+  const d0 = Number(await page.locator('.kiosk').getAttribute('data-dropped'));
+  await page.waitForTimeout(4000);
   await page.screenshot({ path: `${outDir}/${pose}.png` });
   const kiosk = page.locator('.kiosk');
   const fps = await kiosk.getAttribute('data-fps');
   const ms = await kiosk.getAttribute('data-frame-ms');
-  console.log(`${pose}: ${fps} fps, ${ms} ms CPU/frame`);
+  const dropped = Number(await kiosk.getAttribute('data-dropped')) - d0;
+  console.log(`${pose}: ${fps} fps, ${ms} ms CPU/frame, ${dropped} dropped frames in 4 s`);
 }
 if (process.env.SITE !== '0') {
   await page.setViewportSize({ width: 1600, height: 820 });

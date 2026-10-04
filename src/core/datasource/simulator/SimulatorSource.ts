@@ -225,6 +225,10 @@ export class SimulatorSource implements DataSource {
     } else this.sim.setIgnition(2);
   }
 
+  setNight(on: boolean): void {
+    this.night = on;
+  }
+
   setAttract(on: boolean): void {
     this.attract = on;
   }

@@ -43,8 +43,12 @@ const ARROWS: Record<string, ClusterKey> = {
 const params = new URLSearchParams(window.location.search);
 const KIOSK = params.get('kiosk') === '1';
 const LOW_POWER = params.get('lowpower') === '1';
+/** Experimental extras (other themes, theme editor) are only exposed with ?dev=1. */
+const DEV = params.get('dev') === '1';
 const POSE = poseFromUrl();
 function initialTheme(userThemes: Theme[]): Theme {
+  // The public demo is the Midnight experience only.
+  if (!DEV) return DEFAULT_THEME;
   const id = params.get('theme') ?? loadSelectedThemeId() ?? '';
   return THEME_BY_ID.get(id) ?? userThemes.find((t) => t.id === id) ?? DEFAULT_THEME;
 }
@@ -98,7 +102,7 @@ export function App() {
     let live = true;
     void s.start().then(() => {
       if (!live) return;
-      if (POSE) applyPose(s.source, POSE);
+      if (POSE) applyPose(s, POSE);
       // Scripting hook for tests and visual review (dev builds or ?debug).
       if (import.meta.env.DEV || params.has('debug')) {
         (window as unknown as { __oc?: unknown }).__oc = {
@@ -131,6 +135,7 @@ export function App() {
     toggleEngineSound: () => setSound((s) => ({ ...s, engine: !s.engine })),
     cycleNight: () => rendererRef.current?.cycleNightMode(),
     cycleTheme: () =>
+      DEV &&
       setTheme(
         (cur) =>
           allThemes[(allThemes.findIndex((t) => t.id === cur.id) + 1) % allThemes.length] ??
@@ -155,7 +160,9 @@ export function App() {
     return () => window.removeEventListener('keydown', down);
   }, []);
 
-  const onFps = useCallback((f: number, ms: number) => {
+  const [dropped, setDropped] = useState(0);
+  const onFps = useCallback((f: number, ms: number, d: number) => {
+    setDropped((x) => x + d);
     setFps(f);
     setFrameMs(ms);
   }, []);
@@ -180,7 +187,12 @@ export function App() {
 
   if (KIOSK)
     return (
-      <div className="kiosk" data-fps={fps.toFixed(0)} data-frame-ms={frameMs.toFixed(2)}>
+      <div
+        className="kiosk"
+        data-fps={fps.toFixed(0)}
+        data-frame-ms={frameMs.toFixed(2)}
+        data-dropped={dropped}
+      >
         {cluster}
       </div>
     );
@@ -213,35 +225,42 @@ export function App() {
           <DevPanel session={session} renderer={renderer} sound={sound} onSound={setSound} />
         )}
 
-        <section className="theme-chooser" aria-label="Themes">
-          <div className="dev-row">
-            <span className="dev-label">Theme</span>
-            {allThemes.map((t) => (
+        {DEV && (
+          <section className="theme-chooser" aria-label="Themes (experimental)">
+            <div className="dev-row">
+              <span className="dev-label">Theme</span>
+              {allThemes.map((t) => (
+                <button
+                  key={t.id}
+                  className={`pill ${t.id === theme.id ? 'pill-on' : ''}`}
+                  onClick={() => setTheme(t)}
+                >
+                  <span
+                    className="swatch"
+                    style={{ background: t.dial.needle.color }}
+                    aria-hidden
+                  />
+                  {t.name}
+                </button>
+              ))}
               <button
-                key={t.id}
-                className={`pill ${t.id === theme.id ? 'pill-on' : ''}`}
-                onClick={() => setTheme(t)}
+                className={`pill ${editing ? 'pill-on' : ''}`}
+                onClick={() => setEditing((e) => !e)}
               >
-                <span className="swatch" style={{ background: t.dial.needle.color }} aria-hidden />
-                {t.name}
+                Theme editor
               </button>
-            ))}
-            <button
-              className={`pill ${editing ? 'pill-on' : ''}`}
-              onClick={() => setEditing((e) => !e)}
-            >
-              Theme editor
-            </button>
-          </div>
-          {editing && (
-            <ThemeEditor
-              theme={theme}
-              onChange={(t) => setTheme(t, false)}
-              onSave={saveTheme}
-              onDelete={deleteTheme}
-            />
-          )}
-        </section>
+            </div>
+            {editing && (
+              <ThemeEditor
+                theme={theme}
+                onChange={(t) => setTheme(t, false)}
+                onSave={saveTheme}
+                onDelete={deleteTheme}
+              />
+            )}
+            <p className="te-note">Experimental — these themes are not contract-complete.</p>
+          </section>
+        )}
       </main>
     </div>
   );

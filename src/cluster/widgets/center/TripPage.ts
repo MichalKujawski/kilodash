@@ -1,7 +1,7 @@
+import { BUCKET_S } from '@/core/derived/ConsumptionHistory';
 import { S } from '@/core/signals/catalog';
-import { font, label, text } from '../../renderer/draw';
+import { font, label, tabular, text } from '../../renderer/draw';
 import type { FrameContext } from '../../renderer/types';
-import type { History } from './history';
 import type { CenterPage } from './types';
 
 function duration(s: number): string {
@@ -10,7 +10,16 @@ function duration(s: number): string {
   return `${h}:${String(m).padStart(2, '0')}`;
 }
 
-/** Value with a smaller, baseline-aligned unit. */
+/** Width of `str` when drawn with `tabular` in the current font. */
+function tabularWidth(ctx: CanvasRenderingContext2D, str: string): number {
+  const cell = ctx.measureText('0').width;
+  return [...str].reduce(
+    (w, ch) => w + (ch >= '0' && ch <= '9' ? cell : ctx.measureText(ch).width),
+    0,
+  );
+}
+
+/** Value (tabular digits) with a smaller, baseline-aligned unit. */
 export function valueWithUnit(
   ctx: CanvasRenderingContext2D,
   value: string,
@@ -22,32 +31,42 @@ export function valueWithUnit(
   align: 'left' | 'center' = 'left',
 ): void {
   const t = f.theme;
-  ctx.font = font(500, size, t.fonts.primary);
-  const vw = ctx.measureText(value).width;
-  ctx.font = font(500, Math.round(size * 0.42), t.fonts.primary);
+  const valueFont = font(500, size, t.fonts.primary);
+  const unitFont = font(500, Math.round(size * 0.42), t.fonts.primary);
+  ctx.font = valueFont;
+  const vw = tabularWidth(ctx, value);
+  ctx.font = unitFont;
   const uw = ctx.measureText(unit).width;
-  const total = vw + 6 + uw;
-  const x0 = align === 'center' ? x - total / 2 : x;
-  text(ctx, value, x0, y, { font: font(500, size, t.fonts.primary), color: t.text.primary });
-  text(ctx, unit, x0 + vw + 6, y, {
-    font: font(500, Math.round(size * 0.42), t.fonts.primary),
-    color: t.text.secondary,
-  });
+  const x0 = align === 'center' ? x - (vw + 6 + uw) / 2 : x;
+  ctx.font = valueFont;
+  ctx.fillStyle = t.text.primary;
+  ctx.textBaseline = 'alphabetic';
+  tabular(ctx, value, x0, y, 'left');
+  text(ctx, unit, x0 + vw + 6, y, { font: unitFont, color: t.text.secondary });
+}
+
+/** A barely visible pool of light behind a page, so no large surface is flat black. */
+export function pageSurface(
+  ctx: CanvasRenderingContext2D,
+  f: FrameContext,
+  w: number,
+  h: number,
+): void {
+  const g = ctx.createRadialGradient(w / 2, h * 0.45, 0, w / 2, h * 0.45, w * 0.45);
+  g.addColorStop(0, f.theme.panel.surface);
+  g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, w, h);
 }
 
 /** Trip computer as large values on a 2×2 grid, with a consumption history graph. */
 export class TripPage implements CenterPage {
   readonly id = 'trip';
 
-  draw(
-    ctx: CanvasRenderingContext2D,
-    f: FrameContext,
-    w: number,
-    h: number,
-    history: History,
-  ): void {
+  draw(ctx: CanvasRenderingContext2D, f: FrameContext, w: number, h: number): void {
     const t = f.theme;
     const st = f.store;
+    pageSurface(ctx, f, w, h);
     const fmt = (id: string, digits: number): string =>
       st.has(id) && Number.isFinite(st.value(id)) ? st.value(id).toFixed(digits) : '--';
 
@@ -78,27 +97,47 @@ export class TripPage implements CenterPage {
       valueWithUnit(ctx, value, unit, x, y + 46, f);
     });
 
-    // Consumption history: one bar per 10 s.
-    const bars = history.buckets.values();
+    // Consumption history: one bar per bucket; empty slots show only a faint baseline.
+    const hist = f.history;
+    const n = hist?.buckets.size ?? 24;
+    const bars = hist?.buckets.values() ?? [];
     const gx = w / 2 - 170;
     const gw = 340;
     const gy = h - 70;
     const gh = 78;
-    label(ctx, 'Consumption · last 4 min', gx, gy - gh - 14, 13, t.fonts.primary, t.text.tertiary);
+    const minutes = Math.round((n * BUCKET_S) / 60);
+    label(
+      ctx,
+      `Consumption · last ${minutes} min`,
+      gx,
+      gy - gh - 14,
+      13,
+      t.fonts.primary,
+      t.text.tertiary,
+    );
     const max = Math.max(15, ...bars);
-    const n = history.buckets.size;
     const bw = gw / n;
+    ctx.fillStyle = t.panel.divider;
+    ctx.fillRect(gx, gy, gw, 1);
     for (let i = 0; i < n; i++) {
       const v = bars[i - (n - bars.length)];
-      const x = gx + i * bw;
-      ctx.fillStyle = t.panel.surface;
-      ctx.fillRect(x + 1.5, gy - gh, bw - 3, gh);
       if (v === undefined) continue;
-      const bh = (v / max) * gh;
-      ctx.fillStyle = i === n - 1 ? t.text.accent : t.text.secondary;
-      ctx.globalAlpha = i === n - 1 ? 1 : 0.55;
+      const x = gx + i * bw;
+      const bh = Math.max(2, (v / max) * gh);
+      const newest = i === n - 1;
+      ctx.globalAlpha = newest ? 1 : 0.5;
+      ctx.fillStyle = newest ? t.text.accent : t.text.secondary;
       ctx.fillRect(x + 1.5, gy - bh, bw - 3, bh);
       ctx.globalAlpha = 1;
     }
+    label(
+      ctx,
+      `${max.toFixed(0)}`,
+      gx + gw + 8,
+      gy - gh + 10,
+      12,
+      t.fonts.primary,
+      t.text.tertiary,
+    );
   }
 }
