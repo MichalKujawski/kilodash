@@ -4,7 +4,7 @@ import { classic } from '@/cluster/layouts/classic';
 import { DEFAULT_THEME, THEMES, THEME_BY_ID } from '@/cluster/themes';
 import type { Theme } from '@/cluster/themes/types';
 import { S } from '@/core/signals/catalog';
-import { DEFAULT_PROFILE, profileById } from '@/profiles';
+import { profileById } from '@/profiles';
 import { AudioEngine } from './audio/AudioEngine';
 import { useClusterAudio } from './audio/useClusterAudio';
 import { ClusterView } from './ClusterView';
@@ -39,7 +39,8 @@ function initialTheme(userThemes: Theme[]): Theme {
 }
 
 export function App() {
-  const [profileId, setProfileId] = useState(DEFAULT_PROFILE.id);
+  // `?car=<profile id>` picks another car (screenshots, demos).
+  const [profileId, setProfileId] = useState(() => profileById(params.get('car') ?? '').id);
   const [session, setSession] = useState<ClusterSession | null>(null);
   const [bus, setBus] = useState<ControlBus | null>(null);
   const [renderer, setRenderer] = useState<ClusterRenderer | null>(null);

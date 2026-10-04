@@ -2,6 +2,8 @@ import { Emitter } from '../../emitter';
 import { FUEL_TYPE_TO_CODE } from '../../obd/pids';
 import { S } from '../../signals/catalog';
 import type { Sample, SignalId, SignalSource } from '../../signals/types';
+import { consumerFuelLh, ecoTip, type EfficiencyState } from '../../drive/efficiency';
+import { DRIVE_MODE_ORDER } from '../../drive/modes';
 import { DemoDriver } from '../../world/DemoDriver';
 import type { EnvironmentSettings } from '../../world/environment';
 import type { SceneSnapshot } from '../../world/scene';
@@ -250,11 +252,63 @@ export class SimulatorSource implements DataSource {
     this.touch();
   }
 
-  /** Steering-wheel paddle: switches to manual gear selection and pauses the Demo drive. */
+  /**
+   * Steering-wheel paddle: switches to manual gear selection and pauses the
+   * Demo drive. On an EV the paddles set the regeneration level instead
+   * (left/down = stronger, right/up = weaker).
+   */
   paddle(dir: 'up' | 'down'): void {
     this.touch();
-    if (dir === 'up') this.sim.shiftUp();
-    else this.sim.shiftDown();
+    const sim = this.sim;
+    if (sim.isElectric) {
+      const st = sim.state;
+      st.evB = false;
+      st.regenLevel = Math.max(0, Math.min(3, st.regenLevel + (dir === 'down' ? 1 : -1)));
+      return;
+    }
+    if (dir === 'up') sim.shiftUp();
+    else sim.shiftDown();
+  }
+
+  /** EV: B on the selector (strong regeneration, one-pedal driving); toggles. */
+  toggleEvB(): void {
+    const st = this.sim.state;
+    if (!this.sim.isElectric || st.selector !== 'D') return;
+    st.evB = !st.evB;
+  }
+
+  // --- Driving mode -----------------------------------------------------------
+
+  /** Mode button: opens the list in the cluster, further presses step through it. */
+  pressDriveMode(): void {
+    this.sim.driveModes.pressButton();
+  }
+
+  /** Whether the drive-mode list or Individual screen currently takes the cluster keys. */
+  get driveModeUiOpen(): boolean {
+    const st = this.sim.driveModes.state;
+    return !!st.popup || !!st.config;
+  }
+
+  /** Cluster keys while the mode list is open. Returns true if consumed. */
+  driveModeKey(key: 'up' | 'down' | 'left' | 'right' | 'ok' | 'back'): boolean {
+    const dm = this.sim.driveModes;
+    const st = this.sim.state;
+    const parked = st.speedMs < 0.3 && (st.selector === 'P' || this.sim.body.parkingBrake);
+    switch (key) {
+      case 'up':
+        return dm.move(-1);
+      case 'down':
+        return dm.move(1);
+      case 'left':
+        return dm.adjust(-1);
+      case 'right':
+        return dm.adjust(1);
+      case 'ok':
+        return dm.ok(parked);
+      case 'back':
+        return dm.back();
+    }
   }
 
   setSelector(sel: Selector): boolean {
@@ -423,6 +477,8 @@ export class SimulatorSource implements DataSource {
     const world = this.world;
     this.manualIdle += STEP_S;
     const scene = world.snapshot();
+    scene.driveModes = sim.driveModes.state;
+    scene.efficiency = this.efficiency();
     this.lastScene = scene;
     const auto = this.isAutopilotActive;
     if (auto) {
@@ -447,6 +503,27 @@ export class SimulatorSource implements DataSource {
     const lead = scene.lead;
     if (lead && lead.dx < 0.4 && sim.state.direction === 1)
       sim.state.speedMs = Math.min(sim.state.speedMs, lead.v);
+  }
+
+  /** Comfort consumers and the current eco tip (efficiency page). */
+  private efficiency(): EfficiencyState {
+    const sim = this.sim;
+    const st = sim.state;
+    const consumersLh = sim.consumers.reduce((a, c) => a + consumerFuelLh(c.kW), 0);
+    return {
+      consumers: sim.consumers,
+      consumersLh,
+      tip: ecoTip({
+        speedKmh: sim.speedKmh,
+        rpm: st.rpm,
+        throttle: st.throttle,
+        manualGears: sim.mode === 'manual' && !!this.profile.engine,
+        consumersLh,
+        coasting: st.coasting,
+        ecoMode:
+          sim.driveModes.state.current === 'eco' || sim.driveModes.state.available.length === 0,
+      }),
+    };
   }
 
   /**
@@ -532,7 +609,23 @@ export class SimulatorSource implements DataSource {
     put(S.FogRear, flag(b.fogRear && on));
     put(S.ParkingLights, flag(b.parkingLights));
     put(S.Wipers, ['off', 'auto', 'interval', 'slow', 'fast'].indexOf(b.wipers));
-    put(S.GearboxMode, ['D', 'S', 'M'].indexOf(sim.gearProgram));
+    // Gearbox program as the driver sees it: S/M on the lever, else the mode's program.
+    const prog = sim.program;
+    put(
+      S.GearboxMode,
+      st.evB ? 4 : prog === 'S' ? 1 : prog === 'M' ? 2 : prog === 'E' && !sim.isElectric ? 3 : 0,
+    );
+    put(S.DriveMode, DRIVE_MODE_ORDER.indexOf(sim.driveModes.state.current));
+    put(S.Coasting, flag(st.coasting));
+    put(S.CylinderDeactivation, flag(st.cylindersOff));
+    put(S.HillDescent, st.hdc);
+    put(S.RegenLevel, st.regenLevel);
+    put(S.PowerDemand, st.powerPct);
+    const sc = this.lastScene;
+    if (sc) {
+      put(S.Altitude, sc.road.elevation);
+      put(S.Heading, (((90 - (sc.ego.heading * 180) / Math.PI) % 360) + 360) % 360);
+    }
     put(S.DoorFrontLeft, flag(b.doors[0]));
     put(S.DoorFrontRight, flag(b.doors[1]));
     put(S.DoorRearLeft, flag(b.doors[2]));

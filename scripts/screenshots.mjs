@@ -4,7 +4,9 @@ import { chromium } from '@playwright/test';
 
 const BASE = process.env.BASE_URL ?? 'http://localhost:5173';
 const [outDir = 'docs/screenshots', ...only] = process.argv.slice(2);
-const poses = only.length ? only : ['idle', 'city', 'highway', 'redline', 'night'];
+const poses = only.length
+  ? only
+  : ['idle', 'city', 'highway', 'redline', 'night', 'eco', 'sport', 'modes', 'offroad'];
 const keys = (process.env.KEYS ?? '').split(',').filter(Boolean);
 
 // GPU rasterisation by default so fps numbers mean something (PW_GPU=0 for software).

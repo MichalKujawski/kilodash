@@ -1,3 +1,4 @@
+import type { DriveModeId, IndividualSettings } from '@/core/drive/modes';
 import { AlertEngine } from '@/core/alerts/AlertEngine';
 import { Flasher } from '@/core/alerts/flasher';
 import { ALERT_RULES } from '@/core/alerts/rules';
@@ -48,6 +49,29 @@ function loadHistory(profileId: string): HistorySnapshot | undefined {
   }
 }
 
+interface DriveModeSettings {
+  individual: IndividualSettings;
+  rememberLast: boolean;
+  last: DriveModeId;
+}
+
+function loadDriveModes(profileId: string): DriveModeSettings | undefined {
+  try {
+    const raw = localStorage.getItem(`opencluster.driveModes.${profileId}`);
+    return raw ? (JSON.parse(raw) as DriveModeSettings) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function saveDriveModes(profileId: string, s: DriveModeSettings): void {
+  try {
+    localStorage.setItem(`opencluster.driveModes.${profileId}`, JSON.stringify(s));
+  } catch {
+    // Not persisted without storage.
+  }
+}
+
 /**
  * Wires one vehicle session together: DataSource → SignalStore → DerivedEngine
  * and AlertEngine, plus the capability profile the layout engine builds from.
@@ -77,10 +101,24 @@ export class ClusterSession {
     });
     this.derived.history.restore(loadHistory(profile.id));
     this.alerts = new AlertEngine(this.store, ALERT_RULES);
+    // Individual settings and "remember last mode" survive reloads, like the car's memory.
+    const dm = this.source.sim.driveModes;
+    const saved = loadDriveModes(profile.id);
+    if (saved) {
+      dm.state.individual = { ...dm.state.individual, ...saved.individual };
+      dm.rememberLast = saved.rememberLast;
+      if (saved.rememberLast) dm.select(saved.last);
+    }
   }
 
   private persist(): void {
     saveTrip(this.profile.id, this.derived.trip, this.derived.history.snapshot());
+    const dm = this.source.sim.driveModes;
+    saveDriveModes(this.profile.id, {
+      individual: dm.state.individual,
+      rememberLast: dm.rememberLast,
+      last: dm.state.current,
+    });
   }
 
   async start(): Promise<void> {

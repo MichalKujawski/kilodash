@@ -1,18 +1,23 @@
+import { S } from '@/core/signals/catalog';
 import { Spring } from '@/core/smoothing/spring';
+import { modeId } from '../driveMode';
+import { Fade } from '../../renderer/draw';
 import type { ClusterKey, FrameContext, Rect, Widget, WidgetFactory } from '../../renderer/types';
 import { CarPage } from './CarPage';
 import { EfficiencyPage } from './EfficiencyPage';
 import { MapPage } from './MapPage';
+import { OffroadPage } from './OffroadPage';
 import { TripPage } from './TripPage';
 import type { CenterPage } from './types';
 
-export type PageId = 'map' | 'car' | 'trip' | 'efficiency';
+export type PageId = 'map' | 'car' | 'trip' | 'efficiency' | 'offroad';
 
 const PAGE_FACTORIES: Record<PageId, () => CenterPage> = {
   map: () => new MapPage(),
   car: () => new CarPage(),
   trip: () => new TripPage(),
   efficiency: () => new EfficiencyPage(),
+  offroad: () => new OffroadPage(),
 };
 
 export interface CarouselProps {
@@ -28,8 +33,13 @@ export interface CarouselProps {
  * horizontally, with soft edges so content appears to sit behind the dials.
  */
 export class Carousel implements Widget {
+  private all: CenterPage[];
+  /** Pages this car offers (equipment-dependent ones filtered out). */
   private pages: CenterPage[];
   private index = 0;
+  private lastMode = '';
+  /** Content steps back while a popup (driving-mode list) is in front. */
+  private recede = new Fade(8);
   private pos = new Spring(0, { stiffness: 70, damping: 16 });
   private buffer: HTMLCanvasElement | null = null;
   private bctx: CanvasRenderingContext2D | null = null;
@@ -39,7 +49,31 @@ export class Carousel implements Widget {
     readonly rect: Rect,
     private props: CarouselProps,
   ) {
-    this.pages = props.pages.map((id) => PAGE_FACTORIES[id]());
+    this.all = props.pages.map((id) => PAGE_FACTORIES[id]());
+    this.pages = this.all;
+  }
+
+  /** Re-filter pages by availability, keeping the current page in view. */
+  private refreshPages(f: FrameContext): void {
+    const next = this.all.filter((p) => p.available?.(f) ?? true);
+    if (next.length === this.pages.length && next.every((p, i) => p === this.pages[i])) return;
+    const current = this.pages[this.index];
+    this.pages = next;
+    this.index = Math.max(0, current ? next.indexOf(current) : 0);
+    this.pos.snap(this.index);
+  }
+
+  /** Selecting Off-road brings its page up, as real cars do. */
+  private followMode(f: FrameContext): void {
+    if (!f.store.has(S.DriveMode)) return;
+    const mode = modeId(f.store.value(S.DriveMode));
+    if (mode === this.lastMode) return;
+    this.lastMode = mode;
+    const i = this.pages.findIndex((p) => p.id === 'offroad');
+    if (mode === 'offroad' && i >= 0) {
+      this.index = i;
+      this.pos.snap(i);
+    }
   }
 
   get currentPage(): string {
@@ -118,6 +152,8 @@ export class Carousel implements Widget {
 
   draw(ctx: CanvasRenderingContext2D, f: FrameContext): void {
     const { x, y, w, h } = this.rect;
+    this.refreshPages(f);
+    this.followMode(f);
     for (const p of this.pages) p.update?.(f);
     f.ui.centerPage = this.currentPage;
 
@@ -153,8 +189,10 @@ export class Carousel implements Widget {
       b.globalCompositeOperation = 'source-over';
     }
 
-    // Make room for the start-up logo.
-    ctx.globalAlpha = 1 - f.runtime.logoAlpha;
+    // Make room for the start-up logo and for the driving-mode list.
+    const dm = f.scene?.driveModes;
+    const behind = this.recede.update(!!dm && (!!dm.popup || !!dm.config), f.dt);
+    ctx.globalAlpha = (1 - f.runtime.logoAlpha) * (1 - 0.85 * behind);
     ctx.drawImage(this.buffer, x, y, w, h);
     ctx.globalAlpha = 1;
 

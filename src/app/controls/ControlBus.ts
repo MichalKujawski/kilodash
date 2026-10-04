@@ -92,7 +92,22 @@ export class ControlBus {
     }
   }
 
+  /** Steering-wheel keys go to the driving-mode list while it is open, else to the cluster. */
   private cluster(key: ClusterKey): void {
+    const src = this.source;
+    if (src.driveModeUiOpen) {
+      const k = key === 'okLong' ? 'ok' : key;
+      if (
+        (k === 'up' ||
+          k === 'down' ||
+          k === 'left' ||
+          k === 'right' ||
+          k === 'ok' ||
+          k === 'back') &&
+        src.driveModeKey(k)
+      )
+        return;
+    }
     this.hooks.renderer()?.input(key);
   }
 
@@ -175,7 +190,9 @@ export class ControlBus {
         if (src.setSelector('D')) src.setGearProgram('D');
         break;
       case 'gearS':
-        if (src.setSelector('D')) src.setGearProgram('S');
+        // EVs have B (strong regeneration) where combustion cars have S.
+        if (sim.isElectric) src.toggleEvB();
+        else if (src.setSelector('D')) src.setGearProgram('S');
         break;
       case 'gearM':
         if (src.setSelector('D')) src.setGearProgram('M');
@@ -209,6 +226,9 @@ export class ControlBus {
         break;
       case 'volumeDown':
         src.setVolume(src.buttons.volume - 0.1);
+        break;
+      case 'driveMode':
+        src.pressDriveMode();
         break;
       case 'demo':
         src.setAutopilot(!src.autopilot);

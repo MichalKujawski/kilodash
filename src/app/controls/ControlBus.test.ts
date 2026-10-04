@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ClusterKey } from '@/cluster/renderer/types';
 import { SimulatorSource } from '@/core/datasource/simulator/SimulatorSource';
-import { DEFAULT_PROFILE } from '@/profiles';
+import { DEFAULT_PROFILE, profileById } from '@/profiles';
 import { ControlBus } from './ControlBus';
 
 function setup() {
@@ -94,5 +94,30 @@ describe('ControlBus', () => {
       seen.push(source.sim.body.lightSwitch);
     }
     expect(seen).toEqual(['auto', 'parking', 'low', 'off']);
+  });
+
+  it('mode button opens the list; wheel keys go to it until it closes', () => {
+    const { source, bus, keys } = setup();
+    bus.click('driveMode');
+    expect(source.driveModeUiOpen).toBe(true);
+    bus.click('scrollDown');
+    expect(source.sim.driveModes.state.popup?.highlight).toBe('sport');
+    bus.click('ok');
+    expect(source.sim.driveModes.state.current).toBe('sport');
+    expect(keys).toEqual([]);
+    // Closed: the wheel drives the cluster again.
+    bus.click('scrollDown');
+    expect(keys).toEqual(['down']);
+  });
+
+  it('on an EV the paddles set regeneration and S becomes B', () => {
+    const source = new SimulatorSource(profileById('ev-2023'));
+    const bus = new ControlBus(source, { renderer: () => null });
+    const start = source.sim.state.regenLevel;
+    bus.click('paddleDown');
+    expect(source.sim.state.regenLevel).toBe(start + 1);
+    bus.click('gearS');
+    expect(source.sim.state.evB).toBe(true);
+    bus.dispose();
   });
 });

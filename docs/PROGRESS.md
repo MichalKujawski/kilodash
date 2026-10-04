@@ -17,11 +17,11 @@ _Last updated: 2026-10-04_
 | Step |                                                                                                      | State |
 | ---- | ---------------------------------------------------------------------------------------------------- | ----- |
 | 0    | CLAUDE.md, PROGRESS.md, WALKTHROUGH.md                                                               | done  |
-| 1    | World simulator + demo drive + route map/nav (scenarios removed)                                     | next  |
-| 2    | Control panel (wheel, stalks, light switch, console, pedals, Workshop drawer)                        |       |
-| 3    | Cluster shape: open dials, top strip, fixed bottom strip, grouped telltales, real fuel/coolant logic |       |
-| 4    | Drive modes (Eco coasting, Sport, Individual, Snow/Off-road, EV power meter/regen)                   |       |
-| 5    | ACC, cruise, limiter                                                                                 |       |
+| 1    | World simulator + demo drive + route map/nav (scenarios removed)                                     | done  |
+| 2    | Control panel (wheel, stalks, light switch, console, pedals, Workshop drawer)                        | done  |
+| 3    | Cluster shape: open dials, top strip, fixed bottom strip, grouped telltales, real fuel/coolant logic | done  |
+| 4    | Drive modes (Eco coasting, Sport, Individual, Snow/Off-road, EV power meter/regen)                   | done  |
+| 5    | ACC, cruise, limiter                                                                                 | next  |
 | 6    | Speed-limit recognition / ISA                                                                        |       |
 | 7    | Lane keeping/centering, hands-off staging, Driver Assistance view                                    |       |
 | 8    | Collision warning/AEB, blind spot, rear cross traffic                                                |       |
@@ -46,8 +46,7 @@ _Last updated: 2026-10-04_
   21 minutes per loop. "Jump to" places exist for demos and screenshots.
 - The steering wheel isn't simulated. The car follows the road, and an indicator held on a
   multi-lane road becomes a lane change.
-- The 2022 AWD family SUV profile is still to come (with drive modes, step 4). The default is still
-  the sports coupé.
+- The 2022 AWD family SUV became the default car in step 4.
 
 ## Notes from step 2
 
@@ -57,6 +56,29 @@ _Last updated: 2026-10-04_
   views) keep their state now. The assist pad drives plain cruise control until step 5.
 - World controls (time, weather, road, temperature, Demo drive, jumps) are in `app/WorldPanel.tsx`.
   The Workshop drawer has faults, vehicle profile, hands-on-wheel and a data inspector.
+
+## Notes from step 3
+
+- Classic view shape: open-bottom dials with mode/unit/status rows in the gap, a top strip (limit,
+  next turn, cruise, lane assist, mode) and a fixed bottom strip (temperature, trip, clock, odometer,
+  grouped telltales). Fuel and coolant are side gauges with real damping (75–105 °C reads "normal").
+  Docs: `docs/features/cluster-layout.md`.
+
+## Notes from step 4
+
+- `src/core/drive/`: mode table, selection state machine, coasting rule, cylinder deactivation,
+  comfort consumers, eco tips. Docs: `docs/features/drive-modes.md`.
+- New default car: `profiles/family-suv-2022.json` (1.5 L turbo with cylinder deactivation, 7-speed
+  dual-clutch, AWD, adaptive dampers). Unit tests that need sports-car numbers pin the coupé
+  explicitly.
+- The engine model became torque-based (pedal → torque request; boost only above the NA torque
+  level). Cruise consumption is now realistic: about 5.5 L/h at 100 km/h for the SUV, previously
+  about 10.
+- EV: power meter instead of the tachometer, regen levels 0–3 on the paddles, B on the selector.
+  Hybrids get the power meter and an EV indicator.
+- New review poses: `eco`, `sport`, `modes` (list held open), `offroad`. `?car=<profile id>` picks a
+  car (e.g. `?car=ev-2023`).
+- ACC "gentle/dynamic" settings and the step-9 shift lights are carried as mode data but not yet used.
 
 ## Known issues / open questions
 

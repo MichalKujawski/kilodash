@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_PROFILE, profileById } from '@/profiles';
+import { profileById } from '@/profiles';
 import { VehicleSimulator } from './vehicle';
 
 const DT = 0.01;
+const COUPE = profileById('sports-coupe-2021');
 
 function run(sim: VehicleSimulator, seconds: number, each?: (sim: VehicleSimulator) => void): void {
   for (let i = 0; i < seconds / DT; i++) {
@@ -13,7 +14,7 @@ function run(sim: VehicleSimulator, seconds: number, each?: (sim: VehicleSimulat
 
 describe('VehicleSimulator', () => {
   it('idles steadily around the idle speed', () => {
-    const sim = new VehicleSimulator(DEFAULT_PROFILE);
+    const sim = new VehicleSimulator(COUPE);
     sim.inputs.brake = 1;
     run(sim, 5);
     let min = Infinity;
@@ -28,7 +29,7 @@ describe('VehicleSimulator', () => {
   });
 
   it('accelerates 0-100 km/h in a plausible time for a sports coupe', () => {
-    const sim = new VehicleSimulator(DEFAULT_PROFILE);
+    const sim = new VehicleSimulator(COUPE);
     sim.inputs.throttle = 1;
     let t = 0;
     while (sim.speedKmh < 100 && t < 20) {
@@ -41,30 +42,30 @@ describe('VehicleSimulator', () => {
   });
 
   it('upshifts through the gears and never exceeds the limiter by much', () => {
-    const sim = new VehicleSimulator(DEFAULT_PROFILE);
+    const sim = new VehicleSimulator(COUPE);
     sim.inputs.throttle = 1;
     let maxRpm = 0;
     run(sim, 30, (s) => (maxRpm = Math.max(maxRpm, s.state.rpm)));
     expect(sim.state.gear).toBeGreaterThanOrEqual(5);
     expect(sim.speedKmh).toBeGreaterThan(190);
     expect(sim.speedKmh).toBeLessThan(260);
-    expect(maxRpm).toBeLessThan(DEFAULT_PROFILE.engine!.limiterRpm + 300);
+    expect(maxRpm).toBeLessThan(COUPE.engine!.limiterRpm + 300);
   });
 
   it('bounces on the rev limiter in manual mode', () => {
-    const sim = new VehicleSimulator(DEFAULT_PROFILE);
+    const sim = new VehicleSimulator(COUPE);
     sim.setMode('manual');
     sim.inputs.throttle = 1;
     const rpms: number[] = [];
     run(sim, 6, (s) => rpms.push(s.state.rpm));
     const tail = rpms.slice(-200);
     const spread = Math.max(...tail) - Math.min(...tail);
-    expect(Math.max(...tail)).toBeGreaterThan(DEFAULT_PROFILE.engine!.limiterRpm - 100);
+    expect(Math.max(...tail)).toBeGreaterThan(COUPE.engine!.limiterRpm - 100);
     expect(spread).toBeGreaterThan(40);
   });
 
   it('brakes to a full stop and downshifts to first', () => {
-    const sim = new VehicleSimulator(DEFAULT_PROFILE);
+    const sim = new VehicleSimulator(COUPE);
     sim.inputs.throttle = 0.7;
     run(sim, 12);
     sim.inputs.throttle = 0;
@@ -76,7 +77,7 @@ describe('VehicleSimulator', () => {
   });
 
   it('cuts fuel on overrun and burns fuel under load', () => {
-    const sim = new VehicleSimulator(DEFAULT_PROFILE);
+    const sim = new VehicleSimulator(COUPE);
     sim.inputs.throttle = 0.6;
     run(sim, 10);
     expect(sim.state.fuelRateLh).toBeGreaterThan(5);
@@ -86,7 +87,7 @@ describe('VehicleSimulator', () => {
   });
 
   it('warms up coolant towards operating temperature', () => {
-    const sim = new VehicleSimulator(DEFAULT_PROFILE);
+    const sim = new VehicleSimulator(COUPE);
     sim.inputs.throttle = 0.3;
     run(sim, 120);
     expect(sim.state.coolantC).toBeGreaterThan(85);
@@ -94,8 +95,8 @@ describe('VehicleSimulator', () => {
   });
 
   it('is deterministic for the same seed', () => {
-    const a = new VehicleSimulator(DEFAULT_PROFILE, 42);
-    const b = new VehicleSimulator(DEFAULT_PROFILE, 42);
+    const a = new VehicleSimulator(COUPE, 42);
+    const b = new VehicleSimulator(COUPE, 42);
     a.inputs.throttle = b.inputs.throttle = 0.5;
     run(a, 10);
     run(b, 10);
@@ -105,7 +106,7 @@ describe('VehicleSimulator', () => {
 
 describe('VehicleSimulator: ignition, faults, chassis', () => {
   it('cranks with a voltage dip, then idles high when cold', () => {
-    const sim = new VehicleSimulator(DEFAULT_PROFILE, 1, { ambientC: -5 });
+    const sim = new VehicleSimulator(COUPE, 1, { ambientC: -5 });
     sim.state.coolantC = -5;
     sim.setIgnition(0);
     run(sim, 1);
@@ -123,11 +124,11 @@ describe('VehicleSimulator: ignition, faults, chassis', () => {
     sim.inputs.brake = 1;
     run(sim, 6);
     expect(sim.state.engineRunning).toBe(true);
-    expect(sim.state.rpm).toBeGreaterThan(DEFAULT_PROFILE.engine!.idleRpm + 150);
+    expect(sim.state.rpm).toBeGreaterThan(COUPE.engine!.idleRpm + 150);
   });
 
   it('engages traction control on a hard launch on ice and ABS on hard braking', () => {
-    const sim = new VehicleSimulator(DEFAULT_PROFILE, 1, { grip: 0.35 });
+    const sim = new VehicleSimulator(COUPE, 1, { grip: 0.35 });
     sim.inputs.throttle = 1;
     let tcs = false;
     run(sim, 3, (s) => (tcs ||= s.state.tcs));
@@ -140,7 +141,7 @@ describe('VehicleSimulator: ignition, faults, chassis', () => {
   });
 
   it('produces lateral g from road curvature, limited by grip', () => {
-    const sim = new VehicleSimulator(DEFAULT_PROFILE);
+    const sim = new VehicleSimulator(COUPE);
     sim.inputs.throttle = 0.5;
     run(sim, 8);
     sim.inputs.curvature = 1 / 50;
@@ -151,7 +152,7 @@ describe('VehicleSimulator: ignition, faults, chassis', () => {
   });
 
   it('turns faults into DTCs, lamps and symptoms', () => {
-    const sim = new VehicleSimulator(DEFAULT_PROFILE);
+    const sim = new VehicleSimulator(COUPE);
     sim.injectFault('checkEngine');
     sim.injectFault('lowTire');
     run(sim, 30);
@@ -164,7 +165,7 @@ describe('VehicleSimulator: ignition, faults, chassis', () => {
   });
 
   it('overheats when the cooling fault is injected', () => {
-    const sim = new VehicleSimulator(DEFAULT_PROFILE);
+    const sim = new VehicleSimulator(COUPE);
     sim.injectFault('overheat');
     sim.inputs.throttle = 0.3;
     run(sim, 120);

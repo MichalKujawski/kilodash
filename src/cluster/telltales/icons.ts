@@ -35,7 +35,17 @@ export type IconId =
   | 'coolant'
   | 'phone'
   | 'signal'
-  | 'laneAssist';
+  | 'laneAssist'
+  | 'modeEco'
+  | 'modeComfort'
+  | 'modeNormal'
+  | 'modeSport'
+  | 'modeIndividual'
+  | 'modeSnow'
+  | 'modeOffroad'
+  | 'hillDescent'
+  | 'chargeLevel'
+  | 'check';
 
 const lamp = 'M13.5 5.5C18.5 5.5 21 8.5 21 12s-2.5 6.5-7.5 6.5z';
 
@@ -196,6 +206,60 @@ export const ICONS: Record<IconId, IconPart[]> = {
     { kind: 'stroke', d: 'M3.5 21 8 4M20.5 21 16 4', width: 1.8 },
     { kind: 'fill', d: 'M9.2 13.5h5.6l1 3v3.5h-1.6v-1.2H9.8v1.2H8.2V16.5z' },
   ],
+  // Driving modes (original generic symbols).
+  modeEco: [
+    { kind: 'stroke', d: 'M5 19.5C4 10.5 10 4.5 20 4c.5 9.5-5.5 15.5-15 15.5z', width: 1.8 },
+    { kind: 'stroke', d: 'M5 19.5 14.5 10', width: 1.6 },
+  ],
+  modeComfort: [
+    { kind: 'stroke', d: 'M3 9c3-2.5 6-2.5 9 0s6 2.5 9 0', width: 1.8 },
+    { kind: 'stroke', d: 'M3 15c3-2.5 6-2.5 9 0s6 2.5 9 0', width: 1.8 },
+  ],
+  modeNormal: [
+    {
+      kind: 'stroke',
+      d: 'M3 15.5v-2.5l2.5-1 2.5-3.5h7l3 3.5 3 1v2.5h-2M3 15.5h2.2M9.8 15.5h4.4',
+      width: 1.6,
+    },
+    {
+      kind: 'stroke',
+      d: 'M7.5 17.3a1.8 1.8 0 1 0 0-3.6 1.8 1.8 0 1 0 0 3.6zM16.5 17.3a1.8 1.8 0 1 0 0-3.6 1.8 1.8 0 1 0 0 3.6z',
+      width: 1.5,
+    },
+  ],
+  modeSport: [
+    { kind: 'stroke', d: 'M4.5 17.5a8 8 0 1 1 15 0', width: 1.8 },
+    { kind: 'stroke', d: 'M12 15 18 10.5', width: 2.2 },
+    { kind: 'fill', d: 'M15.5 5.2l1.6.9-.9 1.6-1.6-.9zM18.4 7.8l1.2 1.3-1.3 1.2-1.2-1.3z' },
+  ],
+  modeIndividual: [
+    { kind: 'stroke', d: 'M6 4v16M12 4v16M18 4v16', width: 1.4 },
+    { kind: 'fill', d: 'M3.8 13h4.4v3H3.8zM9.8 7h4.4v3H9.8zM15.8 11h4.4v3h-4.4z' },
+  ],
+  modeSnow: [
+    {
+      kind: 'stroke',
+      d: 'M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9M10 4.5l2 2 2-2M10 19.5l2-2 2 2',
+      width: 1.6,
+    },
+  ],
+  modeOffroad: [
+    { kind: 'fill', d: 'M1.5 20 8.5 8.5l3.8 5.6 2.8-3.9L22.5 20z' },
+    { kind: 'stroke', d: 'M15.5 6.5a1.8 1.8 0 1 0 0-.01', width: 1.4 },
+  ],
+  hillDescent: [
+    { kind: 'stroke', d: 'M2.5 8 21.5 20', width: 1.6 },
+    {
+      kind: 'fill',
+      d: 'M6.2 7.2l7 4.4-1 1.6-.9-.6-.6 1-1.4-.9.6-1-3.4-2.1-.6 1-1.4-.9.6-1-.8-.5z',
+    },
+    { kind: 'stroke', d: 'M18 3.5v6M15.8 7.5l2.2 2.3 2.2-2.3', width: 1.6 },
+  ],
+  chargeLevel: [
+    { kind: 'stroke', d: 'M7 5.5h10v15H7zM10 3.5h4', width: 1.7 },
+    { kind: 'fill', d: 'M12.8 7.8 9.5 13.3h2.3l-.6 4.9 3.3-5.5h-2.3z' },
+  ],
+  check: [{ kind: 'stroke', d: 'M5 12.5 10 17.5 19.5 7', width: 2.2 }],
 };
 
 const cache = new Map<string, Path2D>();

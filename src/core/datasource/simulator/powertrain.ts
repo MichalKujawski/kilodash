@@ -1,3 +1,4 @@
+import { CylinderDeactivation } from '../../drive/DriveModeController';
 import { FUEL_CONSTANTS } from '../../derived/fuel';
 import { approach, clamp, interpTable, lerp, SmoothNoise } from '../../math';
 import type { EngineSpec, VehicleProfile } from './profile';
@@ -28,17 +29,29 @@ function wheelRpm(s: VehicleState, p: VehicleProfile): number {
   return (s.speedMs / (2 * Math.PI * p.wheelRadiusM)) * 60;
 }
 
+/** Full-load torque a naturally aspirated engine of this size makes, Nm (≈95 Nm/L petrol). */
+function naTorque(e: EngineSpec, diesel: boolean): number {
+  return e.displacementL * (diesel ? 105 : 95);
+}
+
+/** Lowest rpm at which the engine reaches ~95 % of its peak torque (turbo "full boost" point). */
+function plateauRpm(e: EngineSpec): number {
+  const peak = Math.max(...e.torqueCurve.map(([, nm]) => nm));
+  return e.torqueCurve.find(([, nm]) => nm >= peak * 0.95)?.[0] ?? 2000;
+}
+
 /**
- * Engine air/fuel model shared by ICE and hybrid: manifold pressure from
- * throttle and boost, speed-density MAF, stoichiometric (petrol) or lean (diesel)
- * fuel flow, with overrun fuel cut.
+ * Engine air/fuel model shared by ICE and hybrid. Manifold pressure follows the
+ * gross torque being produced (a petrol engine at part load is throttled well
+ * below atmospheric; above its naturally aspirated torque it needs boost);
+ * speed-density MAF; stoichiometric (petrol) or lean (diesel) fuelling, with
+ * overrun fuel cut.
  */
 function airAndFuel(
   s: VehicleState,
   p: VehicleProfile,
   e: EngineSpec,
-  effThrottle: number,
-  boostKPa: number,
+  grossNm: number,
   fuelCut: boolean,
   dt: number,
 ): void {
@@ -47,14 +60,24 @@ function airAndFuel(
     s.mafGs = 0;
     s.loadPct = 0;
     s.fuelRateLh = 0;
+    s.boostKPa = 0;
     return;
   }
-  s.mapKPa = clamp(BARO_KPA * lerp(0.28, 1, effThrottle) + boostKPa, 18, 255);
+  const diesel = p.fuelType === 'diesel';
+  const na = naTorque(e, diesel);
+  const frac = Math.max(0, grossNm) / na;
+  // Diesels are unthrottled: manifold at ambient plus whatever the turbo adds.
+  const map = diesel
+    ? BARO_KPA * 0.98 + e.maxBoostKPa * clamp((frac - 0.35) / 0.9, 0, 1)
+    : BARO_KPA * (0.18 + 0.82 * frac);
+  s.mapKPa = clamp(map, 18, BARO_KPA + Math.max(e.maxBoostKPa, 0) + 5);
+  s.boostKPa = Math.max(0, s.mapKPa - BARO_KPA);
   s.mafGs = ((e.displacementL * s.rpm) / 120) * 0.88 * AIR_DENSITY_G_L * (s.mapKPa / BARO_KPA);
-  const boostShare = e.maxBoostKPa > 0 ? boostKPa / e.maxBoostKPa : 1;
-  s.loadPct = clamp(effThrottle * 100 * (0.85 + 0.15 * boostShare), 0, 100);
-  const k = FUEL_CONSTANTS[p.fuelType === 'diesel' ? 'diesel' : 'petrol'];
-  const lambda = p.fuelType === 'diesel' ? lerp(3.5, 1.25, effThrottle) : 1;
+  // OBD calculated load: air charge relative to a full naturally aspirated charge.
+  s.loadPct = clamp((s.mapKPa / BARO_KPA) * 100, 0, 100);
+  const k = FUEL_CONSTANTS[diesel ? 'diesel' : 'petrol'];
+  const peak = Math.max(...e.torqueCurve.map(([, nm]) => nm));
+  const lambda = diesel ? lerp(4, 1.3, clamp(grossNm / peak, 0, 1)) : 1;
   s.fuelRateLh = fuelCut ? 0 : (s.mafGs * 3600) / (k.afr * lambda * k.densityGL);
   s.fuelL = Math.max(0, s.fuelL - (s.fuelRateLh / 3600) * dt);
   if (s.fuelL <= 0) s.engineRunning = false;
@@ -75,6 +98,12 @@ export class CombustionPowertrain implements Powertrain {
   private windup = 0;
   private flare = 0;
   private idleNoise: SmoothNoise;
+  private wasCoasting = false;
+  private cda = new CylinderDeactivation();
+  private lastThrottle = 0;
+  private throttleRate = 0;
+  /** Brake torque at the crankshaft this step, Nm. */
+  private torqueNm = 0;
 
   constructor(
     private sim: VehicleSimulator,
@@ -125,7 +154,7 @@ export class CombustionPowertrain implements Powertrain {
       s.coupled = false;
       this.boost = 0;
       s.boostKPa = 0;
-      airAndFuel(s, p, e, 0, 0, true, dt);
+      airAndFuel(s, p, e, 0, true, dt);
       return 0;
     }
 
@@ -148,16 +177,27 @@ export class CombustionPowertrain implements Powertrain {
     if (this.shiftState && this.shiftState.t < p.shiftTimeS * 0.6) eff *= 0.15; // torque cut
     if (misfire && sim.rng() < 0.04) eff *= 0.5;
 
-    // Turbo: boost only at high load (wastegate open at part throttle), with lag.
-    const boostTarget =
-      e.maxBoostKPa * clamp((eff - 0.3) / 0.55, 0, 1) * clamp((s.rpm - 1200) / 1800, 0, 1);
-    this.boost += (boostTarget - this.boost) * approach(dt, boostTarget > this.boost ? 0.5 : 0.2);
-    s.boostKPa = this.boost;
-    const boostRatio = e.maxBoostKPa > 0 ? 0.45 + 0.55 * (this.boost / e.maxBoostKPa) : 1;
+    // Torque-based engine control: the pedal asks for a share of full-load
+    // torque. Up to the naturally aspirated level the throttle delivers it at
+    // once; more needs boost, which builds with turbo lag and only once the
+    // engine is near its torque plateau.
+    const curve = interpTable(e.torqueCurve, s.rpm);
+    const request = curve * eff;
+    const naLimit = Math.min(curve, naTorque(e, p.fuelType === 'diesel'));
+    const turbo = e.maxBoostKPa > 0;
+    const plateau = plateauRpm(e);
+    const spool = clamp((s.rpm - e.idleRpm * 1.1) / Math.max(300, plateau - e.idleRpm * 1.1), 0, 1);
+    const boostTarget = turbo
+      ? e.maxBoostKPa * clamp((request - naLimit) / Math.max(1, curve - naLimit), 0, 1) * spool
+      : 0;
+    this.boost += (boostTarget - this.boost) * approach(dt, boostTarget > this.boost ? 0.45 : 0.2);
+    const available = naLimit + (curve - naLimit) * (turbo ? this.boost / e.maxBoostKPa : 1);
 
     // Friction mean effective pressure ~1–1.6 bar across the rev range.
     const friction = (5 + s.rpm * 0.0022) * e.displacementL;
-    const engineTorque = interpTable(e.torqueCurve, s.rpm) * eff * boostRatio - friction;
+    const grossNm = Math.min(request, available);
+    const engineTorque = grossNm - friction;
+    this.torqueNm = engineTorque;
 
     // Gearbox.
     if (this.shiftState) {
@@ -176,8 +216,25 @@ export class CombustionPowertrain implements Powertrain {
       this.shiftState = null;
       const target = lerp(idleTarget, e.limiterRpm * 0.9, eff);
       s.rpm += (target - s.rpm) * approach(dt, 0.25);
-      airAndFuel(s, p, e, eff, this.boost, false, dt);
+      airAndFuel(s, p, e, grossNm, false, dt);
       return 0;
+    }
+    if (s.coasting) {
+      // Freewheeling: clutches open, engine at idle, the gearbox quietly
+      // preselects the gear that fits the road speed.
+      s.coupled = false;
+      this.shiftState = null;
+      this.wasCoasting = true;
+      s.gear = this.gearForSpeed();
+      s.rpm += (idleTarget - s.rpm) * approach(dt, 0.3);
+      airAndFuel(s, p, e, grossNm, false, dt);
+      s.cylindersOff = false;
+      return 0;
+    }
+    if (this.wasCoasting) {
+      // Any pedal re-engages: rev-match to the preselected gear, then close the clutch.
+      this.wasCoasting = false;
+      this.shiftState = { to: s.gear, t: -0.2 };
     }
     // Reverse uses roughly the first-gear ratio; no shifting.
     if (sel === 'R' && !this.shiftState) s.gear = 1;
@@ -213,8 +270,46 @@ export class CombustionPowertrain implements Powertrain {
       if (coupledRpm >= s.rpm - 30 && s.speedMs > 0.5) s.coupled = true;
     }
 
-    airAndFuel(s, p, e, eff, this.boost, fuelCut, dt);
+    airAndFuel(s, p, e, grossNm, fuelCut, dt);
+    this.updateCylinders(dt);
     return (wheelTorque * p.drivetrainEfficiency) / p.wheelRadiusM;
+  }
+
+  /** Highest gear that keeps the engine comfortably above idle at this speed. */
+  private gearForSpeed(): number {
+    for (let g = this.sim.gearCount; g > 1; g--) {
+      if (this.coupledRpm(g) > this.e.idleRpm * 1.6) return g;
+    }
+    return 1;
+  }
+
+  /** Cylinder deactivation at steady light load: about 12 % less fuel, same revs. */
+  private updateCylinders(dt: number): void {
+    const s = this.sim.state;
+    const rate = Math.abs(s.throttle - this.lastThrottle) / Math.max(dt, 1e-3);
+    this.lastThrottle = s.throttle;
+    this.throttleRate += (rate - this.throttleRate) * approach(dt, 0.3);
+    const prog = this.sim.program;
+    s.cylindersOff =
+      s.coupled &&
+      this.cda.update(
+        {
+          supported: !!this.e.cylinderDeactivation,
+          sportMode: prog === 'S' || prog === 'M',
+          coolantC: s.coolantC,
+          rpm: s.rpm,
+          torqueFrac: this.torqueNm / naTorque(this.e, this.sim.profile.fuelType === 'diesel'),
+          gear: s.gear,
+          throttleRate: this.throttleRate,
+          coasting: s.coasting,
+        },
+        dt,
+      );
+    if (s.cylindersOff) {
+      const saved = s.fuelRateLh * 0.12;
+      s.fuelRateLh -= saved;
+      s.fuelL += (saved / 3600) * dt;
+    }
   }
 
   afterStep(): void {
@@ -222,7 +317,7 @@ export class CombustionPowertrain implements Powertrain {
     const s = sim.state;
     const e = this.e;
     if (!s.engineRunning) return;
-    if (s.selector !== 'D') return;
+    if (s.selector !== 'D' || s.coasting) return;
     if (sim.mode === 'auto') this.autoShift();
     else if (!this.shiftState && s.gear > 1 && this.coupledRpm(s.gear) < e.idleRpm * 0.95) {
       this.request(s.gear - 1); // keep from stalling in manual mode
@@ -238,20 +333,36 @@ export class CombustionPowertrain implements Powertrain {
     const s = this.sim.state;
     const e = this.e;
     if (this.shiftState || this.cooldown > 0) return;
+    const prog = this.sim.program;
     // The S program shifts as if the pedal were at least 60 % down: holds gears longer.
-    const t = this.sim.gearProgram === 'S' ? Math.max(s.throttle, 0.6) : s.throttle;
-    const upRpm = lerp(1750, e.redlineRpm - 150, Math.pow(t, 1.8));
-    const downRpm = lerp(1100, e.redlineRpm * 0.5, Math.pow(t, 1.6));
+    const t = prog === 'S' ? Math.max(s.throttle, 0.6) : s.throttle;
+    let upRpm = lerp(1700, e.redlineRpm - 150, Math.pow(t, 2.4));
+    let downRpm = lerp(1100, e.redlineRpm * 0.5, Math.pow(t, 1.6));
+    if (prog === 'E') {
+      // Eco: upshift as early as the engine allows, downshift late.
+      upRpm = lerp(1450, e.redlineRpm - 600, Math.pow(t, 2.2));
+      downRpm = lerp(1000, e.redlineRpm * 0.45, Math.pow(t, 1.8));
+    } else if (prog === 'offroad') {
+      // Off-road: hold low gears for engine braking and instant torque.
+      upRpm = lerp(2300, e.redlineRpm - 150, Math.pow(t, 1.5));
+      downRpm = lerp(1500, e.redlineRpm * 0.55, Math.pow(t, 1.4));
+    }
+    // Snow: pull away in second gear to keep wheelspin down.
+    const lowest = prog === 'snow' ? 2 : 1;
+    if (s.gear < lowest) {
+      this.request(lowest);
+      return;
+    }
     if (s.coupled && s.rpm > upRpm && s.gear < this.sim.gearCount) {
       // Only upshift if the next gear does not lug the engine.
       if (this.coupledRpm(s.gear + 1) > e.idleRpm * 1.25) this.request(s.gear + 1);
       return;
     }
-    if (s.gear > 1) {
+    if (s.gear > lowest) {
       const lower = this.coupledRpm(s.gear - 1);
       const kickdown = t > 0.85 && lower < e.redlineRpm - 700;
       if ((s.rpm < downRpm || kickdown) && lower < e.redlineRpm - 400) this.request(s.gear - 1);
-      else if (s.speedMs < 1.5) this.request(1);
+      else if (s.speedMs < 1.5) this.request(lowest);
     }
   }
 }
@@ -286,22 +397,36 @@ export class ElectricPowertrain implements Powertrain {
     if (!s.ready || s.selector === 'P' || s.selector === 'N') {
       this.regenBrakeN = 0;
       s.powerKW = s.ready ? 0.6 : 0;
+      s.powerPct = 0;
       return 0;
     }
     const v = s.speedMs;
+    const mode = sim.modeParams;
     const ratio = (p.gearRatios[0] ?? 1) * p.finalDrive;
     const torqueLimitN = (el.motorTorqueNm * ratio * p.drivetrainEfficiency) / p.wheelRadiusM;
-    const powerLimitN = (el.motorPowerKW * 1000) / Math.max(v, 1);
+    // Eco caps power and top speed.
+    const powerLimitN = (el.motorPowerKW * mode.evPower * 1000) / Math.max(v, 1);
     let force = s.throttle * Math.min(torqueLimitN, powerLimitN);
-    // Gentle creep in D below walking pace.
-    if (v < 2 && s.brake < 0.05 && s.throttle < 0.05) force += 260;
-    const r = regen(sim, 0.07);
+    if (mode.evTopSpeedKmh !== null) force *= clamp((mode.evTopSpeedKmh - sim.speedKmh) / 4, 0, 1);
+    // Lift-off regeneration by paddle level (D0 sails … D3), B for one-pedal driving.
+    const liftG = s.evB ? 0.2 : ([0, 0.05, 0.1, 0.15][s.regenLevel] ?? 0.05);
+    // Gentle creep in D below walking pace (none in one-pedal B).
+    if (v < 2 && s.brake < 0.05 && s.throttle < 0.05 && !s.evB && s.direction === 1) force += 260;
+    const r = regen(sim, liftG);
     this.regenBrakeN = r.brakeN;
     force -= r.liftN;
+    // B brings the car to a stop on its own (friction brakes finish the job).
+    if (s.evB && s.throttle < 0.03 && v < 1.5) {
+      force -= liftG * p.massKg * G;
+      // Last few cm/s: the friction brakes take over and hold the car.
+      if (v < 0.05) s.speedMs = 0;
+    }
 
     const tractionKW = (Math.max(force, 0) * v) / 1000 / 0.9;
     const regenKW = ((r.liftN + r.brakeN) * v * 0.7) / 1000;
     s.powerKW = tractionKW - regenKW + 0.6; // + auxiliaries
+    s.powerPct =
+      regenKW > 0.5 ? -(regenKW / el.regenPowerKW) * 100 : (tractionKW / el.motorPowerKW) * 100;
     s.soc = clamp(s.soc - ((s.powerKW * dt) / 3600 / el.batteryKWh) * 100, 0, 100);
     if (s.soc <= 0) force = Math.min(force, 0);
     s.loadPct = clamp((tractionKW / el.motorPowerKW) * 100, 0, 100);
@@ -342,7 +467,8 @@ export class HybridPowertrain implements Powertrain {
       s.rpm += (0 - s.rpm) * approach(dt, 0.3);
       this.regenBrakeN = 0;
       s.powerKW = 0;
-      airAndFuel(s, p, e, 0, 0, true, dt);
+      s.powerPct = 0;
+      airAndFuel(s, p, e, 0, true, dt);
       return 0;
     }
 
@@ -366,8 +492,11 @@ export class HybridPowertrain implements Powertrain {
     const rpmTarget = engineOn ? lerp(1150, e.redlineRpm * 0.82, engineKW / peak) : 0;
     s.rpm +=
       (rpmTarget + (engineOn ? this.idleNoise.next(dt) * 10 : 0) - s.rpm) * approach(dt, 0.35);
-    const eff = engineOn ? clamp(engineKW / peak + 0.08, 0, 1) : 0;
-    airAndFuel(s, p, e, eff, 0, !engineOn, dt);
+    const friction = (5 + s.rpm * 0.0022) * e.displacementL;
+    const grossNm = engineOn
+      ? (engineKW * 60000) / (2 * Math.PI * Math.max(s.rpm, 800)) + friction
+      : 0;
+    airAndFuel(s, p, e, grossNm, !engineOn, dt);
 
     const v = s.speedMs;
     const maxN = ((el.motorTorqueNm * 2.2 + 140) * p.finalDrive) / p.wheelRadiusM;
@@ -379,6 +508,10 @@ export class HybridPowertrain implements Powertrain {
 
     const regenKW = ((r.liftN + r.brakeN) * v * 0.7) / 1000;
     s.powerKW = motorKW - regenKW + 0.4;
+    s.powerPct =
+      regenKW > 0.5
+        ? -(regenKW / el.regenPowerKW) * 100
+        : (demandKW / (peak + el.motorPowerKW * 0.8)) * 100;
     s.soc = clamp(s.soc - ((s.powerKW * dt) / 3600 / el.batteryKWh) * 100, 5, 95);
     return force;
   }

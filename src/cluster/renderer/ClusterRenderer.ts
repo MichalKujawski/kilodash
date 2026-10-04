@@ -1,3 +1,4 @@
+import { modeAccent } from '../widgets/driveMode';
 import type { AlertEngine } from '@/core/alerts/AlertEngine';
 import { Flasher } from '@/core/alerts/flasher';
 import type { ConsumptionHistory } from '@/core/derived/ConsumptionHistory';
@@ -305,9 +306,10 @@ export class ClusterRenderer {
     y: number,
     r: number,
     alpha: number,
+    color = this.theme.effects.ambient,
   ): void {
     const g = ctx.createRadialGradient(x, y, 0, x, y, r);
-    g.addColorStop(0, this.theme.effects.ambient);
+    g.addColorStop(0, color);
     g.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.globalAlpha = alpha;
     ctx.fillStyle = g;
@@ -381,6 +383,23 @@ export class ClusterRenderer {
   }
 
   private markT = 0;
+  private modeTint = { color: '', k: 0 };
+
+  /**
+   * Driving-mode accent: a faint glow of the mode's colour behind the dials
+   * (green in Eco, red in Sport…) that cross-fades over about half a second.
+   */
+  private paintModeTint(ctx: CanvasRenderingContext2D, dt: number): void {
+    const accent = this.store.has(S.DriveMode) ? modeAccent(this.store.value(S.DriveMode)) : null;
+    const tint = this.modeTint;
+    if (accent && tint.k < 0.02) tint.color = accent;
+    const target = accent && accent === tint.color ? 1 : 0;
+    tint.k += Math.sign(target - tint.k) * Math.min(Math.abs(target - tint.k), dt * 2);
+    if (tint.k <= 0.01 || !tint.color) return;
+    for (const g of (this.layout?.ambient ?? []).slice(0, 2)) {
+      this.paintAmbient(ctx, g.x, g.y + g.r * 0.35, g.r * 0.85, tint.k * 0.1, tint.color);
+    }
+  }
 
   private mark(phase: string): void {
     if (!this.profile) return;
@@ -426,6 +445,8 @@ export class ClusterRenderer {
         if (breath > 0) this.paintAmbient(ctx, g.x, g.y, g.r, breath * 4);
       }
     }
+
+    this.paintModeTint(ctx, dt);
 
     const bloomOn = !this.lowPower && theme.effects.bloom > 0;
     const [ec, ectx] = this.emissive;

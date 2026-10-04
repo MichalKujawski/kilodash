@@ -20,6 +20,14 @@ export function profileSignals(p: VehicleProfile): ProfileSignal[] {
   for (const id of p.manufacturerSignals ?? []) out.set(id, 'obd-manufacturer');
   const can: SignalId[] = [...BODY_SIGNALS, S.AccelLongitudinal, S.BrakePedal];
   if (p.engine) can.push(S.EngineRunning);
+  const modes = p.equipment?.driveModes !== false;
+  if (!modes) can.splice(can.indexOf(S.DriveMode), 1);
+  const stepped = p.transmission === 'dct' || p.transmission === 'automatic';
+  if (modes && stepped && p.engine && !p.electric) can.push(S.Coasting);
+  if (p.engine?.cylinderDeactivation) can.push(S.CylinderDeactivation);
+  if (p.drive === 'awd' && modes) can.push(S.HillDescent);
+  if (p.electric) can.push(S.PowerDemand);
+  if (p.electric && !p.engine) can.push(S.RegenLevel);
   if (p.tpms) can.push(S.TireFL, S.TireFR, S.TireRL, S.TireRR);
   for (const id of can) if (!out.has(id)) out.set(id, 'can');
   return [...out].map(([id, source]) => ({ id, source }));

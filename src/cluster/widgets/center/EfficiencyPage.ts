@@ -1,8 +1,10 @@
 import { S } from '@/core/signals/catalog';
+import { consumerFuelLh } from '@/core/drive/efficiency';
 import { clamp } from '@/core/math';
 import { ReadoutValue, Spring } from '@/core/smoothing/spring';
 import { annulus, DEG, label, polar } from '../../renderer/draw';
 import type { FrameContext } from '../../renderer/types';
+import { drawIcon } from '../../telltales/icons';
 import { pageSurface, valueWithUnit } from './TripPage';
 import type { CenterPage } from './types';
 
@@ -72,6 +74,43 @@ export class EfficiencyPage implements CenterPage {
     const shown = this.readout.update(moving ? inst : rate, f.dt);
     valueWithUnit(ctx, shown.toFixed(1), moving ? 'L/100km' : 'L/h', cx, cy - 18, f, 56, 'center');
     label(ctx, 'Instant', cx, cy + 14, 14, t.fonts.primary, t.text.tertiary, 'center');
+
+    // What the powertrain is doing to save fuel right now, else an eco tip.
+    const coasting = st.value(S.Coasting) > 0;
+    const cda = st.value(S.CylinderDeactivation) > 0;
+    const eff = f.scene?.efficiency;
+    const status = coasting
+      ? 'Coasting, engine at idle'
+      : cda
+        ? 'Running on half the cylinders'
+        : (eff?.tip ?? null);
+    if (status) {
+      const saving = coasting || cda;
+      if (saving) drawIcon(ctx, 'modeEco', cx - 128, cy + 52, 18, t.chart.good, t.fonts.primary);
+      label(
+        ctx,
+        status,
+        saving ? cx - 112 : cx,
+        cy + 58,
+        16,
+        t.fonts.primary,
+        saving ? t.chart.good : t.text.secondary,
+        saving ? 'left' : 'center',
+      );
+    }
+
+    // Comfort consumers and what they cost.
+    if (eff && eff.consumers.length > 0) {
+      const top = cy + 92;
+      label(ctx, 'Comfort consumers', cx - 170, top, 13, t.fonts.primary, t.text.tertiary);
+      eff.consumers.slice(0, 3).forEach((c, i) => {
+        const y = top + 22 + i * 20;
+        label(ctx, c.label, cx - 170, y, 15, t.fonts.primary, t.text.secondary);
+        const lh = consumerFuelLh(c.kW);
+        const unit = st.has(S.FuelRate) ? `${lh.toFixed(1)} L/h` : `${c.kW.toFixed(1)} kW`;
+        label(ctx, unit, cx + 170, y, 15, t.fonts.primary, t.text.secondary, 'right');
+      });
+    }
 
     // Rolling graph of the last minute.
     const vals = f.history?.recent.values() ?? [];

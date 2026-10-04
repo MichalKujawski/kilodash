@@ -1,4 +1,5 @@
 import { useRef, type CSSProperties, type ReactNode } from 'react';
+import { MODES } from '@/core/drive/modes';
 import type { SimulatorSource } from '@/core/datasource/simulator/SimulatorSource';
 import type { LightSwitch, WiperMode } from '@/core/datasource/simulator/vehicle';
 import { ICONS, type IconId } from '@/cluster/telltales/icons';
@@ -451,18 +452,31 @@ function Console({ bus, source }: { bus: ControlBus; source: SimulatorSource }) 
             </Key>
           ))}
         </div>
-        <div className="gate gate-side">
-          <Key bus={bus} action="gearS" active={sel === 'D' && prog === 'S'} className="gate-pos">
-            S
-          </Key>
-          <Key bus={bus} action="gearM" active={sel === 'D' && prog === 'M'} className="gate-pos">
-            M
-          </Key>
-        </div>
+        {sim.isElectric ? (
+          <div className="gate gate-side">
+            <Key
+              bus={bus}
+              action="gearS"
+              active={sel === 'D' && sim.state.evB}
+              className="gate-pos"
+            >
+              B
+            </Key>
+          </div>
+        ) : (
+          <div className="gate gate-side">
+            <Key bus={bus} action="gearS" active={sel === 'D' && prog === 'S'} className="gate-pos">
+              S
+            </Key>
+            <Key bus={bus} action="gearM" active={sel === 'D' && prog === 'M'} className="gate-pos">
+              M
+            </Key>
+          </div>
+        )}
       </div>
       <div className="console-grid">
-        <Key bus={bus} action="driveMode">
-          <Glyph name="mode" /> Mode
+        <Key bus={bus} action="driveMode" active={sim.driveModes.state.current !== 'normal'}>
+          <Glyph name="mode" /> {MODES[sim.driveModes.state.current].label}
         </Key>
         <Key bus={bus} action="hazard" active={sim.body.hazard} className="ck-hazard">
           <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden>

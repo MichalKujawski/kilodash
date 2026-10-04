@@ -1,8 +1,9 @@
 import type { WidgetFactory } from '../renderer/types';
 import { carousel } from './center/Carousel';
-import { speedometer, tachometer } from './RoundDial';
+import { powerMeter, speedometer, tachometer } from './RoundDial';
 import { sideGauge } from './SideGauge';
 import { bottomStrip, topStrip } from './StatusStrip';
+import { driveModePopup } from './system/DriveModePopup';
 import { telltales } from './Telltales';
 
 // Factories are heterogeneous in their props; the layout data supplies matching props.
@@ -10,8 +11,15 @@ import { telltales } from './Telltales';
 type AnyFactory = WidgetFactory<any>;
 
 export const WIDGETS: ReadonlyMap<string, AnyFactory> = new Map(
-  [speedometer, tachometer, sideGauge, telltales, carousel, topStrip, bottomStrip].map((f) => [
-    f.type,
-    f as AnyFactory,
-  ]),
+  [
+    speedometer,
+    tachometer,
+    powerMeter,
+    sideGauge,
+    telltales,
+    carousel,
+    topStrip,
+    bottomStrip,
+    driveModePopup,
+  ].map((f) => [f.type, f as AnyFactory]),
 );

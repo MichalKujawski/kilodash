@@ -43,11 +43,14 @@ flowchart LR
   samples, report quality (`live`/`stale`/`unavailable`) and measure the real update rate.
 - **Two channels.** Scalars (speed, rpm, lamps) go through the store. Structured data (traffic objects,
   navigation, signs, environment) goes through the `SceneSnapshot` that `World.snapshot()` builds,
-  like the object list a car's front camera sends.
+  like the object list a car's front camera sends. The car's own UI state (driving-mode list,
+  efficiency tips) rides on the same snapshot.
+- **Car behaviour lives in `src/core`** as small state machines (`core/drive/` for driving modes).
+  The simulator applies their outputs; widgets only draw them.
 - **Widgets never know** whether data comes from the simulator or a real car. That is the point of the
   `DataSource` interface (`src/core/datasource/types.ts`).
 
-## The 10 most important files
+## The most important files
 
 | File                                      | What it does and why                                                                   |
 | ----------------------------------------- | -------------------------------------------------------------------------------------- |
@@ -57,6 +60,7 @@ flowchart LR
 | `core/smoothing/spring.ts`                | Spring–damper needle physics and rate-limited digital readouts: why needles look real. |
 | `core/derived/DerivedEngine.ts`           | Computes what the car doesn't report: consumption, range, trip, boost.                 |
 | `core/alerts/AlertEngine.ts` + `rules.ts` | Data-driven warnings with hysteresis, minimum duration and priority.                   |
+| `core/drive/DriveModeController.ts`       | Driving-mode selection state machine, Eco coasting rule, cylinder deactivation.        |
 | `cluster/renderer/ClusterRenderer.ts`     | Frame loop: static cache → widgets → bloom → glass → display mask.                     |
 | `cluster/renderer/startup.ts`             | Ignition choreography: needle sweep, bulb check, trip summary.                         |
 | `cluster/layouts/classic.ts`              | Layout as data: slots, rects, candidate widgets, telltale positions.                   |

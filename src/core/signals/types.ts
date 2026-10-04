@@ -17,6 +17,7 @@ export type Unit =
   | 'L/100km'
   | 'L'
   | 'km'
+  | 'm'
   | 's'
   | 'g'
   | 'kW'

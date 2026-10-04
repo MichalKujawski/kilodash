@@ -8,6 +8,8 @@ import type { FrameContext, Rect, StaticContext, Widget, WidgetFactory } from '.
 import { drawIcon } from '../telltales/icons';
 import type { DialTokens, Theme } from '../themes/types';
 import { SAFETY_COLORS } from '../themes/types';
+import { mapValue } from './SideGauge';
+import { modeAccent, modeLabel } from './driveMode';
 
 export interface RoundDialProps {
   signal: SignalId;
@@ -22,6 +24,12 @@ export interface RoundDialProps {
   unitLabel: string;
   /** What to show inside the hub. */
   center: 'readout' | 'gear' | 'none';
+  /** Non-linear scale: value → dial fraction breakpoints (power meter: charge is compressed). */
+  map?: [number, number][];
+  /** Coloured scale zones with an optional caption (power meter: CHARGE / ECO / POWER). */
+  zones?: { from: number; to: number; color: string; label?: string; labelAt?: number }[];
+  /** Explicit numeral positions (default: every `labelStep`). */
+  numeralValues?: number[];
 }
 
 /** Rows of text in the open bottom gap, as fractions of the radius below the centre. */
@@ -113,6 +121,7 @@ export class RoundDial implements Widget {
 
   private frac(v: number): number {
     const p = this.props;
+    if (p.map) return mapValue(p.map, v);
     return (v - p.min) / (p.max - p.min);
   }
 
@@ -123,6 +132,8 @@ export class RoundDial implements Widget {
   private numerals(): { value: number; text: string }[] {
     const p = this.props;
     const out: { value: number; text: string }[] = [];
+    if (p.numeralValues)
+      return p.numeralValues.map((v) => ({ value: v, text: String(v / (p.labelDivisor ?? 1)) }));
     const step = p.labelStep ?? p.majorStep;
     for (let v = p.min; v <= p.max + 1e-6; v += step) {
       out.push({ value: v, text: String(Math.round(v / (p.labelDivisor ?? 1))) });
@@ -235,6 +246,19 @@ export class RoundDial implements Widget {
       ctx.fill();
     }
     if (segmented) this.drawSegmentBars(ctx, null, g, d, -1);
+    for (const z of p.zones ?? []) {
+      const za = this.deg(this.frac(z.from), d);
+      const zb = this.deg(this.frac(z.to), d);
+      ctx.fillStyle = z.color;
+      annulus(ctx, cx, cy, g.bandOuter - r * d.tickBand.width * 0.42, g.bandOuter, za, zb);
+      ctx.fill();
+      if (z.label) {
+        // Captions sit on the numeral ring, between numerals.
+        const at = z.labelAt !== undefined ? this.deg(this.frac(z.labelAt), d) : (za + zb) / 2;
+        const [lx, ly] = polar(cx, cy, g.numeralR, at);
+        label(ctx, z.label, lx, ly + 5, 13, t.fonts.primary, t.text.tertiary, 'center');
+      }
+    }
 
     // Ticks: major / mid / minor, from the bezel inward.
     const per = Math.max(1, d.ticks.minorPerMajor);
@@ -608,34 +632,67 @@ export class RoundDial implements Widget {
       SAFETY_COLORS.info,
       'center',
     );
-    // Drive mode in the gap (drive-mode selection arrives with the drive modes step).
+    // Hybrids: "EV" while the engine is off.
+    if (!g.compact && st.has(S.PowerDemand) && st.has(S.EngineRunning) && !running) {
+      label(
+        ctx,
+        'EV',
+        cx + 54,
+        cy + r * GAP.status,
+        14,
+        t.fonts.primary,
+        SAFETY_COLORS.info,
+        'center',
+      );
+    }
+    // Driving mode in the gap, tinted with the mode's accent.
     ctx.globalAlpha = ready;
-    if (!g.compact)
-      label(ctx, 'Normal', cx, cy + r * GAP.mode, 15, t.fonts.primary, t.text.secondary, 'center');
+    if (!g.compact && st.has(S.DriveMode)) {
+      const mode = st.value(S.DriveMode);
+      label(
+        ctx,
+        modeLabel(mode),
+        cx,
+        cy + r * GAP.mode,
+        15,
+        t.fonts.primary,
+        modeAccent(mode) ?? t.text.secondary,
+        'center',
+      );
+    }
     ctx.globalAlpha = 1;
 
     const gearY = g.compact ? cy + r * 0.5 : cy + 38;
     const big = g.compact ? 54 : 108;
-    if (!st.has(S.Gear)) {
-      readoutText(ctx, f, auto ? 'D' : 'M', cx, gearY, big, d.hub.text);
-      return;
-    }
-    const gear = Math.round(st.value(S.Gear));
     const selected = st.has(S.SelectedGear) ? st.value(S.SelectedGear) : 127;
-    // Selector positions P/R/N show alone; in D or manual the gear number gets a mode letter.
+    const gear = st.has(S.Gear) ? Math.round(st.value(S.Gear)) : null;
+    // Selector positions P/R/N show alone.
     const position =
-      selected === 126 ? 'P' : selected < 0 || gear < 0 ? 'R' : selected === 0 ? 'N' : null;
+      selected === 126
+        ? 'P'
+        : selected < 0 || (gear !== null && gear < 0)
+          ? 'R'
+          : selected === 0
+            ? 'N'
+            : null;
     if (position) {
       readoutText(ctx, f, position, cx, gearY, big, d.hub.text);
       return;
     }
+    const programIdx = st.has(S.GearboxMode) ? st.value(S.GearboxMode) : auto ? 0 : 2;
+    const program = ['D', 'S', 'M', 'E', 'B'][programIdx] ?? 'D';
+    // Single-speed (EV) or unknown gear: the selector letter alone; EVs add the regen level.
+    if (gear === null || st.has(S.RegenLevel)) {
+      readoutText(ctx, f, programIdx === 4 ? 'B' : auto ? 'D' : 'M', cx, gearY, big, d.hub.text);
+      if (st.has(S.RegenLevel) && programIdx !== 4) this.drawRegen(ctx, f, cx, gearY + 26);
+      return;
+    }
+    // Eco coasting: the clutch is open, so no gear number, only the program letter.
+    if (st.value(S.Coasting) > 0) {
+      readoutText(ctx, f, program, cx, gearY, big, d.hub.text);
+      return;
+    }
     readoutText(ctx, f, String(gear), cx + big * 0.13, gearY, big, d.hub.text);
-    // Gearbox program letter: D, S (sport), M (manual), E (eco, later).
-    const program = st.has(S.GearboxMode)
-      ? (['D', 'S', 'M', 'E'][st.value(S.GearboxMode)] ?? 'D')
-      : auto
-        ? 'D'
-        : 'M';
     text(ctx, program, cx - big * 0.43, gearY - big * 0.46, {
       font: font(500, Math.round(big * 0.31), t.fonts.primary),
       color: d.hub.textSecondary,
@@ -657,6 +714,20 @@ export class RoundDial implements Widget {
         c.fill();
       }
     }
+  }
+
+  /** EV lift-off regeneration level: four short bars, lit up to the level (0 = sailing). */
+  private drawRegen(ctx: CanvasRenderingContext2D, f: FrameContext, cx: number, y: number): void {
+    const level = Math.round(f.store.value(S.RegenLevel));
+    const t = f.theme;
+    for (let i = 0; i < 3; i++) {
+      ctx.fillStyle = i < level ? SAFETY_COLORS.info : t.text.tertiary;
+      ctx.globalAlpha = i < level ? 1 : 0.35;
+      ctx.beginPath();
+      ctx.roundRect(cx - 27 + i * 19, y, 16, 5, 2.5);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
   }
 }
 
@@ -688,6 +759,37 @@ export const tachometer: WidgetFactory<Partial<RoundDialProps>> = {
       labelDivisor: 1000,
       redFrom: env.redlineRpm,
       unitLabel: '×1000 rpm',
+      center: 'gear',
+      ...props,
+    }),
+};
+
+/**
+ * EV/hybrid power meter in place of the tachometer: the needle rests at 0 a
+ * quarter of the way round, swings left into CHARGE while regenerating and
+ * right through ECO into POWER.
+ */
+export const powerMeter: WidgetFactory<Partial<RoundDialProps>> = {
+  type: 'power-meter',
+  requires: () => [S.PowerDemand],
+  create: (rect, props) =>
+    new RoundDial(rect, {
+      signal: S.PowerDemand,
+      min: -100,
+      max: 100,
+      majorStep: 20,
+      map: [
+        [-100, 0],
+        [0, 0.24],
+        [100, 1],
+      ],
+      numeralValues: [0, 20, 40, 60, 80, 100],
+      zones: [
+        { from: -100, to: 0, color: 'rgba(60,207,142,0.26)', label: 'CHARGE', labelAt: -50 },
+        { from: 0, to: 30, color: 'rgba(120,190,255,0.14)', label: 'ECO', labelAt: 10 },
+        { from: 30, to: 100, color: 'rgba(0,0,0,0)', label: 'POWER', labelAt: 90 },
+      ],
+      unitLabel: '% power',
       center: 'gear',
       ...props,
     }),

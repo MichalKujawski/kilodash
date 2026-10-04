@@ -32,7 +32,7 @@ export interface SideGaugeProps {
   segments?: number;
 }
 
-function mapValue(map: [number, number][], v: number): number {
+export function mapValue(map: [number, number][], v: number): number {
   if (v <= map[0]![0]) return map[0]![1];
   for (let i = 1; i < map.length; i++) {
     const [x1, y1] = map[i]!;

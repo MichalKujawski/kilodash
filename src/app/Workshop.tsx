@@ -103,6 +103,13 @@ export function Workshop({ session, profileId, onProfile }: Props) {
           >
             Hands on wheel
           </button>
+          <button
+            className={`pill ${src.sim.driveModes.rememberLast ? 'pill-on' : ''}`}
+            onClick={() => src.sim.driveModes.toggleRememberLast()}
+            title="Off: every start begins in Normal, as most cars do"
+          >
+            Remember drive mode
+          </button>
         </div>
         <Inspector session={session} />
       </div>

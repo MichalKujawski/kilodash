@@ -14,6 +14,17 @@ export interface EngineSpec {
   torqueCurve: [number, number][];
   /** Peak turbo boost above atmospheric, kPa (0 = naturally aspirated). */
   maxBoostKPa: number;
+  /** Runs on half its cylinders at light load. */
+  cylinderDeactivation?: boolean;
+}
+
+/** Optional equipment that changes what the car (and its cluster) offers. */
+export interface Equipment {
+  /** Drive mode selection (default true). */
+  driveModes?: boolean;
+  /** Adaptive dampers: adds Comfort mode. */
+  adaptiveDampers?: boolean;
+  startStop?: boolean;
 }
 
 export interface ElectricSpec {
@@ -55,6 +66,7 @@ export interface VehicleProfile {
   tachoMaxRpm: number;
   /** Tyre pressure monitoring fitted. */
   tpms: boolean;
+  equipment?: Equipment;
   /** Mode 01 PIDs the engine ECU answers (hex, e.g. "0C"). Drives the supported-PID bitmaps. */
   obdPids: string[];
   /** Extra signals available through a manufacturer signalset (Mode 22, OBDb-style). */

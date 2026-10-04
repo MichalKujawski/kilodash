@@ -2,7 +2,9 @@ import { S } from '@/core/signals/catalog';
 import { formatDistance, drawManeuverIcon } from './center/MapPage';
 import { Fade, font, label, tabular } from '../renderer/draw';
 import type { FrameContext, Rect, Widget, WidgetFactory } from '../renderer/types';
-import { drawIcon } from '../telltales/icons';
+import { MODES, type DriveModeId } from '@/core/drive/modes';
+import { drawIcon, type IconId } from '../telltales/icons';
+import { modeId } from './driveMode';
 import { drawSign, type SignSpec } from '../telltales/signs';
 import { SAFETY_COLORS } from '../themes/types';
 
@@ -34,7 +36,8 @@ export class TopStrip implements Widget {
   private navFade = new Fade(5);
   private cruiseFade = new Fade(5);
   private laneActive = new Fade(3);
-  private modeFade = new Fade(2);
+  private modeFade = new Fade(4);
+  private shownMode: DriveModeId = 'normal';
 
   constructor(
     readonly rect: Rect,
@@ -96,8 +99,38 @@ export class TopStrip implements Widget {
       ctx.globalAlpha = 1;
     }
 
-    // Drive mode symbol: shown only for non-normal modes (the drive modes step adds them).
-    void this.modeFade;
+    // Driving mode symbol: only for modes other than Normal, in the mode's accent.
+    const mode = st.has(S.DriveMode) ? modeId(st.value(S.DriveMode)) : 'normal';
+    if (mode !== 'normal') this.shownMode = mode;
+    const mk = this.modeFade.update(mode !== 'normal' && on, f.dt);
+    if (mk > 0.01) {
+      const m = MODES[this.shownMode];
+      ctx.globalAlpha = mk;
+      drawIcon(
+        ctx,
+        m.icon as IconId,
+        p.mode,
+        y,
+        24,
+        m.params.accent ?? t.text.secondary,
+        t.fonts.primary,
+      );
+      ctx.globalAlpha = 1;
+    }
+
+    // Hill descent control: grey standby, green while braking.
+    const hdc = st.value(S.HillDescent);
+    if (hdc > 0 && on) {
+      drawIcon(
+        ctx,
+        'hillDescent',
+        p.mode + 44,
+        y,
+        24,
+        hdc > 1 ? SAFETY_COLORS.info : t.text.tertiary,
+        t.fonts.primary,
+      );
+    }
   }
 }
 

@@ -1,3 +1,5 @@
+import type { DriveModeState } from '../drive/DriveModeController';
+import type { EfficiencyState } from '../drive/efficiency';
 import type { LegalLimit, Route } from './route';
 import type { Weather, Surface } from './environment';
 import type { NavState } from './navigation';
@@ -66,4 +68,7 @@ export interface SceneSnapshot {
     rain: number;
     wet: boolean;
   };
+  /** Driving-mode list / Individual screen state (the car's own UI data). */
+  driveModes?: DriveModeState;
+  efficiency?: EfficiencyState;
 }

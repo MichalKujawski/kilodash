@@ -1,3 +1,6 @@
+import { coastingAllowed, DriveModeController } from '../../drive/DriveModeController';
+import { comfortConsumers, consumerFuelLh, type Consumer } from '../../drive/efficiency';
+import { throttleMap, type GearboxProgram, type ModeParams } from '../../drive/modes';
 import { approach, clamp, createRng, SmoothNoise } from '../../math';
 import { describeDtc, type DtcInfo } from '../../obd/dtc';
 import type { VehicleProfile } from './profile';
@@ -121,6 +124,18 @@ export interface VehicleState {
   direction: 1 | -1;
   cruiseSetKmh: number;
   mil: boolean;
+  /** Eco coasting: clutch open, engine idling. */
+  coasting: boolean;
+  /** Cylinder deactivation active. */
+  cylindersOff: boolean;
+  /** EV lift-off regeneration level 0–3. */
+  regenLevel: number;
+  /** EV "B" (strong regeneration, one-pedal) selected. */
+  evB: boolean;
+  /** Power request, % of max (negative: % of max regeneration). */
+  powerPct: number;
+  /** Hill descent control: 0 off, 1 standby, 2 braking. */
+  hdc: 0 | 1 | 2;
 }
 
 export interface Environment {
@@ -159,6 +174,8 @@ export class VehicleSimulator {
   warmupScale = 6;
   readonly powertrain: Powertrain;
   readonly rng: () => number;
+  /** Driving mode selection (Eco/Comfort/Normal/Sport/Individual/Snow/Off-road). */
+  readonly driveModes: DriveModeController;
 
   private crankT = 0;
   private comfort: { side: 'left' | 'right'; left: number } | null = null;
@@ -171,6 +188,12 @@ export class VehicleSimulator {
   private cruiseIntegral = 0;
   private voltNoise: SmoothNoise;
   private tireWarm = 0;
+  private lastIgnition: IgnitionLevel = 2;
+  /** Comfort consumers running now (A/C, heaters, lights). */
+  consumers: Consumer[] = [];
+  private onTimeS = 0;
+  /** Pedals released this long, s (coasting starts after a short pause). */
+  private liftT = 0;
 
   constructor(profile: VehicleProfile, seed = 1, env: Partial<Environment> = {}) {
     this.profile = profile;
@@ -219,6 +242,12 @@ export class VehicleSimulator {
       direction: 1,
       cruiseSetKmh: 0,
       mil: false,
+      coasting: false,
+      cylindersOff: false,
+      regenLevel: 1,
+      evB: false,
+      powerPct: 0,
+      hdc: 0,
     };
     this.body = {
       lightSwitch: 'auto',
@@ -238,7 +267,27 @@ export class VehicleSimulator {
       seatbelt: true,
       parkingBrake: false,
     };
+    this.driveModes = new DriveModeController({
+      ...profile.equipment,
+      awd: profile.drive === 'awd',
+    });
     this.powertrain = createPowertrain(this);
+  }
+
+  /** What the selected driving mode asks of every subsystem. */
+  get modeParams(): ModeParams {
+    return this.driveModes.params;
+  }
+
+  /**
+   * Effective gearbox program: the lever (S, M) wins over the driving mode,
+   * otherwise the mode's program (Eco = E, Sport = S, …).
+   */
+  get program(): GearboxProgram | 'M' {
+    // Paddles put the gearbox in manual even with the lever in D.
+    if (this.gearProgram === 'M' || this.mode === 'manual') return 'M';
+    if (this.gearProgram === 'S') return 'S';
+    return this.modeParams.gearbox;
   }
 
   get isElectric(): boolean {
@@ -392,10 +441,15 @@ export class VehicleSimulator {
     s.lightIntensity += (this.env.lightIntensity - s.lightIntensity) * approach(dt, 3);
 
     this.updateIgnition(dt);
+    if (this.lastIgnition < 2 && s.ignition >= 2) this.driveModes.onIgnition();
+    this.lastIgnition = s.ignition;
+    this.driveModes.step(dt, s.speedMs < 0.3 && (s.selector === 'P' || this.body.parkingBrake));
     this.updatePedals(dt);
+    this.updateCoasting(dt);
 
     // --- Propulsion ---
     let drive = this.powertrain.update(dt);
+    this.chargeConsumers(dt);
     const regenBrakeN = this.powertrain.regenBrakeN;
 
     // --- Traction control: limit force to what the driven tyres can transmit ---
@@ -473,10 +527,67 @@ export class VehicleSimulator {
     if (s.engineRunning) s.runTimeS += dt;
   }
 
+  /** Comfort consumers cost fuel (engine) or battery (EV). */
+  private chargeConsumers(dt: number): void {
+    const s = this.state;
+    this.onTimeS = s.ignition >= 2 ? this.onTimeS + dt : 0;
+    this.consumers = s.ready
+      ? comfortConsumers({
+          ambientC: s.ambientC,
+          ecoClimate: this.modeParams.ac === 'eco',
+          lowBeam: this.body.lowBeam,
+          minutesOn: this.onTimeS / 60,
+        })
+      : [];
+    const kW = this.consumers.reduce((a, c) => a + c.kW, 0);
+    if (kW <= 0) return;
+    if (s.engineRunning) {
+      const lh = consumerFuelLh(kW);
+      s.fuelRateLh += lh;
+      s.fuelL = Math.max(0, s.fuelL - (lh / 3600) * dt);
+    } else if (this.profile.electric && s.ready) {
+      s.powerKW += kW;
+      s.soc = clamp(s.soc - ((kW * dt) / 3600 / this.profile.electric.batteryKWh) * 100, 0, 100);
+    }
+  }
+
+  /** Eco coasting: freewheel with the pedals released (dual-clutch / automatic only). */
+  private updateCoasting(dt: number): void {
+    const s = this.state;
+    const p = this.profile;
+    const released = this.inputs.throttle < 0.02 && this.inputs.brake < 0.02;
+    this.liftT = released ? this.liftT + dt : 0;
+    s.coasting =
+      !!p.engine &&
+      !p.electric &&
+      s.engineRunning &&
+      this.liftT > 0.4 &&
+      coastingAllowed({
+        modeAllows: this.modeParams.coasting && this.program === 'E',
+        automatic: p.transmission === 'dct' || p.transmission === 'automatic',
+        inDrive: s.selector === 'D',
+        cruiseOrAcc: s.cruiseActive,
+        throttle: s.throttle,
+        brake: s.brake,
+        speedKmh: this.speedKmh,
+        gradient: this.gradient,
+      });
+  }
+
   private updatePedals(dt: number): void {
     const s = this.state;
-    let throttle = clamp(this.inputs.throttle, 0, 1);
-    const brake = clamp(this.inputs.brake, 0, 1);
+    // The driving mode's pedal map turns pedal travel into a torque request.
+    let throttle = throttleMap(this.modeParams.throttle, clamp(this.inputs.throttle, 0, 1));
+    let brake = clamp(this.inputs.brake, 0, 1);
+
+    // Hill descent control (Off-road mode, below 30 km/h): brakes on steep
+    // descents to hold walking-to-crawling pace while the driver steers.
+    const hdcArmed = this.modeParams.esc === 'offroad' && this.speedKmh < 30 && s.selector !== 'P';
+    s.hdc = hdcArmed ? 1 : 0;
+    if (hdcArmed && this.gradient < -0.06 && this.inputs.throttle < 0.05 && brake < 0.05) {
+      s.hdc = 2;
+      brake = clamp((this.speedKmh - 8) * 0.04 - this.gradient * 1.2, 0, 0.6);
+    }
 
     if (s.cruiseActive) {
       if (brake > 0.05 || !s.ready) s.cruiseActive = false;

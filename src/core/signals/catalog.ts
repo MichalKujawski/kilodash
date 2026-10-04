@@ -56,8 +56,22 @@ export const S = {
   ParkingLights: 'Vehicle.Body.Lights.Parking.IsOn',
   /** 0 off, 1 auto, 2 interval, 3 slow, 4 fast. */
   Wipers: 'Vehicle.Body.Windshield.Front.Wiping.Mode',
-  /** Gearbox program: 0 D, 1 S, 2 M (manual/paddles), 3 E (eco). */
+  /** Gearbox program: 0 D, 1 S, 2 M (manual/paddles), 3 E (eco), 4 B (EV strong regen). */
   GearboxMode: 'Vehicle.Powertrain.Transmission.DriveProgram',
+  /** Driving mode: index into DRIVE_MODE_ORDER (eco, comfort, normal, sport, individual, snow, offroad). */
+  DriveMode: 'Vehicle.Powertrain.DriveMode',
+  /** Freewheeling with the clutch open (Eco coasting). */
+  Coasting: 'Vehicle.Powertrain.Transmission.IsCoasting',
+  CylinderDeactivation: 'Vehicle.Powertrain.CombustionEngine.IsCylinderDeactivated',
+  /** EV lift-off regeneration level 0–3. */
+  RegenLevel: 'Vehicle.Powertrain.Regeneration.Level',
+  /** Power request, % of maximum (negative = % of maximum regeneration). */
+  PowerDemand: 'Vehicle.Powertrain.PowerRequest',
+  Altitude: 'Vehicle.CurrentLocation.Altitude',
+  /** Compass heading, degrees (0 = north). */
+  Heading: 'Vehicle.CurrentLocation.Heading',
+  /** 0 off, 1 standby, 2 braking. */
+  HillDescent: 'Vehicle.ADAS.HillDescentControl.State',
   DoorFrontLeft: 'Vehicle.Cabin.Door.Row1.DriverSide.IsOpen',
   DoorFrontRight: 'Vehicle.Cabin.Door.Row1.PassengerSide.IsOpen',
   DoorRearLeft: 'Vehicle.Cabin.Door.Row2.DriverSide.IsOpen',
@@ -265,7 +279,22 @@ const defs: SignalDefinition[] = [
   bool(S.FogRear, 'signal.fogRear'),
   bool(S.ParkingLights, 'signal.parkingLights'),
   { id: S.Wipers, nameKey: 'signal.wipers', unit: 'enum', min: 0, max: 4, expectedHz: 2 },
-  { id: S.GearboxMode, nameKey: 'signal.gearboxMode', unit: 'enum', min: 0, max: 3, expectedHz: 2 },
+  { id: S.GearboxMode, nameKey: 'signal.gearboxMode', unit: 'enum', min: 0, max: 4, expectedHz: 2 },
+  { id: S.DriveMode, nameKey: 'signal.driveMode', unit: 'enum', min: 0, max: 6, expectedHz: 2 },
+  bool(S.Coasting, 'signal.coasting', 10),
+  bool(S.CylinderDeactivation, 'signal.cylinderDeactivation', 2),
+  { id: S.RegenLevel, nameKey: 'signal.regenLevel', unit: 'enum', min: 0, max: 3, expectedHz: 2 },
+  {
+    id: S.PowerDemand,
+    nameKey: 'signal.powerDemand',
+    unit: 'percent',
+    min: -100,
+    max: 100,
+    expectedHz: 20,
+  },
+  { id: S.Altitude, nameKey: 'signal.altitude', unit: 'm', min: -500, max: 9000, expectedHz: 1 },
+  { id: S.Heading, nameKey: 'signal.heading', unit: 'deg', min: 0, max: 360, expectedHz: 10 },
+  { id: S.HillDescent, nameKey: 'signal.hillDescent', unit: 'enum', min: 0, max: 2, expectedHz: 2 },
   bool(S.DoorFrontLeft, 'signal.doorFL'),
   bool(S.DoorFrontRight, 'signal.doorFR'),
   bool(S.DoorRearLeft, 'signal.doorRL'),
@@ -332,6 +361,9 @@ export const BODY_SIGNALS: SignalId[] = [
   S.ParkingLights,
   S.Wipers,
   S.GearboxMode,
+  S.DriveMode,
+  S.Heading,
+  S.Altitude,
   S.DoorFrontLeft,
   S.DoorFrontRight,
   S.DoorRearLeft,

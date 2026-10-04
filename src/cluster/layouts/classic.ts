@@ -50,7 +50,7 @@ export const classic: LayoutDefinition = {
         {
           type: 'carousel',
           props: {
-            pages: ['map', 'car', 'trip', 'efficiency'],
+            pages: ['map', 'car', 'trip', 'efficiency', 'offroad'],
             edgeFade: 0.13,
             cutouts: [
               { ...LEFT, r: R },
@@ -68,7 +68,8 @@ export const classic: LayoutDefinition = {
     {
       id: 'right-dial',
       rect: { x: RIGHT.cx - R, y: RIGHT.cy - R, w: R * 2, h: R * 2 },
-      candidates: [{ type: 'tachometer' }],
+      // Electrified cars show a power meter instead of the tachometer.
+      candidates: [{ type: 'power-meter' }, { type: 'tachometer' }],
     },
     {
       id: 'left-side',
@@ -91,6 +92,25 @@ export const classic: LayoutDefinition = {
             ends: ['E', 'F'],
             icon: 'fuel',
             filler: 'right',
+          },
+        },
+        {
+          // Electric cars: traction battery state of charge.
+          type: 'side-gauge',
+          props: {
+            signal: S.SoC,
+            ...LEFT,
+            r: R + 22,
+            fromDeg: 122,
+            toDeg: 162,
+            map: [
+              [0, 0],
+              [100, 1],
+            ],
+            red: [0, 0.1],
+            ticks: [0, 0.25, 0.5, 0.75, 1],
+            ends: ['0', '100'],
+            icon: 'chargeLevel',
           },
         },
       ],
@@ -162,6 +182,11 @@ export const classic: LayoutDefinition = {
           props: { y: BOTTOM_Y, temp: 330, trip: 455, clock: 960, odo: 1600 },
         },
       ],
+    },
+    {
+      id: 'drive-mode',
+      rect: { x: 660, y: 66, w: 600, h: 572 },
+      candidates: [{ type: 'drive-mode-popup' }],
     },
     {
       id: 'telltales',
