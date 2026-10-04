@@ -51,6 +51,7 @@ export function ClusterView({
       alerts: session.alerts,
       history: session.derived.history,
       scene: () => session.source.scene(),
+      transparentOutside: !!parallax,
       onFps: (f, ms, d) => onFpsRef.current?.(f, ms, d),
     });
     rendererRef.current = r;

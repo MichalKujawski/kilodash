@@ -11,6 +11,23 @@ test('cluster renders and animates without errors', async ({ page }) => {
   await page.waitForTimeout(1000);
   const b = await canvas.screenshot();
   expect(a.equals(b)).toBe(false); // needles moved
-  await expect(page.locator('.chip-mono')).not.toHaveText('0 fps');
+  await expect(page.locator('.site')).not.toHaveAttribute('data-fps', '0');
   expect(errors).toEqual([]);
+});
+
+test('opens in Watch, moving within ~1.5 s, and the mode switch updates the URL', async ({
+  page,
+}) => {
+  await page.goto('/?debug');
+  await expect(page.locator('.site')).toHaveAttribute('data-mode', 'watch');
+  await page.waitForFunction(
+    () =>
+      ((
+        window as unknown as { __oc?: { session: { store: { value(id: string): number } } } }
+      ).__oc?.session.store.value('Vehicle.Speed') ?? 0) > 1,
+    undefined,
+    { timeout: 2500 },
+  );
+  await page.getByRole('button', { name: 'Drive' }).click();
+  await expect(page).toHaveURL(/mode=drive/);
 });

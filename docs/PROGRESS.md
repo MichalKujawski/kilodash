@@ -161,6 +161,21 @@ _Last updated: 2026-10-04_
   `docs/features/views.md`.
 - All twelve Realism v2 steps are done.
 
+## UX and website phase (`docs/briefs/` → UX prompt; design in `docs/design/`)
+
+| Step | | State |
+| --- | --- | --- |
+| 0 | Audit, 3 concepts, owner chose A (+ wider cluster, calm chapters, spoke buttons) | done |
+| 1 | Shell: header with Watch/Drive/Engineer, stage (light, hood, feathered display, glow by drive mode, reflection), rolling start at midday, larger cluster text | done |
+| 2 | 3D map (tilted, extruded buildings, labels, glowing route) | next |
+| 3 | Demo Director + chapters (Start-up, Motorway first) | |
+| 4 | Drive dock (wheel with spoke buttons, stalk, lever, pedals, contextual cruise) | |
+| 5 | Engineer mode | |
+| 6–11 | Intro, landing sections, responsive, recording, analytics, polish | |
+
+- `node scripts/site-shots.mjs docs/design/progress name=query@WxH` screenshots the site and reports
+  time-to-moving, fps and dropped frames. Step screenshots live in `docs/design/progress/`.
+
 ## Known issues / open questions
 
 - **Later (owner):** a nicer 3D-looking model of our own car in the lane view; the current one is boxy.

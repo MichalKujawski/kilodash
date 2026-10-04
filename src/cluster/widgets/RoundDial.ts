@@ -349,7 +349,7 @@ export class RoundDial implements Widget {
         p.unitLabel,
         cx,
         y,
-        16,
+        18,
         t.fonts.primary,
         g.compact ? d.hub.textSecondary : t.text.tertiary,
         'center',
@@ -675,9 +675,9 @@ export class RoundDial implements Widget {
     if (autoStopped && !g.compact) {
       const col = ss === 4 ? SAFETY_COLORS.caution : SAFETY_COLORS.info;
       drawIcon(ctx, 'startStop', cx - 40, statusY - 5, 20, col, t.fonts.primary);
-      label(ctx, 'Auto stop', cx - 26, statusY, 14, t.fonts.primary, col);
+      label(ctx, 'Auto stop', cx - 26, statusY, 17, t.fonts.primary, col);
     } else {
-      label(ctx, 'Ready', cx, statusY, 14, t.fonts.primary, SAFETY_COLORS.info, 'center');
+      label(ctx, 'Ready', cx, statusY, 17, t.fonts.primary, SAFETY_COLORS.info, 'center');
       if (ss === 3 && !g.compact)
         drawIcon(ctx, 'startStopOff', cx + 50, statusY - 5, 18, t.text.tertiary, t.fonts.primary);
     }
@@ -703,7 +703,7 @@ export class RoundDial implements Widget {
         modeLabel(mode),
         cx,
         cy + r * GAP.mode,
-        15,
+        19,
         t.fonts.primary,
         modeAccent(mode) ?? t.text.secondary,
         'center',

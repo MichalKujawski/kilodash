@@ -35,6 +35,12 @@ export interface RendererOptions {
   alerts?: AlertEngine | null;
   history?: ConsumptionHistory | null;
   scene?: () => SceneSnapshot | null;
+  /**
+   * Website presentation: everything outside the display shape is transparent
+   * (feathered edge), so the page's light shows around the display instead of
+   * a black box. Kiosk and in-car use keep an opaque canvas.
+   */
+  transparentOutside?: boolean;
 }
 
 export type NightMode = 'auto' | 'on' | 'off';
@@ -121,7 +127,7 @@ export class ClusterRenderer {
     private theme: Theme,
     private options: RendererOptions = {},
   ) {
-    const ctx = canvas.getContext('2d', { alpha: false });
+    const ctx = canvas.getContext('2d', { alpha: !!options.transparentOutside });
     if (!ctx) throw new Error('Canvas 2D not supported');
     this.ctx = ctx;
     this.lowPower = options.lowPower ?? false;
@@ -348,6 +354,23 @@ export class ClusterRenderer {
     ctx.globalAlpha = 1;
   }
 
+  private alphaMask: HTMLCanvasElement | null = null;
+
+  /** The display shape as alpha (white inside, feathered edge) for transparent-outside mode. */
+  private renderAlphaMask(mask: LayoutDefinition['mask']): void {
+    const c = this.alphaMask ?? document.createElement('canvas');
+    c.width = this.canvas.width;
+    c.height = this.canvas.height;
+    const m = c.getContext('2d');
+    if (!m) return;
+    m.setTransform(this.scale, 0, 0, this.scale, 0, 0);
+    m.filter = `blur(${10 * this.scale}px)`;
+    m.fillStyle = '#fff';
+    m.fill(maskPath(mask, 6));
+    m.filter = 'none';
+    this.alphaMask = c;
+  }
+
   /** Mask (true black outside, soft fade inside the edge), glass reflection and dither. */
   private renderOverlay(): void {
     const [, ctx] = this.overlayLayer;
@@ -372,6 +395,7 @@ export class ClusterRenderer {
     ctx.filter = 'none';
     ctx.globalCompositeOperation = 'source-over';
 
+    if (this.options.transparentOutside) this.renderAlphaMask(mask);
     if (!this.glass || this.lowPower) return;
 
     // 2. Glass: faint diagonal reflection and a top-edge highlight.
@@ -598,6 +622,12 @@ export class ClusterRenderer {
       ctx.drawImage(this.overlayLayer[0], this.offsetX, this.offsetY);
     }
     this.mark('overlay');
+    if (this.options.transparentOutside && this.alphaMask) {
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.globalCompositeOperation = 'destination-in';
+      ctx.drawImage(this.alphaMask, this.offsetX, this.offsetY);
+      ctx.globalCompositeOperation = 'source-over';
+    }
 
     // The view's name, briefly, after pressing View.
     if (this.viewLabelT > 0) {

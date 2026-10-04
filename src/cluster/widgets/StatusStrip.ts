@@ -210,7 +210,7 @@ export class BottomStrip implements Widget {
     const hour = f.scene ? f.scene.env.hour : d.getHours() + d.getMinutes() / 60;
     const hh = Math.floor(hour);
     const mm = Math.floor((hour - hh) * 60);
-    ctx.font = font(500, 24, t.fonts.primary);
+    ctx.font = font(500, 26, t.fonts.primary);
     ctx.fillStyle = t.text.secondary;
     tabular(
       ctx,
@@ -224,18 +224,18 @@ export class BottomStrip implements Widget {
       const temp = Math.round(st.value(S.AmbientTemp));
       // Ice warning below about +4 °C: snowflake and amber temperature.
       const ice = temp <= 3;
-      ctx.font = font(500, 22, t.fonts.primary);
+      ctx.font = font(500, 24, t.fonts.primary);
       ctx.fillStyle = ice ? SAFETY_COLORS.caution : t.text.secondary;
       tabular(ctx, `${temp}°C`, p.temp, baseline, 'left');
       if (ice) drawIcon(ctx, 'ice', p.temp - 18, p.y, 20, SAFETY_COLORS.caution, t.fonts.primary);
     }
 
     if (st.has(S.TripDistance)) {
-      label(ctx, 'A', p.trip - 6, baseline - 1, 13, t.fonts.primary, t.text.tertiary, 'right');
-      ctx.font = font(500, 20, t.fonts.primary);
+      label(ctx, 'A', p.trip - 6, baseline - 1, 16, t.fonts.primary, t.text.tertiary, 'right');
+      ctx.font = font(500, 23, t.fonts.primary);
       ctx.fillStyle = t.text.secondary;
       tabular(ctx, st.value(S.TripDistance).toFixed(1), p.trip, baseline, 'left');
-      label(ctx, 'km', p.trip + 50, baseline - 1, 13, t.fonts.primary, t.text.tertiary);
+      label(ctx, 'km', p.trip + 58, baseline - 1, 16, t.fonts.primary, t.text.tertiary);
     }
 
     // Messages acknowledged but still active: a small triangle with their count.
@@ -250,10 +250,10 @@ export class BottomStrip implements Widget {
     }
 
     if (st.has(S.Odometer)) {
-      ctx.font = font(500, 20, t.fonts.primary);
-      ctx.fillStyle = t.text.tertiary;
-      tabular(ctx, groupThousands(st.value(S.Odometer)), p.odo - 30, baseline, 'right');
-      label(ctx, 'km', p.odo, baseline - 1, 13, t.fonts.primary, t.text.tertiary, 'right');
+      ctx.font = font(500, 23, t.fonts.primary);
+      ctx.fillStyle = t.text.secondary;
+      tabular(ctx, groupThousands(st.value(S.Odometer)), p.odo - 34, baseline, 'right');
+      label(ctx, 'km', p.odo, baseline - 1, 16, t.fonts.primary, t.text.tertiary, 'right');
     }
   }
 }

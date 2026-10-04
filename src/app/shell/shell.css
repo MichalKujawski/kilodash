@@ -1,0 +1,280 @@
+/* Site shell (Watch · Drive · Engineer). The cockpit is the hero; everything else is quieter. */
+:root {
+  --page: #050607;
+  --surface: rgba(255, 255, 255, 0.045);
+  --hairline: rgba(255, 255, 255, 0.08);
+  --text-1: rgba(255, 255, 255, 0.92);
+  --text-2: rgba(255, 255, 255, 0.64);
+  --text-3: rgba(255, 255, 255, 0.4);
+  --brand: #ff4436;
+  --on: #22d36b;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --header-h: 56px;
+}
+
+html,
+body {
+  background: var(--page);
+}
+
+body {
+  margin: 0;
+  font-family: Inter, system-ui, sans-serif;
+  color: var(--text-1);
+}
+
+.site {
+  min-height: 100vh;
+}
+
+/* ---- Header ---- */
+.site-header {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 20;
+  height: var(--header-h);
+  padding: 0 32px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  transition: opacity 600ms var(--ease);
+}
+
+.site-header.is-idle {
+  opacity: 0;
+}
+
+.wordmark {
+  color: var(--text-1);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 15px;
+  letter-spacing: 0.01em;
+}
+
+.mode-switch {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, 96px);
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+}
+
+.mode-thumb {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 96px;
+  height: calc(100% - 8px);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  transition: transform 300ms var(--ease);
+}
+
+.mode-switch button {
+  position: relative;
+  height: 32px;
+  border: 0;
+  background: none;
+  color: var(--text-2);
+  font:
+    500 13px Inter,
+    system-ui,
+    sans-serif;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.mode-switch button.is-on {
+  color: var(--text-1);
+}
+
+.mode-switch button:focus-visible,
+.icon-btn:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.6);
+  outline-offset: 2px;
+}
+
+.header-icons {
+  justify-self: end;
+  display: flex;
+  gap: 6px;
+}
+
+.icon-btn {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--text-3);
+  cursor: pointer;
+  transition: color 200ms;
+}
+
+.icon-btn:hover {
+  color: var(--text-1);
+}
+
+.icon-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* ---- Stage ---- */
+.stage {
+  --w: min(1600px, 92vw, calc((100vh - 360px) * 2.667));
+  position: relative;
+  height: 100vh;
+  min-height: 560px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: calc(var(--header-h) + 50px);
+  overflow: hidden;
+  background: var(--page);
+}
+
+.stage-glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(50% 30% at 50% 36%, rgba(var(--glow), 0.09), transparent 72%),
+    radial-gradient(75% 45% at 50% 38%, rgba(var(--glow), 0.025), transparent 80%);
+  transition: background 1.2s var(--ease);
+}
+
+/* A whisper of noise so the gradients don't band. */
+.stage-glow::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.display {
+  position: relative;
+  width: var(--w);
+  aspect-ratio: 1920 / 720;
+  flex: none;
+}
+
+.hood {
+  position: absolute;
+  left: -3.5%;
+  width: 107%;
+  top: -9.5%;
+  height: 11%;
+  filter: drop-shadow(0 18px 18px rgba(0, 0, 0, 0.75));
+  z-index: 2;
+  pointer-events: none;
+}
+
+.screen {
+  position: absolute;
+  inset: 0;
+}
+
+/* The hood's shadow falling across the top of the glass. */
+.screen-shade {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 9%;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.45), transparent);
+}
+
+/* A faint pool of the display's light on the surface below. */
+.reflection {
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  top: 100%;
+  height: 26%;
+  pointer-events: none;
+  background:
+    radial-gradient(50% 60% at 50% 0%, rgba(var(--glow), 0.1), transparent 75%),
+    radial-gradient(45% 40% at 50% 0%, rgba(255, 255, 255, 0.04), transparent 70%);
+  filter: blur(6px);
+}
+
+.bottom-slot {
+  position: relative;
+  width: var(--w);
+  margin-top: clamp(20px, 3.4vh, 40px);
+  flex: 1;
+  min-height: 0;
+}
+
+.slot-note {
+  text-align: center;
+  color: var(--text-3);
+  font-size: 13px;
+  letter-spacing: 0.04em;
+}
+
+.scroll-hint {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: var(--text-3);
+}
+
+/* ---- Sheets ---- */
+.more-sheet {
+  margin: 0 auto;
+  max-width: 1400px;
+  padding: 24px 32px 48px;
+}
+
+.more-toggle {
+  display: block;
+  margin: 0 auto;
+  padding: 10px 18px;
+  border-radius: 999px;
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+  color: var(--text-2);
+  font:
+    500 13px Inter,
+    system-ui,
+    sans-serif;
+  cursor: pointer;
+}
+
+@media (max-width: 900px) {
+  :root {
+    --header-h: 44px;
+  }
+  .site-header {
+    padding: 0 14px;
+  }
+  .mode-switch {
+    grid-template-columns: repeat(3, 76px);
+  }
+  .mode-thumb {
+    width: 76px;
+  }
+  .stage {
+    --w: min(94vw, calc((100vh - 170px) * 2.667));
+    padding-top: calc(var(--header-h) + 8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-header,
+  .mode-thumb,
+  .stage-glow {
+    transition: none;
+  }
+}

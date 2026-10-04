@@ -112,6 +112,7 @@ export const WORLD_PLACES: {
   { id: 'zone30', label: '30 zone', segment: 'Lindenweg', at: 60 },
   { id: 'rural', label: 'Rural road', segment: 'L 1180', at: 150 },
   { id: 'village', label: 'Village', segment: 'L 1180', at: 2650 },
+  { id: 'ramp', label: 'Motorway ramp', segment: 'A 7 Nordhausen', at: 120 },
   { id: 'motorway', label: 'Autobahn', segment: 'A 7', at: 300 },
   { id: 'tunnel', label: 'Tunnel', segment: 'A 7', at: 3200 },
   { id: 'roadworks', label: 'Roadworks & jam', segment: 'A 7', at: 5400 },
@@ -318,6 +319,20 @@ export class SimulatorSource implements DataSource {
     this.recognition.reset();
     this.seenSigns.clear();
     this.lastRoad = '';
+  }
+
+  /**
+   * First impression: already rolling onto the motorway at midday, engine warm,
+   * Demo drive on. The site never opens parked, at night or switched off.
+   */
+  startRolling(place = 'ramp', kmh = 55): void {
+    this.jumpTo(place);
+    const st = this.sim.state;
+    st.speedMs = kmh / 3.6;
+    st.coolantC = Math.max(st.coolantC, 86);
+    st.oilC = Math.max(st.oilC, 84);
+    this.demo.resume(this.sim);
+    this.autopilot = true;
   }
 
   /** Back to the first bay, ignition off; the Demo drive starts a new day. */

@@ -3,7 +3,6 @@ import type { ClusterRenderer } from '@/cluster/renderer/ClusterRenderer';
 import { classic } from '@/cluster/layouts/classic';
 import { DEFAULT_THEME, THEMES, THEME_BY_ID } from '@/cluster/themes';
 import type { Theme } from '@/cluster/themes/types';
-import { S } from '@/core/signals/catalog';
 import { profileById } from '@/profiles';
 import { AudioEngine } from './audio/AudioEngine';
 import { useClusterAudio } from './audio/useClusterAudio';
@@ -13,6 +12,9 @@ import { ControlPanel } from './controls/ControlPanel';
 import { useControlInputs } from './controls/useControlInputs';
 import { applyPose, poseFromUrl } from './poses';
 import { ClusterSession } from './session';
+import { Header, SITE_MODES, type SiteMode } from './shell/Header';
+import { Stage } from './shell/Stage';
+import './shell/shell.css';
 import { ThemeEditor } from './ThemeEditor';
 import {
   loadSelectedThemeId,
@@ -20,7 +22,6 @@ import {
   saveSelectedThemeId,
   saveUserThemes,
 } from './themeStore';
-import { usePoll } from './useSignal';
 import { Workshop } from './Workshop';
 import { WorldPanel } from './WorldPanel';
 
@@ -38,6 +39,10 @@ function initialTheme(userThemes: Theme[]): Theme {
   return THEME_BY_ID.get(id) ?? userThemes.find((t) => t.id === id) ?? DEFAULT_THEME;
 }
 
+function initialMode(): SiteMode {
+  return SITE_MODES.find((m) => m === params.get('mode')) ?? 'watch';
+}
+
 export function App() {
   // `?car=<profile id>` picks another car (screenshots, demos).
   const [profileId, setProfileId] = useState(() => profileById(params.get('car') ?? '').id);
@@ -47,7 +52,10 @@ export function App() {
   const [fps, setFps] = useState(0);
   const [frameMs, setFrameMs] = useState(0);
   const [dropped, setDropped] = useState(0);
-  const [sound, setSound] = useState({ muted: false, engine: false });
+  // Autoplay is muted; the header's sound button switches the cockpit audio on.
+  const [sound, setSound] = useState({ muted: true, engine: false });
+  const [mode, setModeState] = useState<SiteMode>(initialMode);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [userThemes, setUserThemes] = useState<Theme[]>(() => loadUserThemes());
   const [theme, setThemeState] = useState<Theme>(() => initialTheme(userThemes));
   const [animateTheme, setAnimateTheme] = useState(true);
@@ -55,6 +63,13 @@ export function App() {
   const rendererRef = useRef<ClusterRenderer | null>(null);
   const audio = useMemo(() => new AudioEngine(), []);
   const allThemes = useMemo(() => [...THEMES, ...userThemes], [userThemes]);
+
+  const setMode = useCallback((m: SiteMode) => {
+    setModeState(m);
+    const url = new URL(window.location.href);
+    url.searchParams.set('mode', m);
+    window.history.replaceState(null, '', url);
+  }, []);
 
   const setTheme = useCallback((next: Theme | ((cur: Theme) => Theme), animate = true) => {
     setAnimateTheme(animate);
@@ -84,9 +99,10 @@ export function App() {
   );
 
   useEffect(() => {
+    // Never open parked, at night or switched off: midday, rolling onto the motorway.
     const s = new ClusterSession(
       profileById(profileId),
-      POSE ? {} : { startOff: true, env: { realTime: true } },
+      POSE ? {} : { env: { realTime: false, hour: 13.5, weather: 'clear' } },
     );
     const b = new ControlBus(s.source, {
       renderer: () => rendererRef.current,
@@ -96,6 +112,7 @@ export function App() {
     void s.start().then(() => {
       if (!live) return;
       if (POSE) applyPose(s, POSE);
+      else s.source.startRolling();
       // Scripting hook for tests and visual review (dev builds or ?debug).
       if (import.meta.env.DEV || params.has('debug')) {
         (window as unknown as { __oc?: unknown }).__oc = {
@@ -188,80 +205,72 @@ export function App() {
     );
 
   return (
-    <div className="app">
-      <header className="topbar">
-        <div className="brand">
-          <span className="brand-mark" aria-hidden />
-          <span className="brand-name">OpenCluster</span>
-          <span className="brand-tag">Adaptive virtual cockpit</span>
-        </div>
-        {session && <StatusChips session={session} fps={fps} />}
-      </header>
+    <div
+      className="site"
+      data-mode={mode}
+      data-fps={fps.toFixed(0)}
+      data-frame-ms={frameMs.toFixed(2)}
+      data-dropped={dropped}
+    >
+      <Header
+        mode={mode}
+        onMode={setMode}
+        muted={sound.muted}
+        onMute={() => setSound((x) => ({ ...x, muted: !x.muted }))}
+      />
+      <Stage session={session} cluster={cluster}>
+        {mode === 'watch' && <p className="slot-note">Demo drive</p>}
+        {mode === 'drive' && (
+          <button className="more-toggle" onClick={() => setMoreOpen((o) => !o)}>
+            More controls {moreOpen ? '▾' : '▴'}
+          </button>
+        )}
+        {mode === 'watch' && <span className="scroll-hint">SCROLL TO LEARN MORE ↓</span>}
+      </Stage>
 
-      <main className="stage">
-        <div className="hood">
-          <div className="screen">{cluster ?? <div className="screen-boot">Starting…</div>}</div>
+      {mode === 'drive' && moreOpen && session && bus && (
+        <div className="more-sheet">
+          <ControlPanel bus={bus} source={session.source} />
         </div>
-
-        {session && bus && <ControlPanel bus={bus} source={session.source} />}
-        {session && (
+      )}
+      {mode === 'engineer' && session && (
+        <div className="more-sheet">
           <WorldPanel session={session} renderer={renderer} sound={sound} onSound={setSound} />
-        )}
-        {session && <Workshop session={session} profileId={profileId} onProfile={setProfileId} />}
+          <Workshop session={session} profileId={profileId} onProfile={setProfileId} />
+        </div>
+      )}
 
-        {DEV && (
-          <section className="theme-chooser" aria-label="Themes (experimental)">
-            <div className="dev-row">
-              <span className="dev-label">Theme</span>
-              {allThemes.map((t) => (
-                <button
-                  key={t.id}
-                  className={`pill ${t.id === theme.id ? 'pill-on' : ''}`}
-                  onClick={() => setTheme(t)}
-                >
-                  <span
-                    className="swatch"
-                    style={{ background: t.dial.needle.color }}
-                    aria-hidden
-                  />
-                  {t.name}
-                </button>
-              ))}
+      {DEV && (
+        <section className="theme-chooser more-sheet" aria-label="Themes (experimental)">
+          <div className="dev-row">
+            <span className="dev-label">Theme</span>
+            {allThemes.map((t) => (
               <button
-                className={`pill ${editing ? 'pill-on' : ''}`}
-                onClick={() => setEditing((e) => !e)}
+                key={t.id}
+                className={`pill ${t.id === theme.id ? 'pill-on' : ''}`}
+                onClick={() => setTheme(t)}
               >
-                Theme editor
+                {t.name}
               </button>
-            </div>
-            {editing && (
-              <ThemeEditor
-                theme={theme}
-                onChange={(t) => setTheme(t, false)}
-                onSave={saveTheme}
-                onDelete={deleteTheme}
-              />
-            )}
-            <p className="te-note">Experimental — these themes are not contract-complete.</p>
-          </section>
-        )}
-      </main>
-    </div>
-  );
-}
-
-function StatusChips({ session, fps }: { session: ClusterSession; fps: number }) {
-  usePoll(4);
-  const src = session.source;
-  const sel = session.store.value(S.SelectedGear, 127);
-  return (
-    <div className="chips">
-      <span className="chip">{session.profile.name}</span>
-      <span className={`chip ${src.isAutopilotActive ? 'chip-on' : ''}`}>
-        Demo drive {src.isAutopilotActive ? 'on' : src.autopilot ? 'paused' : 'off'}
-      </span>
-      <span className="chip">{sel >= 1 && sel <= 20 ? 'Manual' : 'Auto'} gears</span>
-      <span className="chip chip-mono">{fps.toFixed(0)} fps</span>
+            ))}
+            <button
+              className={`pill ${editing ? 'pill-on' : ''}`}
+              onClick={() => setEditing((e) => !e)}
+            >
+              Theme editor
+            </button>
+          </div>
+          {editing && (
+            <ThemeEditor
+              theme={theme}
+              onChange={(t) => setTheme(t, false)}
+              onSave={saveTheme}
+              onDelete={deleteTheme}
+            />
+          )}
+          <p className="te-note">Experimental — these themes are not contract-complete.</p>
+        </section>
+      )}
     </div>
   );
 }
