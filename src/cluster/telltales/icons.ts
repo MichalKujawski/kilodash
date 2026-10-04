@@ -27,6 +27,7 @@ export type IconId =
   | 'doorOpen'
   | 'tpms'
   | 'tcs'
+  | 'escOff'
   | 'glowPlug'
   | 'cruise'
   | 'ice'
@@ -142,6 +143,11 @@ export const ICONS: Record<IconId, IconPart[]> = {
       d: 'M6 20.5c1-1 2-1 3 0M10.5 20.5c1-1 2-1 3 0M15 20.5c1-1 2-1 3 0M9 3.5c-1 1-1 2 0 3M15 3.5c-1 1-1 2 0 3',
       width: 1.4,
     },
+  ],
+  escOff: [
+    // Skidding car with "OFF" underneath.
+    { kind: 'stroke', d: 'M5 11l1.5-4h11L19 11v3H5zM7.5 14v1.5M16.5 14v1.5', width: 1.6 },
+    { kind: 'text', text: 'OFF', x: 12, y: 22, size: 6.5, weight: 700 },
   ],
   glowPlug: [
     {

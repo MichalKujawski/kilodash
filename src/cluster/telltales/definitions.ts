@@ -92,6 +92,14 @@ export const TELLTALES: TelltaleDefinition[] = [
     },
   },
   { id: 'tcs', icon: 'tcs', color: 'caution', when: on(S.TCSActive), blink: 'warning' },
+  { id: 'escOff', icon: 'escOff', color: 'caution', when: is(S.ESCMode, '>', 0) },
+  {
+    id: 'parkingLights',
+    icon: 'parkingLights',
+    color: 'info',
+    when: { all: [on(S.ParkingLights), { not: on(S.LowBeam) }] },
+  },
+  { id: 'fogRear', icon: 'fogRear', color: 'caution', when: on(S.FogRear) },
   {
     id: 'glowPlug',
     icon: 'glowPlug',

@@ -111,7 +111,7 @@ export const midnight: Theme = {
     bloomRadius: 14,
     glass: 0.03,
     dither: 0.018,
-    vignette: 48,
+    vignette: 32,
     ambient: 'rgba(40, 58, 88, 0.20)',
     ambientBreath: 0.03,
   },

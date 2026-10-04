@@ -5,6 +5,7 @@ import { ReadoutValue, Spring } from '@/core/smoothing/spring';
 import { annulus, DEG, Fade, font, label, polar, tabular, text } from '../renderer/draw';
 import { canSegment, drawSegments } from '../renderer/segments';
 import type { FrameContext, Rect, StaticContext, Widget, WidgetFactory } from '../renderer/types';
+import { drawIcon } from '../telltales/icons';
 import type { DialTokens, Theme } from '../themes/types';
 import { SAFETY_COLORS } from '../themes/types';
 
@@ -22,6 +23,9 @@ export interface RoundDialProps {
   /** What to show inside the hub. */
   center: 'readout' | 'gear' | 'none';
 }
+
+/** Rows of text in the open bottom gap, as fractions of the radius below the centre. */
+const GAP = { status: 0.62, unit: 0.76, mode: 0.88 };
 
 interface Geometry {
   cx: number;
@@ -79,6 +83,7 @@ export class RoundDial implements Widget {
   private spring = new Spring(0);
   private readout = new ReadoutValue(5);
   private readyFade = new Fade(2.5);
+  private setFade = new Fade(4);
   private shiftFlash = 0;
   private lastFrac = 0;
   private sweepSpeed = 0;
@@ -309,9 +314,9 @@ export class RoundDial implements Widget {
       ctx.stroke();
     }
 
-    // Unit label (readout dials show it under the digits instead).
-    if (p.center !== 'readout' || g.compact) {
-      const y = g.compact ? cy - r * 0.32 : cy + r * 0.72;
+    // Unit label in the open bottom gap (analogue dials: above the pivot).
+    {
+      const y = g.compact ? cy - r * 0.32 : cy + r * GAP.unit;
       label(
         ctx,
         p.unitLabel,
@@ -559,17 +564,27 @@ export class RoundDial implements Widget {
       );
       return;
     }
-    readoutText(ctx, f, str, g.cx, g.cy + 40, 128, d.hub.text);
-    label(
-      ctx,
-      this.props.unitLabel,
-      g.cx,
-      g.cy + 76,
-      17,
-      f.theme.fonts.primary,
-      d.hub.textSecondary,
-      'center',
-    );
+    readoutText(ctx, f, str, g.cx, g.cy + 44, 128, d.hub.text);
+    this.drawSetSpeed(ctx, f, g);
+  }
+
+  /** Cruise/ACC set speed in the speedometer gap: green when active. */
+  private drawSetSpeed(ctx: CanvasRenderingContext2D, f: FrameContext, g: Geometry): void {
+    const st = f.store;
+    const active = st.value(S.CruiseActive) > 0;
+    const set = st.value(S.CruiseSpeed);
+    const k = this.setFade.update(active || set > 0, f.dt);
+    if (k <= 0.01) return;
+    const t = f.theme;
+    const color = active ? SAFETY_COLORS.info : t.text.tertiary;
+    const y = g.cy + g.r * GAP.status;
+    ctx.globalAlpha = k;
+    drawIcon(ctx, 'cruise', g.cx - 30, y - 6, 20, color, t.fonts.primary);
+    ctx.font = font(500, 22, t.fonts.primary);
+    ctx.fillStyle = color;
+    ctx.textBaseline = 'alphabetic';
+    tabular(ctx, set > 0 ? String(Math.round(set)) : '– – –', g.cx - 14, y + 2, 'left');
+    ctx.globalAlpha = 1;
   }
 
   private drawGear(ctx: CanvasRenderingContext2D, f: FrameContext, g: Geometry): void {
@@ -587,12 +602,16 @@ export class RoundDial implements Widget {
       ctx,
       'Ready',
       cx,
-      cy + r * (g.compact ? 0.66 : 0.6),
+      cy + r * (g.compact ? 0.66 : GAP.status),
       14,
       t.fonts.primary,
       SAFETY_COLORS.info,
       'center',
     );
+    // Drive mode in the gap (drive-mode selection arrives with the drive modes step).
+    ctx.globalAlpha = ready;
+    if (!g.compact)
+      label(ctx, 'Normal', cx, cy + r * GAP.mode, 15, t.fonts.primary, t.text.secondary, 'center');
     ctx.globalAlpha = 1;
 
     const gearY = g.compact ? cy + r * 0.5 : cy + 38;
@@ -611,7 +630,13 @@ export class RoundDial implements Widget {
       return;
     }
     readoutText(ctx, f, String(gear), cx + big * 0.13, gearY, big, d.hub.text);
-    text(ctx, auto ? 'D' : 'M', cx - big * 0.43, gearY - big * 0.46, {
+    // Gearbox program letter: D, S (sport), M (manual), E (eco, later).
+    const program = st.has(S.GearboxMode)
+      ? (['D', 'S', 'M', 'E'][st.value(S.GearboxMode)] ?? 'D')
+      : auto
+        ? 'D'
+        : 'M';
+    text(ctx, program, cx - big * 0.43, gearY - big * 0.46, {
       font: font(500, Math.round(big * 0.31), t.fonts.primary),
       color: d.hub.textSecondary,
       align: 'center',

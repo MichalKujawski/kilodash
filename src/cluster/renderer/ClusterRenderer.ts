@@ -90,6 +90,8 @@ export class ClusterRenderer {
   private breathT = 0;
   readonly flasher: Flasher;
   readonly startup = new StartupSequence();
+  /** Shared UI state between widgets (centre page etc.). */
+  readonly ui = { centerPage: 'map' };
   private baseTheme: Theme;
   private fadeLayer: [HTMLCanvasElement, CanvasRenderingContext2D];
   /** Seconds into a theme cross-fade; Infinity when idle. */
@@ -449,6 +451,7 @@ export class ClusterRenderer {
       alerts: this.alerts,
       history: this.options.history ?? null,
       scene: this.options.scene?.() ?? null,
+      ui: this.ui,
     };
     this.mark('base');
     const drawAll = (list: Widget[]): void => {

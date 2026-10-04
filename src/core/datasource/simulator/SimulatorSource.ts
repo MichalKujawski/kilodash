@@ -498,6 +498,8 @@ export class SimulatorSource implements DataSource {
     put(S.IndicatorRight, flag(sim.indicating('right') && on));
     put(S.Hazard, flag(b.hazard));
     put(S.TCSActive, flag(st.tcs));
+    put(S.ESCMode, ['on', 'tcsOff', 'sport'].indexOf(this.buttons.esc));
+    put(S.LaneAssistEnabled, flag(this.buttons.laneAssist));
     put(S.ABSActive, flag(st.abs));
     put(S.CruiseActive, flag(st.cruiseActive));
     put(S.CruiseSpeed, st.cruiseSetKmh);

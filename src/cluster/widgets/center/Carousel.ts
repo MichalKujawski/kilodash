@@ -119,6 +119,7 @@ export class Carousel implements Widget {
   draw(ctx: CanvasRenderingContext2D, f: FrameContext): void {
     const { x, y, w, h } = this.rect;
     for (const p of this.pages) p.update?.(f);
+    f.ui.centerPage = this.currentPage;
 
     const b = this.ensureBuffer(f.pxScale);
     if (!b || !this.buffer) return;

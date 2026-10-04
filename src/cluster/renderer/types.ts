@@ -48,6 +48,12 @@ export interface FrameContext {
   history: ConsumptionHistory | null;
   /** World snapshot: traffic, navigation, signs (null without a simulated world). */
   scene: SceneSnapshot | null;
+  /** Cross-widget UI state (e.g. which centre page is showing). */
+  ui: ClusterUiState;
+}
+
+export interface ClusterUiState {
+  centerPage: string;
 }
 
 export interface StaticContext {

@@ -26,6 +26,8 @@ export interface DisplayMask {
   bottomArch: number;
   /** Extra horizontal inset of the top corners vs the bottom ones (tapered sides), px. */
   taper: number;
+  /** Lower corners cut inwards (chamfer), px. 0 = square. */
+  bottomChamfer?: number;
 }
 
 export interface AmbientGlow {

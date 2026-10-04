@@ -73,6 +73,9 @@ export const S = {
   CruiseActive: 'Vehicle.ADAS.CruiseControl.IsActive',
   CruiseSpeed: 'Vehicle.ADAS.CruiseControl.SpeedSet',
   TCSActive: 'Vehicle.ADAS.TCS.IsEngaged',
+  /** 0 on, 1 traction control off, 2 ESC sport. */
+  ESCMode: 'Vehicle.ADAS.ESC.Mode',
+  LaneAssistEnabled: 'Vehicle.ADAS.LaneDepartureDetection.IsEnabled',
   ABSActive: 'Vehicle.ADAS.ABS.IsEngaged',
   /** Hybrid/EV traction battery state of charge, %. */
   SoC: 'Vehicle.Powertrain.TractionBattery.StateOfCharge.Current',
@@ -285,6 +288,8 @@ const defs: SignalDefinition[] = [
     expectedHz: 2,
   },
   bool(S.TCSActive, 'signal.tcs', 10),
+  { id: S.ESCMode, nameKey: 'signal.escMode', unit: 'enum', min: 0, max: 2, expectedHz: 1 },
+  bool(S.LaneAssistEnabled, 'signal.laneAssist', 1),
   bool(S.ABSActive, 'signal.abs', 10),
   {
     id: S.SoC,
@@ -341,4 +346,6 @@ export const BODY_SIGNALS: SignalId[] = [
   S.CruiseSpeed,
   S.TCSActive,
   S.ABSActive,
+  S.ESCMode,
+  S.LaneAssistEnabled,
 ];

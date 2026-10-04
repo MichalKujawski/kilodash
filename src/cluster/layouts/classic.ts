@@ -1,35 +1,57 @@
 import { S } from '@/core/signals/catalog';
 import type { LayoutDefinition } from './types';
 
-const LEFT = { cx: 420, cy: 392 };
-const RIGHT = { cx: 1500, cy: 392 };
-const R = 300;
+/** Dial geometry: ≈560 px dials pushed outwards so the centre window is ≈740 px wide. */
+const R = 280;
+const LEFT = { cx: 355, cy: 360 };
+const RIGHT = { cx: 1565, cy: 360 };
+/** Fixed strips (shared by every view). */
+const TOP_Y = 46;
+const BOTTOM_Y = 670;
+
+/** Telltale row, grouped like real clusters: lights & driver aids left, vehicle warnings right. */
+const LEFT_GROUP = ['parkingLights', 'lowBeam', 'highBeam', 'fog', 'fogRear', 'tcs', 'escOff'];
+const RIGHT_GROUP = [
+  'checkEngine',
+  'oilPressure',
+  'battery',
+  'coolantTemp',
+  'abs',
+  'airbag',
+  'seatbelt',
+  'parkingBrake',
+  'lowFuel',
+  'doorOpen',
+  'tpms',
+  'glowPlug',
+];
 
 /**
- * Two dials framing a centre page carousel, with side gauges, top and bottom
- * status strips and a fixed telltale row.
+ * Classic view: two dials framing a full-height centre window (page carousel),
+ * a top strip (indicators, speed limit, assist status, drive mode) and a fixed
+ * bottom strip (temperature, trip, clock, odometer, telltales).
  */
 export const classic: LayoutDefinition = {
   id: 'classic',
   nameKey: 'layout.classic',
-  mask: { inset: 10, topArch: 34, bottomArch: 10, taper: 26 },
+  mask: { inset: 8, topArch: 46, bottomArch: 6, taper: 18, bottomChamfer: 34 },
   alertRect: { x: 700, y: 150, w: 520, h: 262 },
   ambient: [
-    { x: LEFT.cx, y: LEFT.cy, r: 430 },
-    { x: RIGHT.cx, y: RIGHT.cy, r: 430 },
-    { x: 960, y: 330, r: 380 },
+    { x: LEFT.cx, y: LEFT.cy, r: 420 },
+    { x: RIGHT.cx, y: RIGHT.cy, r: 420 },
+    { x: 960, y: 330, r: 400 },
   ],
   slots: [
     // Drawn first so the dials sit on top of its faded edges.
     {
       id: 'center',
-      rect: { x: 610, y: 76, w: 700, h: 520 },
+      rect: { x: 590, y: 66, w: 740, h: 572 },
       candidates: [
         {
           type: 'carousel',
           props: {
             pages: ['map', 'car', 'trip', 'efficiency'],
-            edgeFade: 0.16,
+            edgeFade: 0.13,
             cutouts: [
               { ...LEFT, r: R },
               { ...RIGHT, r: R },
@@ -50,55 +72,71 @@ export const classic: LayoutDefinition = {
     },
     {
       id: 'left-side',
-      rect: { x: 60, y: 300, w: 80, h: 300 },
+      rect: { x: 30, y: 380, w: 120, h: 300 },
       candidates: [
         {
           type: 'side-gauge',
           props: {
             signal: S.FuelLevel,
             ...LEFT,
-            r: R + 26,
-            fromDeg: 152,
-            toDeg: 208,
-            min: 0,
-            max: 100,
-            red: [0, 10],
+            r: R + 22,
+            fromDeg: 122,
+            toDeg: 162,
+            map: [
+              [0, 0],
+              [100, 1],
+            ],
+            red: [0, 0.1],
+            ticks: [0, 0.25, 0.5, 0.75, 1],
             ends: ['E', 'F'],
             icon: 'fuel',
+            filler: 'right',
           },
         },
       ],
     },
     {
       id: 'right-side',
-      rect: { x: 1780, y: 300, w: 80, h: 300 },
+      rect: { x: 1770, y: 380, w: 120, h: 300 },
       candidates: [
         {
           type: 'side-gauge',
           props: {
             signal: S.CoolantTemp,
             ...RIGHT,
-            r: R + 26,
-            fromDeg: 28,
-            toDeg: -28,
-            min: 50,
-            max: 130,
-            red: [115, 130],
+            r: R + 22,
+            fromDeg: 58,
+            toDeg: 18,
+            // Damped like a real gauge: 75–105 °C all read "normal" (middle).
+            map: [
+              [50, 0],
+              [75, 0.5],
+              [105, 0.5],
+              [130, 1],
+            ],
+            red: [0.78, 1],
+            ticks: [0, 0.5, 1],
             ends: ['C', 'H'],
             icon: 'coolant',
           },
         },
         {
+          // Cars without a coolant signal: oil temperature, normal 90–120 °C in the middle.
           type: 'side-gauge',
           props: {
             signal: S.OilTemp,
             ...RIGHT,
-            r: R + 26,
-            fromDeg: 28,
-            toDeg: -28,
-            min: 50,
-            max: 150,
-            red: [135, 150],
+            r: R + 22,
+            fromDeg: 58,
+            toDeg: 18,
+            map: [
+              [50, 0],
+              [90, 0.5],
+              [120, 0.5],
+              [150, 1],
+            ],
+            red: [0.8, 1],
+            ticks: [0, 0.5, 1],
             ends: ['C', 'H'],
             icon: 'oilPressure',
           },
@@ -107,14 +145,22 @@ export const classic: LayoutDefinition = {
     },
     {
       id: 'top-strip',
-      rect: { x: 700, y: 28, w: 520, h: 36 },
-      candidates: [{ type: 'top-strip' }],
+      rect: { x: 620, y: 24, w: 680, h: 44 },
+      candidates: [
+        {
+          type: 'top-strip',
+          props: { y: TOP_Y, sign: 690, nav: 800, cruise: 1100, lane: 1160, mode: 1230 },
+        },
+      ],
     },
     {
       id: 'bottom-strip',
-      rect: { x: 700, y: 640, w: 520, h: 60 },
+      rect: { x: 120, y: 650, w: 1680, h: 40 },
       candidates: [
-        { type: 'bottom-strip', props: { clockX: 720, tempX: 806, odoX: 1200, y: 690 } },
+        {
+          type: 'bottom-strip',
+          props: { y: BOTTOM_Y, temp: 330, trip: 455, clock: 960, odo: 1600 },
+        },
       ],
     },
     {
@@ -124,31 +170,13 @@ export const classic: LayoutDefinition = {
         {
           type: 'telltales',
           props: {
-            size: 28,
+            size: 26,
             items: [
-              // Indicator arrows near the top edge of each dial.
-              { id: 'indicatorLeft', x: 640, y: 46, size: 36 },
-              { id: 'indicatorRight', x: 1280, y: 46, size: 36 },
-              // Fixed telltale row, bottom centre.
-              { id: 'lowBeam', x: 766, y: 640 },
-              { id: 'highBeam', x: 804, y: 640 },
-              { id: 'fog', x: 842, y: 640 },
-              { id: 'parkingBrake', x: 880, y: 640 },
-              { id: 'seatbelt', x: 918, y: 640 },
-              { id: 'airbag', x: 956, y: 640 },
-              { id: 'abs', x: 994, y: 640 },
-              { id: 'tcs', x: 1032, y: 640 },
-              { id: 'tpms', x: 1070, y: 640 },
-              { id: 'doorOpen', x: 1108, y: 640 },
-              { id: 'glowPlug', x: 1146, y: 640 },
-              // Engine/electrical warnings inside the tachometer gap.
-              { id: 'checkEngine', x: 1450, y: 646 },
-              { id: 'oilPressure', x: 1500, y: 646 },
-              { id: 'battery', x: 1550, y: 646 },
-              { id: 'coolantTemp', x: 1650, y: 618 },
-              // Fuel / ice inside the speedometer gap.
-              { id: 'lowFuel', x: 395, y: 646 },
-              { id: 'ice', x: 445, y: 646 },
+              // Indicator arrows between the dial tops and the centre window.
+              { id: 'indicatorLeft', x: 590, y: TOP_Y, size: 34 },
+              { id: 'indicatorRight', x: 1330, y: TOP_Y, size: 34 },
+              ...LEFT_GROUP.map((id, i) => ({ id, x: 612 + i * 36, y: BOTTOM_Y })),
+              ...RIGHT_GROUP.map((id, i) => ({ id, x: 1022 + i * 34, y: BOTTOM_Y })),
             ],
           },
         },

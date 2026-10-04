@@ -1,7 +1,9 @@
 import { S } from '@/core/signals/catalog';
-import { Fade, font, label, tabular, text } from '../renderer/draw';
+import { formatDistance, drawManeuverIcon } from './center/MapPage';
+import { Fade, font, label, tabular } from '../renderer/draw';
 import type { FrameContext, Rect, Widget, WidgetFactory } from '../renderer/types';
 import { drawIcon } from '../telltales/icons';
+import { drawSign, type SignSpec } from '../telltales/signs';
 import { SAFETY_COLORS } from '../themes/types';
 
 function groupThousands(n: number): string {
@@ -10,82 +12,107 @@ function groupThousands(n: number): string {
     .replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 }
 
-/**
- * Top status strip: range, drive mode, assist icons, connectivity. Small, muted,
- * evenly spaced across `rect`.
- */
 /** Lane keeping works above this speed (typical systems: 60–65 km/h). */
 const LANE_ASSIST_MIN_KMH = 60;
 
+export interface TopStripProps {
+  /** x positions of the items, logical px. */
+  sign: number;
+  nav: number;
+  cruise: number;
+  lane: number;
+  mode: number;
+  y: number;
+}
+
+/**
+ * Top strip: current speed limit (always visible), next-turn mini card when the
+ * map isn't on the centre screen, cruise/ACC status, lane-assist status, drive
+ * mode. Indicator arrows are telltales placed near each dial top.
+ */
 export class TopStrip implements Widget {
+  private navFade = new Fade(5);
   private cruiseFade = new Fade(5);
   private laneActive = new Fade(3);
   private modeFade = new Fade(2);
 
-  constructor(readonly rect: Rect) {}
+  constructor(
+    readonly rect: Rect,
+    private p: TopStripProps,
+  ) {}
 
   draw(ctx: CanvasRenderingContext2D, f: FrameContext): void {
     const t = f.theme;
     const st = f.store;
-    const { x, y, w, h } = this.rect;
-    const cy = y + h / 2;
-    const slots = [0.08, 0.36, 0.64, 0.92].map((k) => x + w * k);
+    const p = this.p;
+    const y = p.y;
+    const sc = f.scene;
+    const on = f.runtime.phase === 'on';
 
-    // Range.
-    const range = st.has(S.Range) ? `${Math.round(st.value(S.Range))}` : '--';
-    drawIcon(ctx, 'fuel', slots[0]! - 34, cy - 1, 18, t.text.secondary, t.fonts.primary);
-    ctx.font = font(500, 22, t.fonts.primary);
-    ctx.fillStyle = t.text.secondary;
-    ctx.textBaseline = 'middle';
-    const rw = tabular(ctx, range, slots[0]! - 20, cy + 1, 'left');
-    label(ctx, 'km', slots[0]! - 14 + rw, cy + 6, 13, t.fonts.primary, t.text.tertiary);
-
-    // Drive mode: fades in once the start-up sequence has finished.
-    // Manual gear selection reports the gear number (1–n); P/R/N/D don't change the mode.
-    const sel = st.value(S.SelectedGear, 127);
-    const auto = !(sel >= 1 && sel <= 20);
-    ctx.textBaseline = 'alphabetic';
-    ctx.globalAlpha = this.modeFade.update(f.runtime.phase === 'on', f.dt);
-    const mode = auto ? 'Comfort' : 'Dynamic';
-    label(ctx, mode, slots[1]!, cy + 6, 15, t.fonts.primary, t.text.secondary, 'center');
-    ctx.globalAlpha = 1;
-
-    // Assist: lane assist in standby (grey) cross-fades to active (green) above its
-    // minimum speed; cruise control appears when engaged.
-    const lane = this.laneActive.update(st.value(S.Speed) > LANE_ASSIST_MIN_KMH, f.dt);
-    const laneX = slots[2]! - 16;
-    ctx.globalAlpha = 1 - lane;
-    drawIcon(ctx, 'laneAssist', laneX, cy, 20, t.text.tertiary, t.fonts.primary);
-    ctx.globalAlpha = lane;
-    drawIcon(ctx, 'laneAssist', laneX, cy, 20, SAFETY_COLORS.info, t.fonts.primary);
-    ctx.globalAlpha = 1;
-    const cruise = this.cruiseFade.update(st.value(S.CruiseActive) > 0, f.dt);
-    if (cruise > 0) {
-      ctx.globalAlpha = cruise;
-      drawIcon(ctx, 'cruise', slots[2]! + 16, cy, 20, SAFETY_COLORS.info, t.fonts.primary);
-      if (st.has(S.CruiseSpeed)) {
-        text(ctx, String(Math.round(st.value(S.CruiseSpeed))), slots[2]! + 32, cy + 7, {
-          font: font(500, 18, t.fonts.primary),
-          color: SAFETY_COLORS.info,
-        });
+    // Speed limit: always visible while driving (EU intelligent speed assistance).
+    if (sc && on) {
+      const l = sc.legal;
+      const sign: SignSpec =
+        l.limit !== null ? { kind: 'limit', value: l.limit } : { kind: 'endAll' };
+      drawSign(ctx, sign, p.sign, y, 25, t.fonts.primary);
+      if (l.noOvertaking)
+        drawSign(ctx, { kind: 'noOvertaking' }, p.sign + 56, y, 20, t.fonts.primary);
+      if (l.limit === null && l.advisory) {
+        label(ctx, `${l.advisory}`, p.sign + 32, y + 6, 14, t.fonts.primary, t.text.tertiary);
       }
+    }
+
+    // Next turn when the map isn't showing.
+    const showNav = !!sc?.nav.current && f.ui.centerPage !== 'map' && on;
+    const nk = this.navFade.update(showNav, f.dt);
+    if (nk > 0.01 && sc?.nav.current) {
+      ctx.globalAlpha = nk;
+      drawManeuverIcon(ctx, sc.nav.current, p.nav, y, 24, t.text.primary);
+      ctx.font = font(500, 22, t.fonts.primary);
+      ctx.fillStyle = t.text.primary;
+      ctx.textBaseline = 'alphabetic';
+      tabular(ctx, formatDistance(sc.nav.distance), p.nav + 20, y + 8, 'left');
       ctx.globalAlpha = 1;
     }
 
-    // Connectivity placeholder.
-    drawIcon(ctx, 'phone', slots[3]! - 14, cy, 17, t.text.tertiary, t.fonts.primary);
-    drawIcon(ctx, 'signal', slots[3]! + 12, cy, 16, t.text.tertiary, t.fonts.primary);
+    // Cruise/ACC: green with set speed when active, grey when only stored.
+    const cruise = st.value(S.CruiseActive) > 0;
+    const ck = this.cruiseFade.update(cruise || st.value(S.CruiseSpeed) > 0, f.dt);
+    if (ck > 0.01) {
+      ctx.globalAlpha = ck;
+      const col = cruise ? SAFETY_COLORS.info : t.text.tertiary;
+      drawIcon(ctx, 'cruise', p.cruise, y, 22, col, t.fonts.primary);
+      ctx.globalAlpha = 1;
+    }
+
+    // Lane assist: grey standby, green active above its minimum speed.
+    const laneOn = st.value(S.LaneAssistEnabled, 1) > 0;
+    if (laneOn && on) {
+      const lane = this.laneActive.update(st.value(S.Speed) > LANE_ASSIST_MIN_KMH, f.dt);
+      ctx.globalAlpha = 1 - lane;
+      drawIcon(ctx, 'laneAssist', p.lane, y, 22, t.text.tertiary, t.fonts.primary);
+      ctx.globalAlpha = lane;
+      drawIcon(ctx, 'laneAssist', p.lane, y, 22, SAFETY_COLORS.info, t.fonts.primary);
+      ctx.globalAlpha = 1;
+    }
+
+    // Drive mode symbol: shown only for non-normal modes (the drive modes step adds them).
+    void this.modeFade;
   }
 }
 
 export interface BottomStripProps {
-  clockX: number;
-  tempX: number;
-  odoX: number;
   y: number;
+  temp: number;
+  trip: number;
+  clock: number;
+  odo: number;
 }
 
-/** Bottom status strip: clock, outside temperature, odometer. */
+/**
+ * Fixed bottom strip (every view): outside temperature with ice warning, trip A,
+ * clock, odometer. Telltale rows sit between them (layout data).
+ */
 export class BottomStrip implements Widget {
   constructor(
     readonly rect: Rect,
@@ -96,40 +123,55 @@ export class BottomStrip implements Widget {
     const t = f.theme;
     const st = f.store;
     const p = this.p;
+    ctx.textBaseline = 'alphabetic';
+    const baseline = p.y + 8;
+
     // The car's clock: world time in the simulator, the device clock otherwise.
     const d = new Date();
     const hour = f.scene ? f.scene.env.hour : d.getHours() + d.getMinutes() / 60;
     const hh = Math.floor(hour);
     const mm = Math.floor((hour - hh) * 60);
-    ctx.textBaseline = 'alphabetic';
     ctx.font = font(500, 24, t.fonts.primary);
     ctx.fillStyle = t.text.secondary;
     tabular(
       ctx,
       `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`,
-      p.clockX,
-      p.y,
-      'left',
+      p.clock,
+      baseline,
+      'center',
     );
+
     if (st.has(S.AmbientTemp)) {
       const temp = Math.round(st.value(S.AmbientTemp));
+      // Ice warning below about +4 °C: snowflake and amber temperature.
+      const ice = temp <= 3;
       ctx.font = font(500, 22, t.fonts.primary);
-      ctx.fillStyle = temp <= 3 ? SAFETY_COLORS.caution : t.text.secondary;
-      tabular(ctx, `${temp}°C`, p.tempX, p.y, 'left');
+      ctx.fillStyle = ice ? SAFETY_COLORS.caution : t.text.secondary;
+      tabular(ctx, `${temp}°C`, p.temp, baseline, 'left');
+      if (ice) drawIcon(ctx, 'ice', p.temp - 18, p.y, 20, SAFETY_COLORS.caution, t.fonts.primary);
     }
+
+    if (st.has(S.TripDistance)) {
+      label(ctx, 'A', p.trip - 6, baseline - 1, 13, t.fonts.primary, t.text.tertiary, 'right');
+      ctx.font = font(500, 20, t.fonts.primary);
+      ctx.fillStyle = t.text.secondary;
+      tabular(ctx, st.value(S.TripDistance).toFixed(1), p.trip, baseline, 'left');
+      label(ctx, 'km', p.trip + 50, baseline - 1, 13, t.fonts.primary, t.text.tertiary);
+    }
+
     if (st.has(S.Odometer)) {
       ctx.font = font(500, 20, t.fonts.primary);
       ctx.fillStyle = t.text.tertiary;
-      tabular(ctx, groupThousands(st.value(S.Odometer)), p.odoX - 30, p.y, 'right');
-      label(ctx, 'km', p.odoX, p.y, 13, t.fonts.primary, t.text.tertiary, 'right');
+      tabular(ctx, groupThousands(st.value(S.Odometer)), p.odo - 30, baseline, 'right');
+      label(ctx, 'km', p.odo, baseline - 1, 13, t.fonts.primary, t.text.tertiary, 'right');
     }
   }
 }
 
-export const topStrip: WidgetFactory = {
+export const topStrip: WidgetFactory<TopStripProps> = {
   type: 'top-strip',
   requires: () => [],
-  create: (rect) => new TopStrip(rect),
+  create: (rect, props) => new TopStrip(rect, props),
 };
 
 export const bottomStrip: WidgetFactory<BottomStripProps> = {

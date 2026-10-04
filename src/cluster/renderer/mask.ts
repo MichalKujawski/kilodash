@@ -23,13 +23,17 @@ export function maskPolygon(m: DisplayMask, shrink = 0): [number, number][] {
     const u = 2 * t - 1;
     pts.push([x, top + m.topArch * u * u]);
   }
-  // Bottom arch: centre raised by bottomArch.
+  // Right side down, then the lower-right chamfer.
+  const c = m.bottomChamfer ?? 0;
+  if (c > 0) pts.push([br[0], bottom - c * 1.6]);
+  // Bottom arch: centre raised by bottomArch, corners pulled in by the chamfer.
   for (let k = 0; k <= SAMPLES; k++) {
     const t = k / SAMPLES;
-    const x = br[0] + (bl[0] - br[0]) * t;
+    const x = br[0] - c + (bl[0] + c - (br[0] - c)) * t;
     const u = 2 * t - 1;
     pts.push([x, bottom - m.bottomArch * (1 - u * u)]);
   }
+  if (c > 0) pts.push([bl[0], bottom - c * 1.6]);
   return pts;
 }
 
