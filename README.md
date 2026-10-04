@@ -23,11 +23,9 @@ npm run test:e2e   # browser smoke test (Playwright)
 ```
 
 Keyboard: `W`/`S` throttle/brake, `Q`/`E` paddle shifts, `,`/`.` indicators, `H` high beam,
-`Space` hazard lights, `C` cruise control, `F` fog light, `K` ignition, `1`–`6` scenarios (city,
-highway, mountain, track, night, cold start), `N` night mode (auto/on/off), `M` mute, `G` engine
+`Space` hazard lights, `C` cruise control, `F` fog light, `K` ignition, `N` night mode (auto/on/off), `M` mute, `G` engine
 sound, `T` cycles themes, `←`/`→` centre pages, `Enter` acknowledges an alert, and `P` toggles the autopilot. The
-autopilot takes over again 8 s after your last input. In attract mode it cycles through the
-scenarios.
+Demo drive takes over again 10 s after your last input.
 
 URL options: `?kiosk=1` shows only the cluster (for a real screen), `?lowpower=1` turns off bloom,
 glass and blur, `?pose=idle|city|highway|redline|night` puts the simulator into a reproducible
@@ -105,8 +103,8 @@ src/
 | #   | Milestone                                                                                 | State |
 | --- | ----------------------------------------------------------------------------------------- | ----- |
 | 1   | Skeleton: render loop, signal store, simulator, classic layout, one theme, spring needles | ✅    |
-| 2   | Full simulator, scenarios, telltales, alerts, startup sweep                               | ⏳    |
-| 3   | Theme system, 6+ themes, animated switching, theme editor                                 | ⏳    |
+| 2   | Full simulator, scenarios, telltales, alerts, startup sweep                               | ✅    |
+| 3   | Theme system, 6+ themes, animated switching, theme editor                                 | ✅    |
 | 4   | Layout engine, all layouts, capability detection, 6 vehicle profiles, scan animation      | ⏳    |
 | 5   | 3D car, navigation map, media/phone cards, cluster menus, i18n                            | ⏳    |
 | 6   | Demo website, inspector, realism toggle, kiosk mode                                       | ⏳    |

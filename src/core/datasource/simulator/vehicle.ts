@@ -22,6 +22,9 @@ export interface DriverInputs {
 
 export type DriveMode = 'auto' | 'manual';
 
+/** Gear selector position (automatic / dual-clutch). */
+export type Selector = 'P' | 'R' | 'N' | 'D';
+
 export type FaultKind =
   'overheat' | 'lowFuel' | 'checkEngine' | 'doorOpen' | 'lowTire' | 'alternator';
 
@@ -95,6 +98,9 @@ export interface VehicleState {
   /** Tyre pressures FL, FR, RL, RR, kPa. */
   tires: [number, number, number, number];
   cruiseActive: boolean;
+  selector: Selector;
+  /** +1 forward, −1 reversing (speed is always a magnitude). */
+  direction: 1 | -1;
   cruiseSetKmh: number;
   mil: boolean;
 }
@@ -187,6 +193,8 @@ export class VehicleSimulator {
       batteryTempC: 24,
       tires: [...TIRE_BASE],
       cruiseActive: false,
+      selector: 'D',
+      direction: 1,
       cruiseSetKmh: 0,
       mil: false,
     };
@@ -224,6 +232,20 @@ export class VehicleSimulator {
 
   shiftDown(): void {
     this.powertrain.shift?.(-1);
+  }
+
+  /**
+   * Move the gear selector. P and R (and leaving R) need a standstill, as the
+   * real gearbox interlock does; returns false when refused.
+   */
+  setSelector(sel: Selector): boolean {
+    const s = this.state;
+    const needsStop = sel === 'P' || sel === 'R' || s.selector === 'R' || s.selector === 'P';
+    if (needsStop && s.speedMs > 0.5 && sel !== 'N') return false;
+    s.selector = sel;
+    s.direction = sel === 'R' ? -1 : 1;
+    if (sel !== 'D') s.cruiseActive = false;
+    return true;
   }
 
   setMode(mode: DriveMode): void {
@@ -336,7 +358,8 @@ export class VehicleSimulator {
     if (v <= 0.01 && force < 0) force = 0; // brakes / creep hold the car at standstill
 
     let brakeForce = Math.max(0, s.brake * mg * 1.05 - regenBrakeN);
-    if (s.ignition < 2 || this.body.parkingBrake) {
+    // Ignition off, parking brake or the parking lock (P) hold the car.
+    if (s.ignition < 2 || this.body.parkingBrake || s.selector === 'P') {
       if (v < 0.5) brakeForce = Math.max(brakeForce, mg);
       force = Math.min(force, 0);
     }

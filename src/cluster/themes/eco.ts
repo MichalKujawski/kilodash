@@ -70,6 +70,7 @@ export const eco: Theme = {
   sideGauge: { track: 'rgba(46, 230, 166, 0.15)', fill: '#2ee6a6', marker: '#e6fff8' },
   panel: { surface: 'rgba(46, 230, 166, 0.03)', divider: 'rgba(46, 230, 166, 0.1)' },
   map: {
+    ...midnight.map,
     ground: '#020a08',
     block: '#06150f',
     park: '#0a2418',

@@ -77,6 +77,7 @@ export const neonGrid: Theme = {
   sideGauge: { track: 'rgba(160, 120, 255, 0.18)', fill: '#00e5ff', marker: '#ff2bd6' },
   panel: { surface: 'rgba(160, 80, 255, 0.05)', divider: 'rgba(0, 229, 255, 0.15)' },
   map: {
+    ...midnight.map,
     ground: '#070214',
     block: '#120626',
     park: '#0a1a24',

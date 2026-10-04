@@ -23,7 +23,11 @@ turn them into decisions (alerts, assists, derived values), and a **canvas rende
 
 ```mermaid
 flowchart LR
+  W[World<br/>route, traffic, environment] -- scene --> D[DemoDriver]
+  D -- pedals, indicators, selector --> P
+  W -- curvature, gradient, grip --> P
   P[VehicleSimulator<br/>physics 100 Hz] --> SS[SimulatorSource<br/>DataSource]
+  W -- SceneSnapshot --> R
   SS -- Sample id,value,ts --> ST[(SignalStore)]
   ST --> DE[DerivedEngine<br/>consumption, range, trip]
   DE --> ST
@@ -37,23 +41,26 @@ flowchart LR
   `src/core/signals/catalog.ts`.
 - **The store** keeps the latest two samples per signal. From those it can predict values between
   samples, report quality (`live`/`stale`/`unavailable`) and measure the real update rate.
+- **Two channels.** Scalars (speed, rpm, lamps) go through the store. Structured data (traffic objects,
+  navigation, signs, environment) goes through the `SceneSnapshot` that `World.snapshot()` builds,
+  like the object list a car's front camera sends.
 - **Widgets never know** whether data comes from the simulator or a real car. That is the point of the
   `DataSource` interface (`src/core/datasource/types.ts`).
 
 ## The 10 most important files
 
-| File | What it does and why |
-|---|---|
-| `core/signals/store.ts` | Latest values, quality and rate per signal. Lives outside React for speed. |
-| `core/datasource/simulator/vehicle.ts` | Chassis, body, ignition, thermals, electrics, faults. Pure `step(dt)`, deterministic. |
-| `core/datasource/simulator/powertrain.ts` | ICE (torque curve, turbo, gearbox), EV (regen, SoC), hybrid (engine start/stop). |
-| `core/smoothing/spring.ts` | Spring–damper needle physics and rate-limited digital readouts: why needles look real. |
-| `core/derived/DerivedEngine.ts` | Computes what the car doesn't report: consumption, range, trip, boost. |
-| `core/alerts/AlertEngine.ts` + `rules.ts` | Data-driven warnings with hysteresis, minimum duration and priority. |
-| `cluster/renderer/ClusterRenderer.ts` | Frame loop: static cache → widgets → bloom → glass → display mask. |
-| `cluster/renderer/startup.ts` | Ignition choreography: needle sweep, bulb check, trip summary. |
-| `cluster/layouts/classic.ts` | Layout as data: slots, rects, candidate widgets, telltale positions. |
-| `cluster/themes/midnight.ts` | Every colour, size and effect strength as tokens. |
+| File                                      | What it does and why                                                                   |
+| ----------------------------------------- | -------------------------------------------------------------------------------------- |
+| `core/signals/store.ts`                   | Latest values, quality and rate per signal. Lives outside React for speed.             |
+| `core/datasource/simulator/vehicle.ts`    | Chassis, body, ignition, thermals, electrics, faults. Pure `step(dt)`, deterministic.  |
+| `core/datasource/simulator/powertrain.ts` | ICE (torque curve, turbo, gearbox), EV (regen, SoC), hybrid (engine start/stop).       |
+| `core/smoothing/spring.ts`                | Spring–damper needle physics and rate-limited digital readouts: why needles look real. |
+| `core/derived/DerivedEngine.ts`           | Computes what the car doesn't report: consumption, range, trip, boost.                 |
+| `core/alerts/AlertEngine.ts` + `rules.ts` | Data-driven warnings with hysteresis, minimum duration and priority.                   |
+| `cluster/renderer/ClusterRenderer.ts`     | Frame loop: static cache → widgets → bloom → glass → display mask.                     |
+| `cluster/renderer/startup.ts`             | Ignition choreography: needle sweep, bulb check, trip summary.                         |
+| `cluster/layouts/classic.ts`              | Layout as data: slots, rects, candidate widgets, telltale positions.                   |
+| `cluster/themes/midnight.ts`              | Every colour, size and effect strength as tokens.                                      |
 
 ## How to add things
 

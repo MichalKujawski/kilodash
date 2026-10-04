@@ -95,10 +95,7 @@ export function App() {
   const profile = DEFAULT_PROFILE;
 
   useEffect(() => {
-    const s = new ClusterSession(
-      profile,
-      POSE ? {} : { startOff: true, attract: true, scenario: 'city' },
-    );
+    const s = new ClusterSession(profile, POSE ? {} : { startOff: true, env: { realTime: true } });
     let live = true;
     void s.start().then(() => {
       if (!live) return;

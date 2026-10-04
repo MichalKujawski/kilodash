@@ -14,21 +14,21 @@ _Last updated: 2026-10-04_
 - German speed-limit defaults.
 - Commit per step; small steps may be batched.
 
-| Step | | State |
-|---|---|---|
-| 0 | CLAUDE.md, PROGRESS.md, WALKTHROUGH.md | done |
-| 1 | World simulator + demo drive + route map/nav (scenarios removed) | next |
-| 2 | Control panel (wheel, stalks, light switch, console, pedals, Workshop drawer) | |
-| 3 | Cluster shape: open dials, top strip, fixed bottom strip, grouped telltales, real fuel/coolant logic | |
-| 4 | Drive modes (Eco coasting, Sport, Individual, Snow/Off-road, EV power meter/regen) | |
-| 5 | ACC, cruise, limiter | |
-| 6 | Speed-limit recognition / ISA | |
-| 7 | Lane keeping/centering, hands-off staging, Driver Assistance view | |
-| 8 | Collision warning/AEB, blind spot, rear cross traffic | |
-| 9 | Start-stop, Auto Hold, gear recommendation, shift lights, diesel DPF/AdBlue | |
-| 10 | Warnings catalogue, seatbelt escalation, TPMS, service | |
-| 11 | Fatigue, parking sensors + camera, auto high beam, lights/body/wipers | |
-| 12 | Views (Classic, Navigation, Reduced, Driver Assistance, Sport, Auto view) | |
+| Step |                                                                                                      | State |
+| ---- | ---------------------------------------------------------------------------------------------------- | ----- |
+| 0    | CLAUDE.md, PROGRESS.md, WALKTHROUGH.md                                                               | done  |
+| 1    | World simulator + demo drive + route map/nav (scenarios removed)                                     | next  |
+| 2    | Control panel (wheel, stalks, light switch, console, pedals, Workshop drawer)                        |       |
+| 3    | Cluster shape: open dials, top strip, fixed bottom strip, grouped telltales, real fuel/coolant logic |       |
+| 4    | Drive modes (Eco coasting, Sport, Individual, Snow/Off-road, EV power meter/regen)                   |       |
+| 5    | ACC, cruise, limiter                                                                                 |       |
+| 6    | Speed-limit recognition / ISA                                                                        |       |
+| 7    | Lane keeping/centering, hands-off staging, Driver Assistance view                                    |       |
+| 8    | Collision warning/AEB, blind spot, rear cross traffic                                                |       |
+| 9    | Start-stop, Auto Hold, gear recommendation, shift lights, diesel DPF/AdBlue                          |       |
+| 10   | Warnings catalogue, seatbelt escalation, TPMS, service                                               |       |
+| 11   | Fatigue, parking sensors + camera, auto high beam, lights/body/wipers                                |       |
+| 12   | Views (Classic, Navigation, Reduced, Driver Assistance, Sport, Auto view)                            |       |
 
 ## Done earlier
 
@@ -39,6 +39,17 @@ _Last updated: 2026-10-04_
   start-up/shut-down.
 - **M3:** theme system (experimental themes behind `?dev=1`).
 - **Parked on `wip/elm327-scan`:** ELM327 client, emulator, capability detection, OBDb signalsets.
+
+## Notes from step 1
+
+- The world is one deterministic ~21 km route (`core/world/template.ts`). The Demo drive takes about
+  21 minutes per loop. "Jump to" places exist for demos and screenshots.
+- The steering wheel isn't simulated. The car follows the road, and an indicator held on a
+  multi-lane road becomes a lane change.
+- A temporary world/car panel (`app/DevPanel.tsx`) stands in until step 2 replaces it with the
+  control panel.
+- The 2022 AWD family SUV profile is still to come (with drive modes, step 4). The default is still
+  the sports coupé.
 
 ## Known issues / open questions
 

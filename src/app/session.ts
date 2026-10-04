@@ -5,7 +5,7 @@ import type { HistorySnapshot } from '@/core/derived/ConsumptionHistory';
 import { DerivedEngine, type TripState } from '@/core/derived/DerivedEngine';
 import type { CapabilityProfile } from '@/core/datasource/types';
 import type { VehicleProfile } from '@/core/datasource/simulator/profile';
-import type { ScenarioId } from '@/core/datasource/simulator/scenarios';
+import type { EnvironmentSettings } from '@/core/world/environment';
 import { SimulatorSource } from '@/core/datasource/simulator/SimulatorSource';
 import { SignalStore } from '@/core/signals/store';
 import type { SignalId } from '@/core/signals/types';
@@ -16,9 +16,9 @@ const ALERTS_HZ = 5;
 const TRIP_SAVE_MS = 5000;
 
 export interface SessionOptions {
+  /** Begin parked with the ignition off; the Demo drive starts the car. */
   startOff?: boolean;
-  scenario?: ScenarioId;
-  attract?: boolean;
+  env?: Partial<EnvironmentSettings>;
 }
 
 function loadTrip(profileId: string): TripState | undefined {

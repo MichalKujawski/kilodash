@@ -83,7 +83,12 @@ export const midnight: Theme = {
   panel: { surface: 'rgba(255, 255, 255, 0.025)', divider: 'rgba(255, 255, 255, 0.06)' },
   map: {
     ground: '#05070a',
-    block: '#0c1015',
+    block: '#11161d',
+    field: '#0b0f0a',
+    meadow: '#0a110c',
+    forest: '#07120c',
+    lot: '#13171c',
+    marking: 'rgba(220, 228, 240, 0.35)',
     park: '#0a1410',
     water: '#06101c',
     road: '#1d232b',

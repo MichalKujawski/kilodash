@@ -68,6 +68,7 @@ export const retroLcd: Theme = {
   sideGauge: { track: GHOST, fill: AMBER, marker: AMBER },
   panel: { surface: 'rgba(255, 166, 43, 0.03)', divider: 'rgba(255, 166, 43, 0.12)' },
   map: {
+    ...midnight.map,
     ground: '#0a0805',
     block: '#140f07',
     park: '#120f07',

@@ -1,15 +1,5 @@
 import { useEffect, useRef } from 'react';
-import type { ScenarioId } from '@/core/datasource/simulator/scenarios';
 import type { SimulatorSource } from '@/core/datasource/simulator/SimulatorSource';
-
-export const SCENARIO_KEYS: ScenarioId[] = [
-  'city',
-  'highway',
-  'mountain',
-  'track',
-  'night',
-  'coldStart',
-];
 
 export interface ExtraKeyActions {
   cycleNight?: () => void;
@@ -22,7 +12,7 @@ export interface ExtraKeyActions {
 
 /**
  * Keyboard driving: W/S throttle & brake, Q/E paddles, `,`/`.` indicators,
- * H high beam, Space hazard, C cruise, F fog, K ignition, 1–6 scenarios,
+ * H high beam, Space hazard, C cruise, F fog, K ignition,
  * P autopilot, N night mode, M mute, G engine sound.
  */
 export function useKeyboardDriving(
@@ -68,7 +58,6 @@ export function useKeyboardDriving(
       else if (k === 'm') x.toggleMute?.();
       else if (k === 'g') x.toggleEngineSound?.();
       else if (k === 't') x.cycleTheme?.();
-      else if (/^[1-6]$/.test(k)) source.setScenario(SCENARIO_KEYS[Number(k) - 1]!);
       else return;
       e.preventDefault();
     };

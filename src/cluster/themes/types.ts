@@ -116,7 +116,15 @@ export interface DialTokens {
 
 export interface MapTokens {
   ground: string;
+  /** Buildings. */
   block: string;
+  field: string;
+  meadow: string;
+  forest: string;
+  /** Car-park tarmac. */
+  lot: string;
+  /** Lane and bay markings. */
+  marking: string;
   park: string;
   water: string;
   road: string;

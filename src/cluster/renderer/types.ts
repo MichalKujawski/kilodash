@@ -2,6 +2,7 @@ import type { AlertEngine } from '@/core/alerts/AlertEngine';
 import type { Flasher } from '@/core/alerts/flasher';
 import type { ConsumptionHistory } from '@/core/derived/ConsumptionHistory';
 import type { SignalStore } from '@/core/signals/store';
+import type { SceneSnapshot } from '@/core/world/scene';
 import type { SignalId } from '@/core/signals/types';
 import type { Theme } from '../themes/types';
 import type { ClusterRuntime } from './startup';
@@ -43,6 +44,8 @@ export interface FrameContext {
   alerts: AlertEngine | null;
   /** Trip-computer consumption history (from the derived engine). */
   history: ConsumptionHistory | null;
+  /** World snapshot: traffic, navigation, signs (null without a simulated world). */
+  scene: SceneSnapshot | null;
 }
 
 export interface StaticContext {

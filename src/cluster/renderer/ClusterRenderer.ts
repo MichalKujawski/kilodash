@@ -1,6 +1,7 @@
 import type { AlertEngine } from '@/core/alerts/AlertEngine';
 import { Flasher } from '@/core/alerts/flasher';
 import type { ConsumptionHistory } from '@/core/derived/ConsumptionHistory';
+import type { SceneSnapshot } from '@/core/world/scene';
 import { S } from '@/core/signals/catalog';
 import type { SignalStore } from '@/core/signals/store';
 import type { LayoutDefinition } from '../layouts/types';
@@ -31,6 +32,7 @@ export interface RendererOptions {
   flasher?: Flasher;
   alerts?: AlertEngine | null;
   history?: ConsumptionHistory | null;
+  scene?: () => SceneSnapshot | null;
 }
 
 export type NightMode = 'auto' | 'on' | 'off';
@@ -446,6 +448,7 @@ export class ClusterRenderer {
       runtime,
       alerts: this.alerts,
       history: this.options.history ?? null,
+      scene: this.options.scene?.() ?? null,
     };
     this.mark('base');
     const drawAll = (list: Widget[]): void => {

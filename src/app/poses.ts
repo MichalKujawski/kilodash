@@ -1,46 +1,51 @@
-import { AutoDriver } from '@/core/datasource/simulator/autodriver';
 import type { ClusterSession } from './session';
 
 export const POSES = ['idle', 'city', 'highway', 'redline', 'night'] as const;
 export type Pose = (typeof POSES)[number];
 
-const hold = (targetKmh: number, aggression = 0.6): AutoDriver =>
-  new AutoDriver([{ targetKmh, aggression, holdS: 1e9 }]);
-
 /**
- * Put the simulator into a reproducible state for screenshots and visual review
- * (`?pose=highway`). Uses the fixed default seed, so runs are deterministic.
+ * Put the car into a reproducible state for screenshots and visual review
+ * (`?pose=highway`): a fixed place in the world at a fixed time of day.
+ * Deterministic: fixed seeds, no real clock.
  */
 export function applyPose(session: ClusterSession, pose: Pose): void {
   const src = session.source;
-  src.setAttract(false);
   // Start from an empty trip so screenshots don't depend on earlier visits.
   session.resetTrip(true);
+  src.setEnvironment({
+    realTime: false,
+    hour: pose === 'night' ? 22 : 14,
+    weather: 'clear',
+    temperatureC: 16,
+  });
   switch (pose) {
     case 'idle':
-      src.autodriver = hold(0);
-      session.fastForward(20);
+      // Parked in the first bay, engine running, selector in P.
+      src.parkAtStart();
+      src.setAutopilot(false);
+      src.sim.setIgnition(2);
+      src.sim.start();
+      session.fastForward(4);
       break;
     case 'city':
-      src.autodriver = hold(50, 0.5);
-      session.fastForward(45);
+      src.jumpTo('town');
+      session.fastForward(18);
       break;
     case 'highway':
-      src.autodriver = hold(130, 0.7);
-      session.fastForward(70);
+      src.jumpTo('motorway');
+      session.fastForward(75);
       break;
     case 'night':
-      src.setNight(true);
-      src.autodriver = hold(70, 0.5);
-      session.fastForward(50);
+      src.jumpTo('rural');
+      session.fastForward(45);
       break;
     case 'redline': {
+      src.jumpTo('motorway');
       src.setAutopilot(false);
       const sim = src.sim;
       sim.setMode('manual');
-      sim.inputs.throttle = 1;
       src.setManualInput({ throttle: 1 });
-      session.fastForward(15, () => {
+      session.fastForward(14, () => {
         if (sim.state.gear < 3 && sim.state.rpm > 6900) sim.shiftUp();
       });
       break;

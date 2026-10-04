@@ -83,6 +83,7 @@ export const heritage: Theme = {
   sideGauge: { track: 'rgba(240, 230, 205, 0.18)', fill: '#efe6cf', marker: '#ff6a00' },
   panel: { surface: 'rgba(240, 230, 205, 0.03)', divider: 'rgba(240, 230, 205, 0.08)' },
   map: {
+    ...midnight.map,
     ground: '#0b0907',
     block: '#17130e',
     park: '#121a10',

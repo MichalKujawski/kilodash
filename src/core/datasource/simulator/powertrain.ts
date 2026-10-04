@@ -169,6 +169,18 @@ export class CombustionPowertrain implements Powertrain {
       }
     }
     this.cooldown = Math.max(0, this.cooldown - dt);
+    const sel = s.selector;
+    if (sel === 'P' || sel === 'N') {
+      // Gearbox in neutral: the engine revs freely with the pedal.
+      s.coupled = false;
+      this.shiftState = null;
+      const target = lerp(idleTarget, e.limiterRpm * 0.9, eff);
+      s.rpm += (target - s.rpm) * approach(dt, 0.25);
+      airAndFuel(s, p, e, eff, this.boost, false, dt);
+      return 0;
+    }
+    // Reverse uses roughly the first-gear ratio; no shifting.
+    if (sel === 'R' && !this.shiftState) s.gear = 1;
     const gear = this.targetGear();
     const ratio = gear > 0 ? p.gearRatios[gear - 1]! * p.finalDrive : 0;
     const coupledRpm = this.coupledRpm(gear);
@@ -210,6 +222,7 @@ export class CombustionPowertrain implements Powertrain {
     const s = sim.state;
     const e = this.e;
     if (!s.engineRunning) return;
+    if (s.selector !== 'D') return;
     if (sim.mode === 'auto') this.autoShift();
     else if (!this.shiftState && s.gear > 1 && this.coupledRpm(s.gear) < e.idleRpm * 0.95) {
       this.request(s.gear - 1); // keep from stalling in manual mode
@@ -269,9 +282,9 @@ export class ElectricPowertrain implements Powertrain {
     s.gear = 1;
     s.rpm = wheelRpm(s, p) * (p.gearRatios[0] ?? 1) * p.finalDrive;
     s.coupled = true;
-    if (!s.ready) {
+    if (!s.ready || s.selector === 'P' || s.selector === 'N') {
       this.regenBrakeN = 0;
-      s.powerKW = 0;
+      s.powerKW = s.ready ? 0.6 : 0;
       return 0;
     }
     const v = s.speedMs;

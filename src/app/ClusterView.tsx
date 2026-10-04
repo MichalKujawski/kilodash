@@ -49,6 +49,7 @@ export function ClusterView({
       flasher: session.flasher,
       alerts: session.alerts,
       history: session.derived.history,
+      scene: () => session.source.scene(),
       onFps: (f, ms, d) => onFpsRef.current?.(f, ms, d),
     });
     rendererRef.current = r;

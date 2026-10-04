@@ -1,7 +1,11 @@
 import { Emitter } from '../../emitter';
+import { FUEL_TYPE_TO_CODE } from '../../obd/pids';
 import { S } from '../../signals/catalog';
 import type { Sample, SignalId, SignalSource } from '../../signals/types';
-import { FUEL_TYPE_TO_CODE } from '../../obd/pids';
+import { DemoDriver } from '../../world/DemoDriver';
+import type { EnvironmentSettings } from '../../world/environment';
+import type { SceneSnapshot } from '../../world/scene';
+import { World } from '../../world/World';
 import type {
   CapabilityProfile,
   ConnectionStatus,
@@ -11,11 +15,9 @@ import type {
   Unsubscribe,
   VehicleInfo,
 } from '../types';
-import { AutoDriver } from './autodriver';
 import type { VehicleProfile } from './profile';
-import { SCENARIO_BY_ID, SCENARIOS, START_SEQUENCE, type ScenarioId } from './scenarios';
 import { profileSignals } from './signals';
-import { VehicleSimulator, type FaultKind } from './vehicle';
+import { VehicleSimulator, type FaultKind, type Selector } from './vehicle';
 
 const STEP_S = 0.01;
 const MAX_STEPS_PER_TICK = 25;
@@ -23,8 +25,8 @@ const MAX_STEPS_PER_TICK = 25;
 const HIGH_EVERY = 2;
 /** Emit low-rate signals every N steps (10 Hz). */
 const LOW_EVERY = 10;
-/** Seconds after the last manual input before the autopilot takes over again. */
-const AUTOPILOT_RESUME_S = 8;
+/** Seconds after the last manual input before the Demo drive takes over again. */
+export const DEMO_RESUME_S = 10;
 
 export interface ManualInput {
   throttle?: number;
@@ -33,28 +35,45 @@ export interface ManualInput {
 
 export interface SimulatorOptions {
   seed?: number;
-  /** Begin with the ignition off and play the start-up sequence. */
+  /** Begin parked in the first bay with the ignition off (the Demo drive starts the car). */
   startOff?: boolean;
-  scenario?: ScenarioId;
-  /** Cycle through all scenarios (demo attract mode). */
-  attract?: boolean;
+  env?: Partial<EnvironmentSettings>;
 }
 
+/** Named places on the route for demo jumps and screenshots. */
+export const WORLD_PLACES: {
+  id: string;
+  label: string;
+  segment: string;
+  at: number;
+  lane?: number;
+}[] = [
+  { id: 'town', label: 'Town centre', segment: 'Bahnhofstraße', at: 120 },
+  { id: 'zone30', label: '30 zone', segment: 'Lindenweg', at: 60 },
+  { id: 'rural', label: 'Rural road', segment: 'L 1180', at: 150 },
+  { id: 'village', label: 'Village', segment: 'L 1180', at: 2650 },
+  { id: 'motorway', label: 'Autobahn', segment: 'A 7', at: 300 },
+  { id: 'tunnel', label: 'Tunnel', segment: 'A 7', at: 3200 },
+  { id: 'roadworks', label: 'Roadworks & jam', segment: 'A 7', at: 5400 },
+  { id: 'exit', label: 'Exit', segment: 'A 7', at: 8300 },
+  { id: 'destination', label: 'Destination', segment: 'Marktstraße', at: 100 },
+];
+
 /**
- * Feeds the physics simulator through the standard DataSource interface, so the
- * cluster cannot tell it apart from a real car. Each signal is tagged with the
- * channel a real car would deliver it on (standard PID, manufacturer PID, CAN).
+ * The simulated car in its world, seen through the standard DataSource
+ * interface, so the cluster cannot tell it apart from a real car. Each signal is
+ * tagged with the channel a real car would deliver it on (standard PID,
+ * manufacturer PID, CAN). Structured data (traffic objects, navigation, signs)
+ * is available as a scene snapshot, like a camera's object list.
  */
 export class SimulatorSource implements DataSource {
   readonly id = 'simulator';
   readonly label = 'Physics simulator';
-  sim: VehicleSimulator;
-  autodriver: AutoDriver;
+  readonly sim: VehicleSimulator;
+  readonly world: World;
+  readonly demo: DemoDriver;
+  /** Demo drive enabled (resumes after inactivity). */
   autopilot = true;
-  attract: boolean;
-  scenario: ScenarioId;
-  /** Dark outside override (screenshots); scenarios set light themselves. */
-  night = false;
 
   private samples = new Emitter<Sample>();
   private status = new Emitter<ConnectionStatus>();
@@ -66,7 +85,7 @@ export class SimulatorSource implements DataSource {
   private manual: Required<ManualInput> = { throttle: 0, brake: 0 };
   private sources = new Map<SignalId, SignalSource>();
   private wanted = new Set<SignalId>();
-  private prelude: AutoDriver | null = null;
+  private lastScene: SceneSnapshot | null = null;
 
   constructor(
     readonly profile: VehicleProfile,
@@ -74,14 +93,24 @@ export class SimulatorSource implements DataSource {
     private clock: () => number = () => performance.now(),
   ) {
     this.sim = new VehicleSimulator(profile, options.seed ?? 1);
+    this.world = new World({ seed: options.seed, env: options.env });
+    this.demo = new DemoDriver();
     for (const s of profileSignals(profile)) {
       this.sources.set(s.id, s.source);
       this.wanted.add(s.id);
     }
-    this.attract = options.attract ?? false;
-    this.scenario = options.scenario ?? 'city';
-    this.autodriver = new AutoDriver();
-    this.applyScenario(this.scenario, options.startOff ?? false);
+    for (const id of [S.LightIntensity, S.AmbientTemp]) {
+      this.sources.set(id, 'can');
+      this.wanted.add(id);
+    }
+    if (options.startOff ?? false) {
+      this.sim.setIgnition(0);
+      this.sim.setSelector('P');
+    } else {
+      // Already driving: put the car on the road in town.
+      this.jumpTo('town');
+    }
+    this.syncEnvironment();
   }
 
   // --- DataSource -----------------------------------------------------------
@@ -137,58 +166,70 @@ export class SimulatorSource implements DataSource {
     return this.status.on(cb);
   }
 
-  // --- Scenarios ------------------------------------------------------------
-
-  /** Switch scenario; the environment changes, the car keeps its state. */
-  setScenario(id: ScenarioId, options: { attract?: boolean } = {}): void {
-    this.attract = options.attract ?? false;
-    this.applyScenario(id, false);
+  /** Latest world snapshot (traffic, navigation, signs, environment). */
+  scene(): SceneSnapshot {
+    return (this.lastScene ??= this.world.snapshot());
   }
 
-  private applyScenario(id: ScenarioId, forceStartOff: boolean): void {
-    const sc = SCENARIO_BY_ID.get(id)!;
-    this.scenario = id;
-    const env = this.sim.env;
-    env.ambientC = sc.env.ambientC;
-    env.lightIntensity = sc.env.lightIntensity;
-    env.grip = sc.env.grip ?? 1;
-    if (sc.cold) {
-      const s = this.sim.state;
-      s.coolantC = s.oilC = s.ambientC = sc.env.ambientC;
-      s.batteryTempC = sc.env.ambientC;
+  // --- World ------------------------------------------------------------------
+
+  setEnvironment(patch: Partial<EnvironmentSettings>): void {
+    this.world.env.set(patch);
+    this.syncEnvironment();
+  }
+
+  /** Jump the running car to a named place on the route (demo / screenshots). */
+  jumpTo(placeId: string): void {
+    const place = WORLD_PLACES.find((p) => p.id === placeId);
+    if (!place) return;
+    const seg = this.world.route.segments.find((s) => s.name === place.segment)!;
+    this.world.jumpTo(seg.s0 + place.at, place.lane ?? 0);
+    const s = this.sim;
+    if (s.state.ignition < 2) s.setIgnition(2);
+    if (!s.state.ready) {
+      s.state.ready = true;
+      s.state.engineRunning = !s.isElectric;
     }
-    this.sim.body.seatbelt = true; // the driver buckles up (cold start unbuckles itself)
-    this.sim.body.highBeam = false;
-    this.autodriver = new AutoDriver(sc.steps);
-    this.autodriver.paddles = !!sc.manual;
-    if (!sc.manual && this.sim.mode === 'manual') this.sim.setMode('auto');
-    this.sim.inputs.curvature = 0;
-    this.sim.inputs.gradient = 0;
-    if ((sc.startOff || forceStartOff) && !sc.steps.some((st) => st.action === 'ignitionOn')) {
-      this.sim.setIgnition(0);
-      this.prelude = new AutoDriver(START_SEQUENCE);
-    } else if (sc.startOff) {
-      this.sim.setIgnition(0);
-      this.prelude = null;
-    } else {
-      this.prelude = null;
-      if (!this.sim.state.ready) this.prelude = new AutoDriver(START_SEQUENCE);
-    }
+    s.setSelector('D');
+    this.demo.resume(s);
+    this.lastScene = null;
+  }
+
+  /** Back to the first bay, ignition off; the Demo drive starts a new day. */
+  parkAtStart(): void {
+    this.world.resetToStart();
+    this.sim.setIgnition(0);
+    this.sim.state.speedMs = 0;
+    this.sim.setSelector('P');
+    this.demo.restart();
+    this.lastScene = null;
+  }
+
+  private syncEnvironment(): void {
+    const env = this.world.env;
+    this.sim.env.ambientC = env.settings.temperatureC;
+    this.sim.env.grip = env.grip;
+    this.sim.env.lightIntensity = env.light;
   }
 
   // --- Driver controls --------------------------------------------------------
 
-  /** Driver pedal input from keyboard / UI; pauses the autopilot. */
+  /** Driver pedal input from keyboard / UI; pauses the Demo drive. */
   setManualInput(input: ManualInput): void {
     Object.assign(this.manual, input);
     this.touch();
   }
 
-  /** Steering-wheel paddle: switches to manual gear selection and pauses the autopilot. */
+  /** Steering-wheel paddle: switches to manual gear selection and pauses the Demo drive. */
   paddle(dir: 'up' | 'down'): void {
     this.touch();
     if (dir === 'up') this.sim.shiftUp();
     else this.sim.shiftDown();
+  }
+
+  setSelector(sel: Selector): boolean {
+    this.touch();
+    return this.sim.setSelector(sel);
   }
 
   setIndicator(side: 'left' | 'right' | 'off'): void {
@@ -225,14 +266,6 @@ export class SimulatorSource implements DataSource {
     } else this.sim.setIgnition(2);
   }
 
-  setNight(on: boolean): void {
-    this.night = on;
-  }
-
-  setAttract(on: boolean): void {
-    this.attract = on;
-  }
-
   setAutopilot(on: boolean): void {
     this.autopilot = on;
   }
@@ -251,7 +284,7 @@ export class SimulatorSource implements DataSource {
   }
 
   get isAutopilotActive(): boolean {
-    return this.autopilot && this.manualIdle >= AUTOPILOT_RESUME_S;
+    return this.autopilot && this.manualIdle >= DEMO_RESUME_S;
   }
 
   // --- Simulation loop --------------------------------------------------------
@@ -278,41 +311,54 @@ export class SimulatorSource implements DataSource {
     this.emit(this.clock(), true);
   }
 
+  private wasAutopilot = true;
+
   private step(): void {
+    const sim = this.sim;
+    const world = this.world;
     this.manualIdle += STEP_S;
-    if (this.night) this.sim.env.lightIntensity = 3;
-    if (this.prelude) {
-      this.prelude.update(this.sim, STEP_S);
-      if (this.prelude.completedLoops > 0) this.prelude = null;
-    } else if (this.isAutopilotActive) {
-      this.autodriver.update(this.sim, STEP_S);
-      if (this.attract && this.autodriver.completedLoops > 0) this.nextScenario();
+    const scene = world.snapshot();
+    this.lastScene = scene;
+    const auto = this.isAutopilotActive;
+    if (auto) {
+      if (!this.wasAutopilot) this.demo.resume(sim);
+      this.demo.update(sim, world, scene, STEP_S);
     } else {
-      this.sim.inputs.throttle = this.manual.throttle;
-      this.sim.inputs.brake = this.manual.brake;
-      this.sim.inputs.curvature = 0;
-      this.sim.inputs.gradient = 0;
+      sim.inputs.throttle = this.manual.throttle;
+      sim.inputs.brake = this.manual.brake;
+      // The driver steers along the road; an indicator held on a multi-lane
+      // road becomes a lane change.
+      if (sim.inputs.leftIndicator && world.ego.targetLane === world.ego.lane) world.changeLane(1);
+      if (sim.inputs.rightIndicator && world.ego.targetLane === world.ego.lane)
+        world.changeLane(-1);
     }
-    this.sim.step(STEP_S);
+    this.wasAutopilot = auto;
+    sim.inputs.curvature = world.curvature();
+    sim.inputs.gradient = world.gradient() * sim.state.direction;
+    this.syncEnvironment();
+    sim.step(STEP_S);
+    world.step(STEP_S, sim.state.speedMs, sim.state.direction);
+    // Never drive through the car ahead (emergency braking comes with the assist systems).
+    const lead = scene.lead;
+    if (lead && lead.dx < 0.4 && sim.state.direction === 1)
+      sim.state.speedMs = Math.min(sim.state.speedMs, lead.v);
   }
 
-  private nextScenario(): void {
-    const order: ScenarioId[] = SCENARIOS.map((s) => s.id).filter((id) => id !== 'coldStart');
-    const next = order[(order.indexOf(this.scenario) + 1) % order.length]!;
-    this.applyScenario(next, false);
-  }
-
-  private emit(ts: number, includeLow: boolean): void {
+  /**
+   * Current value of every signal the car exposes right now (OBD is silent with
+   * the ignition off). Shared by sample emission and tools.
+   */
+  values(includeLow = true): Map<SignalId, number> {
+    const out = new Map<SignalId, number>();
     const sim = this.sim;
     const st = sim.state;
     const b = sim.body;
     const put = (id: SignalId, value: number): void => {
-      if (!this.wanted.has(id)) return;
-      this.samples.emit({ id, value, ts, source: this.sources.get(id) ?? 'simulated' });
+      if (this.sources.has(id)) out.set(id, value);
     };
     const on = st.ignition >= 2;
     const flag = (v: boolean): number => (v ? 1 : 0);
-    // OBD only answers with the ignition on.
+    const sel = st.selector;
     if (on) {
       put(S.Speed, sim.speedKmh);
       put(S.EngineSpeed, st.rpm);
@@ -321,8 +367,20 @@ export class SimulatorSource implements DataSource {
       put(S.MAF, st.mafGs);
       put(S.MAP, st.mapKPa);
       put(S.FuelRate, st.fuelRateLh);
-      put(S.Gear, st.gear);
-      put(S.SelectedGear, sim.isElectric || sim.mode === 'auto' ? 127 : st.gear);
+      put(S.Gear, sel === 'R' ? -1 : sel === 'D' ? st.gear : 0);
+      // VSS: 126 = Park, 127 = Drive (automatic), −1 = reverse, 0 = neutral, n = manual gear.
+      put(
+        S.SelectedGear,
+        sel === 'P'
+          ? 126
+          : sel === 'R'
+            ? -1
+            : sel === 'N'
+              ? 0
+              : sim.isElectric || sim.mode === 'auto'
+                ? 127
+                : st.gear,
+      );
       put(S.ShiftRequest, flag(st.shiftRecommended));
       put(S.TractionPower, st.powerKW);
     }
@@ -338,12 +396,11 @@ export class SimulatorSource implements DataSource {
     put(S.ABSActive, flag(st.abs));
     put(S.CruiseActive, flag(st.cruiseActive));
     put(S.CruiseSpeed, st.cruiseSetKmh);
-    if (!includeLow) return;
+    if (!includeLow) return out;
     if (on) {
       put(S.CoolantTemp, st.coolantC);
       put(S.OilTemp, st.oilC);
       put(S.IntakeTemp, st.intakeC);
-      put(S.AmbientTemp, st.ambientC);
       put(S.FuelLevel, this.profile.tankL > 0 ? (st.fuelL / this.profile.tankL) * 100 : 0);
       put(S.BatteryVoltage, st.voltage);
       put(S.Odometer, st.odometerKm);
@@ -359,6 +416,7 @@ export class SimulatorSource implements DataSource {
         put(S.Range, ((st.soc / 100) * el.batteryKWh * 1000) / 165);
       }
     }
+    put(S.AmbientTemp, st.ambientC);
     put(S.EngineRunning, flag(st.engineRunning));
     put(S.LightIntensity, st.lightIntensity);
     put(S.LowBeam, flag(b.lowBeam));
@@ -375,5 +433,13 @@ export class SimulatorSource implements DataSource {
     put(S.TireFR, st.tires[1]);
     put(S.TireRL, st.tires[2]);
     put(S.TireRR, st.tires[3]);
+    return out;
+  }
+
+  private emit(ts: number, includeLow: boolean): void {
+    for (const [id, value] of this.values(includeLow)) {
+      if (this.wanted.has(id))
+        this.samples.emit({ id, value, ts, source: this.sources.get(id) ?? 'simulated' });
+    }
   }
 }

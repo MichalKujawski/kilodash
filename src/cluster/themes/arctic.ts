@@ -64,6 +64,7 @@ export const arctic: Theme = {
   sideGauge: { track: 'rgba(12, 26, 42, 0.12)', fill: '#1f8bff', marker: '#0c1a2a' },
   panel: { surface: 'rgba(255, 255, 255, 0.5)', divider: 'rgba(12, 26, 42, 0.08)' },
   map: {
+    ...midnight.map,
     ground: '#e6ecf2',
     block: '#d4dde6',
     park: '#cfe3d4',

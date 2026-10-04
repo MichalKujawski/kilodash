@@ -41,7 +41,9 @@ export class TopStrip implements Widget {
     label(ctx, 'km', slots[0]! - 14 + rw, cy + 6, 13, t.fonts.primary, t.text.tertiary);
 
     // Drive mode: fades in once the start-up sequence has finished.
-    const auto = !st.has(S.SelectedGear) || st.value(S.SelectedGear) === 127;
+    // Manual gear selection reports the gear number (1–n); P/R/N/D don't change the mode.
+    const sel = st.value(S.SelectedGear, 127);
+    const auto = !(sel >= 1 && sel <= 20);
     ctx.textBaseline = 'alphabetic';
     ctx.globalAlpha = this.modeFade.update(f.runtime.phase === 'on', f.dt);
     const mode = auto ? 'Comfort' : 'Dynamic';
@@ -94,13 +96,17 @@ export class BottomStrip implements Widget {
     const t = f.theme;
     const st = f.store;
     const p = this.p;
+    // The car's clock: world time in the simulator, the device clock otherwise.
     const d = new Date();
+    const hour = f.scene ? f.scene.env.hour : d.getHours() + d.getMinutes() / 60;
+    const hh = Math.floor(hour);
+    const mm = Math.floor((hour - hh) * 60);
     ctx.textBaseline = 'alphabetic';
     ctx.font = font(500, 24, t.fonts.primary);
     ctx.fillStyle = t.text.secondary;
     tabular(
       ctx,
-      `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`,
+      `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`,
       p.clockX,
       p.y,
       'left',

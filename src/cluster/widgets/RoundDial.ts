@@ -602,8 +602,15 @@ export class RoundDial implements Widget {
       return;
     }
     const gear = Math.round(st.value(S.Gear));
-    const gearText = gear < 0 ? 'R' : gear === 0 ? 'N' : String(gear);
-    readoutText(ctx, f, gearText, cx + big * 0.13, gearY, big, d.hub.text);
+    const selected = st.has(S.SelectedGear) ? st.value(S.SelectedGear) : 127;
+    // Selector positions P/R/N show alone; in D or manual the gear number gets a mode letter.
+    const position =
+      selected === 126 ? 'P' : selected < 0 || gear < 0 ? 'R' : selected === 0 ? 'N' : null;
+    if (position) {
+      readoutText(ctx, f, position, cx, gearY, big, d.hub.text);
+      return;
+    }
+    readoutText(ctx, f, String(gear), cx + big * 0.13, gearY, big, d.hub.text);
     text(ctx, auto ? 'D' : 'M', cx - big * 0.43, gearY - big * 0.46, {
       font: font(500, Math.round(big * 0.31), t.fonts.primary),
       color: d.hub.textSecondary,
