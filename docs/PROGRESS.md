@@ -227,8 +227,8 @@ _Last updated: 2026-10-04_
   - **Lighthouse** (production build):
     - Desktop: performance 99–100, accessibility 100, best practices 100, SEO 100 (Watch, Drive and
       Engineer).
-    - Mobile: accessibility 100, best practices 100, SEO 100; performance 83–94 across runs (median ≈ 88,
-      target 90). See known issues.
+    - Mobile: accessibility 100, best practices 100, SEO 100; performance 90–97 across runs (median 96)
+      after the start-up work below.
   - **Accessibility and SEO fixes:**
     - `--text-3` raised to 4.5:1 contrast.
     - Chapter segments labelled, with 24 px targets.
@@ -240,6 +240,10 @@ _Last updated: 2026-10-04_
     - The route builds 2× faster: adaptive sub-steps, at most 6.5 mm off the old geometry.
     - The first chapter adopts the already-rolling car instead of rebuilding the world (`Director.adopt`).
     - The cockpit now moves after 0.5–0.7 s on the dev server (was ≈ 1.1 s).
+    - Start-up split into short tasks for phones. The renderer is created in its own task after
+      React's commit (ClusterView holds it in state). The map's scenery is built in idle time
+      (plain ground for a moment). Route sub-steps go up to 0.05 rad, still within 6.2 mm of the original.
+      Mobile total blocking time fell from ≈ 500 ms to 40–190 ms.
   - **Design checklist** (1440×900, 1920×1080, phone): passes.
     - Squint test: the cluster dominates; the green "Take the wheel" is the only accent.
     - Controls: ≤ 8 groups in Drive.
@@ -266,13 +270,6 @@ _Last updated: 2026-10-04_
 
 ## Known issues / open questions
 
-- **Mobile Lighthouse performance 83–94** (target 90). What remains is start-up work on a 4× slower
-  CPU: React mounting the page and the renderer building all widgets in one task (≈ 300 ms throttled).
-  Next steps if needed:
-  - create the renderer in its own task (ClusterView would then hold the renderer in state, not a ref);
-  - build the static dial layers across several frames while the intro still hides the display.
-
-  Desktop is 99–100.
 
 - Entering Engineer drops about one frame (production build: ~50–90 ms task as React mounts the panel and
   the page lays it out). The canvas is no longer resized on mode changes.

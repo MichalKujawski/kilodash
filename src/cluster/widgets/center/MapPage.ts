@@ -127,8 +127,14 @@ export class MapPage implements CenterPage {
     const sc = f.scene;
     if (!sc) return;
     if (sc.route !== this.route) {
-      this.route = sc.route;
-      this.map = new Map3D(sc.route, new Scenery(sc.route));
+      const route = sc.route;
+      this.route = route;
+      this.map = null;
+      // Generating the whole route's scenery takes ~15 ms (60 ms on a phone): do it when the
+      // browser is idle after start-up, not inside a frame. Until then, the guidance shows alone.
+      whenIdle(() => {
+        if (this.route === route) this.map = new Map3D(route, new Scenery(route));
+      });
     }
     if (!this.primed) {
       this.camHeading = sc.ego.heading;
@@ -145,7 +151,9 @@ export class MapPage implements CenterPage {
     if (!sc || !this.map) {
       ctx.fillStyle = m.ground;
       ctx.fillRect(0, 0, w, h);
-      label(ctx, 'No map data', w / 2, h / 2, 16, t.fonts.primary, t.text.tertiary, 'center');
+      // A route whose scenery is still being built (a moment after start-up) shows plain ground.
+      if (!sc)
+        label(ctx, 'No map data', w / 2, h / 2, 16, t.fonts.primary, t.text.tertiary, 'center');
       return;
     }
     const ego = this.map.draw(ctx, sc, this.camHeading, m, w, h);
@@ -233,4 +241,12 @@ export class MapPage implements CenterPage {
       'right',
     );
   }
+}
+
+function whenIdle(run: () => void): void {
+  const ric = (
+    globalThis as { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => void }
+  ).requestIdleCallback;
+  if (ric) ric(run, { timeout: 400 });
+  else setTimeout(run, 1);
 }

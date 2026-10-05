@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ClusterRenderer } from '@/cluster/renderer/ClusterRenderer';
 import { buildWidgets } from '@/cluster/layouts/resolve';
 import type { LayoutDefinition } from '@/cluster/layouts/types';
@@ -33,6 +33,8 @@ export function ClusterView({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animateRef = useRef(animateTheme);
   const rendererRef = useRef<ClusterRenderer | null>(null);
+  // Held in state too: building the widgets waits until the renderer exists.
+  const [renderer, setRenderer] = useState<ClusterRenderer | null>(null);
   const onFpsRef = useRef(onFps);
   const onRendererRef = useRef(onRenderer);
 
@@ -45,25 +47,33 @@ export function ClusterView({
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const r = new ClusterRenderer(canvas, session.store, theme, {
-      lowPower,
-      flasher: session.flasher,
-      alerts: session.alerts,
-      history: session.derived.history,
-      scene: () => session.source.scene(),
-      transparentOutside: !!parallax,
-      onFps: (f, ms, d) => onFpsRef.current?.(f, ms, d),
-    });
-    rendererRef.current = r;
-    if (new URLSearchParams(window.location.search).has('profile')) {
-      r.profile = {};
-      (window as unknown as { __clusterProfile: unknown }).__clusterProfile = r.profile;
-    }
-    onRendererRef.current?.(r);
-    r.start();
+    let r: ClusterRenderer | null = null;
+    // Its own task, after React's commit: on a slow phone, one long start-up task becomes
+    // several short ones (mount → renderer → widgets → first frame), so input stays responsive.
+    const id = window.setTimeout(() => {
+      r = new ClusterRenderer(canvas, session.store, theme, {
+        lowPower,
+        flasher: session.flasher,
+        alerts: session.alerts,
+        history: session.derived.history,
+        scene: () => session.source.scene(),
+        transparentOutside: !!parallax,
+        onFps: (f, ms, d) => onFpsRef.current?.(f, ms, d),
+      });
+      rendererRef.current = r;
+      if (new URLSearchParams(window.location.search).has('profile')) {
+        r.profile = {};
+        (window as unknown as { __clusterProfile: unknown }).__clusterProfile = r.profile;
+      }
+      setRenderer(r);
+      onRendererRef.current?.(r);
+    }, 0);
     return () => {
+      window.clearTimeout(id);
+      if (!r) return;
       r.destroy();
       rendererRef.current = null;
+      setRenderer(null);
       onRendererRef.current?.(null);
     };
     // The renderer is created once per session; theme/layout changes are pushed below.
@@ -71,11 +81,11 @@ export function ClusterView({
   }, [session]);
 
   useEffect(() => {
-    rendererRef.current?.setTheme(theme, animateRef.current);
-  }, [theme]);
+    renderer?.setTheme(theme, animateRef.current);
+  }, [renderer, theme]);
 
   useEffect(() => {
-    const r = rendererRef.current;
+    const r = renderer;
     if (!r) return;
     r.setLayout(layout, buildWidgets(layout, session.available, session.env()));
     // The View button switches between the layouts built for this car.
@@ -84,7 +94,9 @@ export function ClusterView({
       (l) => buildWidgets(l, session.available, session.env()),
       VIEWS.find((v) => v === view) ?? 'classic',
     );
-  }, [layout, session]);
+    // Start drawing once there is something to draw.
+    r.start();
+  }, [renderer, layout, session]);
 
   useEffect(() => {
     if (!parallax) return;

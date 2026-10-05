@@ -241,9 +241,10 @@ export class Route {
     let x = 0;
     let y = 0;
     let elevation = 210;
-    // Sub-steps small enough that the heading turns at most MAX_TURN per sub-step: 0.25 m in a
-    // tight 10 m junction radius, one step on a straight. Same accuracy everywhere, far less work.
-    const MAX_TURN = 0.025;
+    // Sub-steps small enough that the heading turns at most MAX_TURN per sub-step: 0.5 m in a
+    // tight 10 m junction radius, one step on a straight. Positions stay within a few cm over
+    // the whole route, at a fraction of the work (this runs at every page load).
+    const MAX_TURN = 0.05;
     const MIN_SUB = 0.25;
     const clampS = (v: number): number => Math.min(v, this.length - 0.001);
     // s only grows, so walk the segments in order instead of searching for each sub-step.
@@ -272,7 +273,8 @@ export class Route {
       });
       // Tightest curvature anywhere in this step (arcs start and end inside steps).
       let k = 0;
-      for (const f of [0, 0.25, 0.5, 0.75, 1]) {
+      // Arcs are metres long (the tightest is a 10 m-radius junction turn): three probes find them.
+      for (const f of [0, 0.5, 1]) {
         const v = clampS(s + f * STEP);
         const sg = segFor(v);
         k = Math.max(k, Math.abs(curvatureIn(sg, v - sg.s0)));
