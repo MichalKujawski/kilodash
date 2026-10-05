@@ -81,5 +81,7 @@ export function buildLaneView(f: FrameContext): LaneViewModel | null {
     laneCentre: (egoLane - near) * W,
     blindSpot: { left: st.value(S.BlindSpotLeft), right: st.value(S.BlindSpotRight) },
     laneChange: Math.abs(egoLane - Math.round(egoLane)) > 0.02,
+    // Brake lights: pedal pressed (by the driver or an assist), or held at a standstill.
+    egoBraking: st.value(S.BrakePedal) > 3 || st.value(S.Speed) < 0.5,
   };
 }

@@ -113,3 +113,7 @@ stateDiagram-v2
 - The lane view sees cars up to 140 m ahead and 12 m behind. Blind-spot warnings come in step 8.
 - The emergency stop stays in the current lane. Some cars change to the hard shoulder; most stop in
   lane.
+
+**Our car in the lane view** (`cluster/lanes/egoCar.ts`): a detailed, glossy model drawn with the view's
+camera, with a light bar that brightens and glows while braking. Traffic stays as simple shaded shapes so
+our car is always the one you see first.

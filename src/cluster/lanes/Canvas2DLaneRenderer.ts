@@ -5,6 +5,7 @@ import type { Theme } from '../themes/types';
 import { SAFETY_COLORS } from '../themes/types';
 import type { LaneLine, LaneObject, LaneSceneRenderer, LaneViewModel } from './types';
 import { VIEW_RANGE } from './buildLaneView';
+import { drawEgoCar } from './egoCar';
 
 /** Chase camera: behind our front bumper, height, focal length (px), horizon (fraction of height). */
 const CAM = { back: 13.1, height: 5.9, focal: 520, horizon: 0.2 };
@@ -43,26 +44,19 @@ export class Canvas2DLaneRenderer implements LaneSceneRenderer {
     for (const line of m.lines) this.drawLine(ctx, m, line, now);
     this.drawBlindSpots(ctx, m, now);
     const objs = [...m.objects].sort((a, b) => b.z - a.z);
-    for (const o of objs) if (o.z > 0) this.drawVehicle(ctx, m, o, theme, false);
-    this.drawVehicle(
+    for (const o of objs) if (o.z > 0) this.drawVehicle(ctx, m, o, theme);
+    // Our car: its own detailed model, at the lane view's camera.
+    drawEgoCar(
       ctx,
-      m,
-      {
-        id: -1,
-        kind: 'car',
-        x: -m.lat,
-        z: -4.6,
-        length: 4.6,
-        braking: false,
-        oncoming: false,
-        target: false,
-        danger: false,
+      (x, y, z) => {
+        const p = this.project(m, x - m.lat, y, z);
+        return [p[0], p[1]];
       },
-      theme,
-      true,
+      -4.6,
+      m.egoBraking,
     );
     // Cars beside us are drawn over our car only if they are nearer the camera.
-    for (const o of objs) if (o.z <= 0) this.drawVehicle(ctx, m, o, theme, false);
+    for (const o of objs) if (o.z <= 0) this.drawVehicle(ctx, m, o, theme);
   }
 
   /** Amber zones in the next lanes beside our car (blind-spot monitoring). */
@@ -278,23 +272,22 @@ export class Canvas2DLaneRenderer implements LaneSceneRenderer {
     m: LaneViewModel,
     o: LaneObject,
     theme: Theme,
-    ego: boolean,
   ): void {
     const size = SIZES[o.kind] ?? SIZES.car!;
     const near = o.z;
     const far = o.z + o.length;
     if (near > VIEW_RANGE) return;
-    const fade = ego ? 1 : clamp(1 - (near - 80) / 60, 0, 1);
+    const fade = clamp(1 - (near - 80) / 60, 0, 1);
     if (fade <= 0) return;
     const hw = size.w / 2;
     const P = (x: number, y: number, z: number): [number, number] => {
       const p = this.project(m, o.x + x, y, z);
       return [p[0], p[1]];
     };
-    const base = ego ? '#c9d0da' : o.danger ? '#e2493c' : o.target ? '#9fd8b6' : '#7d8794';
+    const base = o.danger ? '#e2493c' : o.target ? '#9fd8b6' : '#7d8794';
     const shade = (k: number): string => mix(base, '#0b0d10', k);
     ctx.globalAlpha = fade;
-    if (o.target && !ego) {
+    if (o.target) {
       // Ground bracket under the car ACC is following.
       const a = P(-hw - 0.3, 0, near - 0.6);
       const b = P(hw + 0.3, 0, near - 0.6);

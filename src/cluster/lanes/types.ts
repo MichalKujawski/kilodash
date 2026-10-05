@@ -54,6 +54,8 @@ export interface LaneViewModel {
   blindSpot: { left: number; right: number };
   /** Ego car outline colour state. */
   laneChange: boolean;
+  /** Our brake lights are on. */
+  egoBraking: boolean;
 }
 
 export interface LaneSceneRenderer {

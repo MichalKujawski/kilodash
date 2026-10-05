@@ -219,6 +219,10 @@ _Last updated: 2026-10-04_
 - Step 7: `src/app/landing/` (doc `docs/features/landing.md`), six ADRs in `docs/adr/`, `docs/PRIVACY.md`.
   - **Owner to fill in** `ABOUT` in `src/app/site.ts`: name spelling (Michal / Michał), the bio line,
     LinkedIn and CV links. Empty links are hidden.
+- Own car in the lane view: `src/cluster/lanes/egoCar.ts`. A smooth hatchback seen from behind and
+  above: contact shadow, wheels, tinted glass with a reflection, a roof highlight and a full-width light
+  bar that glows when braking (brake pedal or standstill). It uses the lane camera's projection, so it
+  stays in perspective; original artwork. Traffic keeps the simpler shaded boxes, so our car stands out.
 - Step 11 (final polish):
   - **Lighthouse** (production build):
     - Desktop: performance 99–100, accessibility 100, best practices 100, SEO 100 (Watch, Drive and
@@ -273,7 +277,6 @@ _Last updated: 2026-10-04_
 - Entering Engineer drops about one frame (production build: ~50–90 ms task as React mounts the panel and
   the page lays it out). The canvas is no longer resized on mode changes.
 
-- **Later (owner):** a nicer 3D-looking model of our own car in the lane view; the current one is boxy.
 
 - Rare single dropped frame (about 1 in 30 pose runs). Partly explained in step 9: traffic's
   O(n²) leader search cost 0.4 ms per simulation step in the roadworks queue. It now uses a sorted
