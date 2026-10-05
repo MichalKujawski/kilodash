@@ -70,3 +70,10 @@ One entry per finished feature, for building a guided demo. Keep each entry shor
   phone. Turned sideways, it fills the screen with the chapter bar underneath.
 - **Caption:** "The same cockpit on any screen, down to a phone."
 - **Duration:** ~8 s
+
+### Privacy by default
+
+- **Demo:** open the browser's network panel on the live site: every request goes to the site itself, with
+  no fonts, trackers or cookies from anyone else. The footer's Privacy link explains the optional analytics.
+- **Caption:** "No cookies, no third parties: even the fonts are self-hosted."
+- **Duration:** ~8 s

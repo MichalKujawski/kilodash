@@ -28,6 +28,9 @@ export class Director {
   /** The car that stopped dead in the Safety chapter (cleared on the next setup). */
   private stopped: number | null = null;
   private screenPending = false;
+  /** Analytics hooks: a chapter began; the last chapter played to its end. */
+  onChapter: ((id: string) => void) | null = null;
+  onCompleted: (() => void) | null = null;
 
   constructor(
     private src: SimulatorSource,
@@ -63,6 +66,7 @@ export class Director {
     this.src.demo.scripted = true;
     this.setup(this.chapter);
     this.playing = true;
+    this.onChapter?.(this.chapter.id);
     this.src.paused = false;
   }
 
@@ -107,7 +111,10 @@ export class Director {
       this.liftUntil = -1;
       this.src.resumeDemo();
     }
-    if (this.t >= this.chapter.duration) this.next();
+    if (this.t >= this.chapter.duration) {
+      if (this.index === this.chapters.length - 1) this.onCompleted?.();
+      this.next();
+    }
   }
 
   private setup(c: Chapter): void {

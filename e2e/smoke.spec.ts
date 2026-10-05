@@ -248,3 +248,17 @@ test('recording mode: cluster and captions only, no header, buttons or landing',
   await expect(page.getByRole('button', { name: 'Take the wheel →' })).toBeHidden();
   await expect(page.locator('.site')).toHaveCSS('cursor', 'none');
 });
+
+test('privacy: with analytics unset, the site contacts no one but itself', async ({
+  page,
+}) => {
+  const hosts = new Set<string>();
+  page.on('request', (r) => hosts.add(new URL(r.url()).hostname));
+  await page.goto('/');
+  await page.waitForTimeout(2000);
+  await page.mouse.wheel(0, 3000);
+  await page.waitForTimeout(1000);
+  const allowed = new Set(['localhost', '127.0.0.1']);
+  expect([...hosts].filter((h) => !allowed.has(h))).toEqual([]);
+  expect(await page.locator('script[data-domain], script[data-website-id]').count()).toBe(0);
+});

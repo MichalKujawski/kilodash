@@ -10,6 +10,7 @@ import { ClusterView } from './ClusterView';
 import { ControlBus } from './controls/ControlBus';
 import { ControlPanel } from './controls/ControlPanel';
 import { canRunCluster } from '@/cluster/renderer/compat';
+import { track } from './analytics';
 import { DriveDock } from './dock/DriveDock';
 import { EngineerPanel } from './engineer/EngineerPanel';
 import { HowItWorks } from './engineer/HowItWorks';
@@ -94,7 +95,11 @@ export function App() {
   const introHold = intro.phase === 'dark' || intro.phase === 'hood';
   const [moreOpen, setMoreOpen] = useState(false);
   /** Feature doc open in the "How it works" sheet. */
-  const [howDoc, setHowDoc] = useState<string | null>(null);
+  const [howDoc, setHowDocState] = useState<string | null>(null);
+  const setHowDoc = useCallback((doc: string | null) => {
+    if (doc) track('How it works', { doc });
+    setHowDocState(doc);
+  }, []);
   /** Engineer: the Drive dock is collapsed until asked for (then you drive). */
   const [engineerDriving, setEngineerDriving] = useState(false);
   const [userThemes, setUserThemes] = useState<Theme[]>(() => loadUserThemes());
@@ -110,6 +115,7 @@ export function App() {
   const allThemes = useMemo(() => [...THEMES, ...userThemes], [userThemes]);
 
   const setMode = useCallback((m: SiteMode) => {
+    track('Mode', { mode: m });
     setModeState(m);
     const url = new URL(window.location.href);
     url.searchParams.set('mode', m);
@@ -159,7 +165,10 @@ export function App() {
       if (POSE) applyPose(s, POSE);
       else {
         s.source.startRolling();
-        setDirector(new Director(s.source, () => rendererRef.current));
+        const d = new Director(s.source, () => rendererRef.current);
+        d.onChapter = (chapter) => track('Chapter', { chapter });
+        d.onCompleted = () => track('Demo completed');
+        setDirector(d);
       }
       // Scripting hook for tests and visual review (dev builds or ?debug).
       if (import.meta.env.DEV || params.has('debug') || RECORD) {
@@ -320,7 +329,10 @@ export function App() {
           <WatchPanel
             director={director}
             state={directorState}
-            onTakeWheel={() => setMode('drive')}
+            onTakeWheel={() => {
+              track('Take the wheel', { chapter: directorState.chapter.id });
+              setMode('drive');
+            }}
             onHowItWorks={setHowDoc}
             canDrive={!device.phone}
             portrait={device.phone && device.portrait}
@@ -380,6 +392,7 @@ export function App() {
           session={session}
           fps={fps}
           onShowMe={(chapter) => {
+            track('Show me', { chapter });
             director?.goto(chapter);
             setMode('watch');
             window.scrollTo({ top: 0, behavior: 'smooth' });

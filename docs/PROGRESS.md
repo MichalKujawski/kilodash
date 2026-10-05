@@ -175,8 +175,8 @@ _Last updated: 2026-10-04_
 | 7 | Landing sections (pitch, highlights, live data path, ADRs, about, footer) | done |
 | 8 | Responsive behaviour and fallbacks (laptop, tablet, phone portrait/landscape, old browsers) | done |
 | 9 | Recording pipeline, clips, README media, OG images | done |
-| 10 | Analytics (off by default), privacy, UX testing kit | next |
-| 11 | Final rubric polish, Lighthouse | |
+| 10 | Analytics (off by default), privacy, UX testing kit, self-hosted fonts | done |
+| 11 | Final rubric polish, Lighthouse | next |
 
 - `node scripts/site-shots.mjs docs/design/progress name=query@WxH` screenshots the site and reports
   time-to-moving, fps and dropped frames (`@WxH+s` waits s extra seconds). Step screenshots live in
@@ -219,6 +219,13 @@ _Last updated: 2026-10-04_
 - Step 7: `src/app/landing/` (doc `docs/features/landing.md`), six ADRs in `docs/adr/`, `docs/PRIVACY.md`.
   - **Owner to fill in** `ABOUT` in `src/app/site.ts`: name spelling (Michal / Michał), the bio line,
     LinkedIn and CV links. Empty links are hidden.
+- Step 10: `src/app/analytics.ts` (doc `docs/features/analytics.md`), `docs/PRIVACY.md`,
+  `docs/UX_TESTING.md`, `.env.example`.
+  - Fonts are self-hosted now (Google Fonts shared visitors' IPs); a visit contacts no other host.
+  - **Measure performance on the production build** (`npm run build && npx vite preview`, `?debug`):
+    the cockpit moves after 0.25–0.5 s with 0 dropped frames. The dev server adds React dev overhead
+    and an occasional single drop.
+  - **Owner:** to switch analytics on, create `.env.local` from `.env.example` (Plausible or Umami).
 - Step 9: `?record=1`, `scripts/record-video.mjs` (fake-clock frame stepping → ffmpeg),
   `scripts/make-media.mjs`, `docs/VIDEO_SCRIPT.md`, card loops, README WebP, `public/og.png`, share meta.
   - Recording exposed three chapters that didn't match their captions (Motorway in a busy world, City

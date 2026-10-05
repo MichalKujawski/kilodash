@@ -131,6 +131,10 @@ describe('Director', () => {
   it('every chapter plays without errors, and the last loops back to the first', () => {
     const src = new SimulatorSource(DEFAULT_PROFILE, { startOff: true }, () => 0);
     const d = new Director(src, () => null);
+    const reached: string[] = [];
+    let completed = 0;
+    d.onChapter = (id) => reached.push(id);
+    d.onCompleted = () => completed++;
     d.start(0);
     const total = CHAPTERS.reduce((a, c) => a + c.duration, 0);
     for (let t = 0; t < total + 1; t += 0.1) {
