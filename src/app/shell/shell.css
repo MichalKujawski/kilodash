@@ -163,6 +163,22 @@ body {
   width: var(--w);
   aspect-ratio: 1920 / 720;
   flex: none;
+  transform-origin: 50% 0;
+  transform: translateX(var(--fit-dx, 0)) scale(var(--fit-k, 1));
+  transition: transform 700ms var(--ease);
+}
+
+.stage-glow,
+.bottom-slot {
+  transition: transform 700ms var(--ease);
+}
+
+.stage-glow {
+  transform: translateX(var(--fit-dx, 0));
+}
+
+.bottom-slot {
+  transform: translate(var(--fit-dx, 0), var(--fit-dy, 0));
 }
 
 .hood {
@@ -207,7 +223,7 @@ body {
 
 .bottom-slot {
   position: relative;
-  width: var(--w);
+  width: min(var(--w), var(--fit-w, var(--w)));
   margin-top: clamp(20px, 3.4vh, 40px);
   flex: 1;
   min-height: 0;
@@ -274,7 +290,9 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .site-header,
   .mode-thumb,
-  .stage-glow {
+  .stage-glow,
+  .display,
+  .bottom-slot {
     transition: none;
   }
 }

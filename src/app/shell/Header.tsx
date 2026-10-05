@@ -1,3 +1,4 @@
+import { REPO_URL } from '../site';
 import { useEffect, useState } from 'react';
 
 export type SiteMode = 'watch' | 'drive' | 'engineer';
@@ -77,7 +78,7 @@ export function Header({ mode, onMode, muted, onMute }: Props) {
         </button>
         <a
           className="icon-btn"
-          href="https://github.com/"
+          href={REPO_URL}
           target="_blank"
           rel="noreferrer"
           aria-label="Source code on GitHub"

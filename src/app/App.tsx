@@ -10,6 +10,9 @@ import { ClusterView } from './ClusterView';
 import { ControlBus } from './controls/ControlBus';
 import { ControlPanel } from './controls/ControlPanel';
 import { DriveDock } from './dock/DriveDock';
+import { EngineerPanel } from './engineer/EngineerPanel';
+import { HowItWorks } from './engineer/HowItWorks';
+import { useEventLog } from './engineer/useEventLog';
 import { Director } from './director/Director';
 import { useDirector } from './director/useDirector';
 import { WatchPanel } from './director/WatchPanel';
@@ -26,8 +29,6 @@ import {
   saveSelectedThemeId,
   saveUserThemes,
 } from './themeStore';
-import { Workshop } from './Workshop';
-import { WorldPanel } from './WorldPanel';
 
 const params = new URLSearchParams(window.location.search);
 const KIOSK = params.get('kiosk') === '1';
@@ -37,6 +38,21 @@ const DEV = params.get('dev') === '1';
 const POSE = poseFromUrl();
 /** `?chapter=<id>` opens the guided demo at that chapter. */
 const CHAPTER = params.get('chapter');
+
+/** Engineer sidebar width on wide screens (narrower screens get a bottom panel), px. */
+const ENGINEER_SIDEBAR = 440;
+const WIDE = '(min-width: 1280px)';
+
+function useMediaQuery(q: string): boolean {
+  const [on, setOn] = useState(() => window.matchMedia(q).matches);
+  useEffect(() => {
+    const m = window.matchMedia(q);
+    const change = (): void => setOn(m.matches);
+    m.addEventListener('change', change);
+    return () => m.removeEventListener('change', change);
+  }, [q]);
+  return on;
+}
 
 function initialTheme(userThemes: Theme[]): Theme {
   // The public demo is the Midnight experience only.
@@ -62,12 +78,19 @@ export function App() {
   // Autoplay is muted; the header's sound button switches the cockpit audio on.
   const [sound, setSound] = useState({ muted: true, engine: false });
   const [mode, setModeState] = useState<SiteMode>(initialMode);
+  const wide = useMediaQuery(WIDE);
   const [moreOpen, setMoreOpen] = useState(false);
+  /** Feature doc open in the "How it works" sheet. */
+  const [howDoc, setHowDoc] = useState<string | null>(null);
+  /** Engineer: the Drive dock is collapsed until asked for (then you drive). */
+  const [engineerDriving, setEngineerDriving] = useState(false);
   const [userThemes, setUserThemes] = useState<Theme[]>(() => loadUserThemes());
   const [theme, setThemeState] = useState<Theme>(() => initialTheme(userThemes));
   const [animateTheme, setAnimateTheme] = useState(true);
   const [editing, setEditing] = useState(false);
   const rendererRef = useRef<ClusterRenderer | null>(null);
+  /** The keyboard mute key reaches the sound toggle through this (set below). */
+  const toggleSoundRef = useRef<() => void>(() => {});
   const audio = useMemo(() => new AudioEngine(), []);
   const allThemes = useMemo(() => [...THEMES, ...userThemes], [userThemes]);
 
@@ -113,7 +136,7 @@ export function App() {
     );
     const b = new ControlBus(s.source, {
       renderer: () => rendererRef.current,
-      toggleMute: () => setSound((x) => ({ ...x, muted: !x.muted })),
+      toggleMute: () => toggleSoundRef.current(),
     });
     let live = true;
     void s.start().then(() => {
@@ -147,17 +170,19 @@ export function App() {
 
   // The guided demo plays in Watch (and keeps the car moving behind Engineer);
   // Drive hands the car over exactly where it is.
-  const directing = !!director && mode !== 'drive';
+  const handsOn = mode === 'drive' || (mode === 'engineer' && engineerDriving);
+  const directing = !!director && !handsOn;
   const begun = useRef<Director | null>(null);
   useEffect(() => {
     if (!director) return;
-    if (mode === 'drive') director.release();
+    if (handsOn) director.release();
     else if (begun.current !== director) {
       if (CHAPTER) director.goto(CHAPTER);
       else director.start(0);
     } else if (!director.playing) director.start(director.index);
-    if (mode !== 'drive') begun.current = director;
-  }, [director, mode]);
+    if (!handsOn) begun.current = director;
+  }, [director, handsOn]);
+  const log = useEventLog(session);
   useEffect(() => {
     if (renderer && director?.playing) director.rendererChanged();
   }, [director, renderer]);
@@ -173,7 +198,18 @@ export function App() {
   }, [audio, sound]);
 
   useClusterAudio(session, audio);
-  const unlockAudio = useCallback(() => audio.unlock(), [audio]);
+  // Creating the audio context costs ~40 ms: only do it once sound is wanted (any later
+  // input is a user gesture too, which browsers require to start audio).
+  const unlockAudio = useCallback(() => {
+    if (!audio.muted) audio.unlock();
+  }, [audio]);
+  const toggleSound = useCallback(() => {
+    if (sound.muted) audio.unlock();
+    setSound((x) => ({ ...x, muted: !x.muted }));
+  }, [audio, sound.muted]);
+  useEffect(() => {
+    toggleSoundRef.current = toggleSound;
+  }, [toggleSound]);
   // In Watch the keyboard runs the demo (Space, ←/→), not the car.
   useControlInputs(mode === 'watch' ? null : bus, unlockAudio);
 
@@ -243,19 +279,18 @@ export function App() {
       data-frame-ms={frameMs.toFixed(2)}
       data-dropped={dropped}
     >
-      <Header
-        mode={mode}
-        onMode={setMode}
-        muted={sound.muted}
-        onMute={() => setSound((x) => ({ ...x, muted: !x.muted }))}
-      />
-      <Stage session={session} cluster={cluster}>
+      <Header mode={mode} onMode={setMode} muted={sound.muted} onMute={toggleSound} />
+      <Stage
+        session={session}
+        cluster={cluster}
+        side={mode === 'engineer' && wide ? ENGINEER_SIDEBAR : 0}
+      >
         {mode === 'watch' && director && directorState && (
           <WatchPanel
             director={director}
             state={directorState}
             onTakeWheel={() => setMode('drive')}
-            onHowItWorks={() => setMode('engineer')}
+            onHowItWorks={setHowDoc}
           />
         )}
         {mode === 'drive' && session && bus && (
@@ -267,20 +302,46 @@ export function App() {
             onMore={() => setMoreOpen((o) => !o)}
           />
         )}
+        {mode === 'engineer' && session && bus && engineerDriving && (
+          <DriveDock
+            bus={bus}
+            source={session.source}
+            store={session.store}
+            moreOpen={moreOpen}
+            onMore={() => setMoreOpen((o) => !o)}
+          />
+        )}
+        {mode === 'engineer' && (
+          <button
+            className="more-toggle eng-drive-toggle"
+            aria-expanded={engineerDriving}
+            onClick={() => setEngineerDriving((d) => !d)}
+          >
+            {engineerDriving ? 'Hand back to the demo ▾' : 'Drive controls ▴'}
+          </button>
+        )}
         {mode === 'watch' && <span className="scroll-hint">SCROLL TO LEARN MORE ↓</span>}
       </Stage>
 
-      {mode === 'drive' && moreOpen && session && bus && (
+      {handsOn && moreOpen && session && bus && (
         <div className="more-sheet">
           <ControlPanel bus={bus} source={session.source} />
         </div>
       )}
       {mode === 'engineer' && session && (
-        <div className="more-sheet">
-          <WorldPanel session={session} renderer={renderer} sound={sound} onSound={setSound} />
-          <Workshop session={session} profileId={profileId} onProfile={setProfileId} />
-        </div>
+        <EngineerPanel
+          session={session}
+          renderer={renderer}
+          log={log}
+          perf={{ fps, frameMs, dropped }}
+          profileId={profileId}
+          onProfile={setProfileId}
+          sound={sound}
+          onSound={setSound}
+          onHow={setHowDoc}
+        />
       )}
+      {howDoc && <HowItWorks doc={howDoc} onClose={() => setHowDoc(null)} />}
 
       {DEV && (
         <section className="theme-chooser more-sheet" aria-label="Themes (experimental)">

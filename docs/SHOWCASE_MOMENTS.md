@@ -34,3 +34,11 @@ One entry per finished feature, for building a guided demo. Keep each entry shor
   green arrows in step with the cluster's lamps.
 - **Caption:** "Your turn: the same buttons a real wheel has, lit where they work."
 - **Duration:** ~15 s
+
+### Engineer mode: behaviour you can see
+
+- **Demo:** switch to Engineer during the Safety chapter. In the collision-warning diagram the state
+  steps ready → prewarn → acute → braking, each transition flashing. The Events tab lists the same
+  steps with speed and gap. "How it works" opens the feature doc with links to the source.
+- **Caption:** "Every warning is a small, tested state machine. Here they are, live."
+- **Duration:** ~20 s

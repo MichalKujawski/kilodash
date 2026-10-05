@@ -129,7 +129,9 @@ test('autoplay is muted, even after the first click; the header toggle turns sou
   await page.getByRole('button', { name: 'Next chapter' }).click();
   await page.waitForTimeout(200);
   expect(
-    await page.evaluate(() => (window as unknown as { __oc: Oc }).__oc.audio.master?.gain.value),
+    await page.evaluate(
+      () => (window as unknown as { __oc: Oc }).__oc.audio.master?.gain.value ?? 0,
+    ),
   ).toBe(0);
   await page.getByRole('button', { name: 'Sound on' }).click();
   await expect(page.getByRole('button', { name: 'Sound off' })).toBeVisible();
@@ -162,4 +164,26 @@ test('Take the wheel mid-chapter: same place and speed, demo driver off, caption
   expect(Math.abs(after.kmh - before.kmh)).toBeLessThan(5);
   await expect(page.locator('.caption')).toHaveCount(0);
   await expect(page.locator('.dock')).toBeVisible();
+});
+
+test('Engineer: six tabs, live state diagrams, "How it works" from diagrams and captions', async ({
+  page,
+}) => {
+  await page.goto('/?mode=engineer');
+  for (const t of ['Signals', 'States', 'Events', 'View model', 'Workshop', 'Performance'])
+    await expect(page.getByRole('tab', { name: t })).toBeVisible();
+  const diagrams = page.locator('.sm');
+  await expect(diagrams).toHaveCount(7);
+  for (let i = 0; i < 7; i++) await expect(diagrams.nth(i).locator('.sm-node-on')).toHaveCount(1);
+  await diagrams.first().getByRole('button', { name: 'How it works →' }).click();
+  const sheet = page.getByRole('dialog', { name: 'How it works' });
+  await expect(sheet.locator('h2')).toContainText('cruise');
+  await expect(sheet.locator('.hiw-files a').first()).toHaveAttribute('href', /github\.com/);
+  await page.keyboard.press('Escape');
+  await expect(sheet).toHaveCount(0);
+  // From a Watch caption too, without leaving Watch.
+  await page.getByRole('button', { name: 'Watch' }).click();
+  await page.getByRole('button', { name: 'How it works →' }).first().click({ timeout: 15000 });
+  await expect(page.getByRole('dialog', { name: 'How it works' })).toBeVisible();
+  await expect(page.locator('.site')).toHaveAttribute('data-mode', 'watch');
 });

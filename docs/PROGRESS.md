@@ -170,8 +170,9 @@ _Last updated: 2026-10-04_
 | 2 | 3D map (tilted, extruded buildings, labels, glowing route) | done |
 | 3 | Demo Director: 9 chapters (2:36), captions, chapter bar, Space/←/→, `?chapter=`, Take the wheel | done |
 | 4 | Drive dock (wheel with spoke buttons, stalk, lever, pedals, contextual cruise, "?" overlay, coach marks) | done |
-| 5 | Engineer mode | next |
-| 6–11 | Intro, landing sections, responsive, recording, analytics, polish | |
+| 5 | Engineer mode (6 tabs, live state diagrams, event timeline, How it works sheet) | done |
+| 6 | Cinematic intro | next |
+| 7–11 | Landing sections, responsive, recording, analytics, polish | |
 
 - `node scripts/site-shots.mjs docs/design/progress name=query@WxH` screenshots the site and reports
   time-to-moving, fps and dropped frames (`@WxH+s` waits s extra seconds). Step screenshots live in
@@ -203,7 +204,16 @@ _Last updated: 2026-10-04_
   3. **Muted autoplay.** Fixed: the first click anywhere unlocked audio at full volume although the
      header showed muted. The e2e test checks that the gain stays 0 until the sound toggle.
 
+- Step 5: `src/app/engineer/` (doc `docs/features/engineer-mode.md`).
+  - Captions now open the How it works sheet in Watch, without leaving Watch.
+  - First click no longer costs ~40 ms: the audio context is only created once sound is switched on.
+  - **Owner to confirm:** the repository URL in `src/app/site.ts` (source links and header) is a guess:
+    `github.com/MichalKujawski/opencluster`.
+
 ## Known issues / open questions
+
+- Entering Engineer drops about one frame (production build: ~50–90 ms task as React mounts the panel and
+  the page lays it out). The canvas is no longer resized on mode changes.
 
 - **Later (owner):** a nicer 3D-looking model of our own car in the lane view; the current one is boxy.
 

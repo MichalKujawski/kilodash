@@ -1,4 +1,3 @@
-import { SIGNALS } from '@/core/signals/catalog';
 import { FAULTS, type FaultKind } from '@/core/datasource/simulator/vehicle';
 import { PROFILES } from '@/profiles';
 import type { ClusterSession } from './session';
@@ -28,60 +27,19 @@ const FAULT_LABELS: Record<FaultKind, string> = {
 
 const NEXT_SEAT = { empty: 'belted', belted: 'unbelted', unbelted: 'empty' } as const;
 
-function Inspector({ session }: { session: ClusterSession }) {
-  usePoll(4);
-  const st = session.store;
-  const rows = st.ids().sort();
-  return (
-    <div className="inspector" role="region" aria-label="Data inspector">
-      <table>
-        <thead>
-          <tr>
-            <th>Signal</th>
-            <th>Value</th>
-            <th>Unit</th>
-            <th>Source</th>
-            <th>Quality</th>
-            <th>Hz</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((id) => {
-            const def = SIGNALS.get(id);
-            const v = st.value(id);
-            return (
-              <tr key={id}>
-                <td title={id}>{id.replace(/^Vehicle\./, '')}</td>
-                <td className="num">
-                  {Number.isFinite(v) ? (Math.abs(v) >= 100 ? v.toFixed(0) : v.toFixed(2)) : '—'}
-                </td>
-                <td>{def?.unit ?? ''}</td>
-                <td>{st.source(id)}</td>
-                <td>{st.quality(id)}</td>
-                <td className="num">{st.rateHz(id).toFixed(0)}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
 interface Props {
   session: ClusterSession;
   profileId: string;
   onProfile: (id: string) => void;
 }
 
-/** Developer tools for the demo: fault injection, vehicle profile, live data. */
+/** Workshop: fault injection, occupants, vehicle profile, driver state, sensor blockage. */
 export function Workshop({ session, profileId, onProfile }: Props) {
   usePoll(4);
   const src = session.source;
   const sim = src.sim;
   return (
-    <details className="workshop">
-      <summary>Workshop</summary>
+    <div className="workshop">
       <div className="dev-panel">
         <div className="dev-row">
           <span className="dev-label">Faults</span>
@@ -237,8 +195,7 @@ export function Workshop({ session, profileId, onProfile }: Props) {
             ))}
           </select>
         </div>
-        <Inspector session={session} />
       </div>
-    </details>
+    </div>
   );
 }

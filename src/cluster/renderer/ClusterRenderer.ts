@@ -128,6 +128,13 @@ export class ClusterRenderer {
   decorativeMotion = true;
   /** When set, per-phase CPU times (ms, averaged) are collected here. */
   profile: Record<string, number> | null = null;
+  /** Per-phase timings on or off (Engineer → Performance; `?profile=1`). */
+  setProfiling(on: boolean): void {
+    this.profile = on ? {} : null;
+  }
+
+  /** ms since navigation when the first full cluster frame (dials, telltales) was drawn. */
+  firstFrameMs: number | null = null;
   /** Exponential average of CPU time spent per frame, ms. */
   frameMs = 0;
 
@@ -442,6 +449,7 @@ export class ClusterRenderer {
   }
 
   private frame(now: number): void {
+    this.firstFrameMs ??= performance.now();
     const t0 = performance.now();
     this.drawFrame(now);
     this.frameMs += (performance.now() - t0 - this.frameMs) * 0.05;
