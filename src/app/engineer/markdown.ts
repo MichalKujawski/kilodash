@@ -120,6 +120,16 @@ export function parseInline(text: string): Inline[] {
 }
 
 /**
+ * A link in a doc, as a repository path (`docs/features/views.md`) when it is relative, so the sheet can
+ * open it on GitHub; absolute URLs and in-page anchors stay as they are (`null`).
+ */
+export function repoPathOfLink(href: string, docFile: string): string | null {
+  if (/^[a-z][a-z0-9+.-]*:/i.test(href) || href.startsWith('#')) return null;
+  const url = new URL(href, `https://repo/${docFile}`);
+  return url.pathname.slice(1) + url.hash;
+}
+
+/**
  * Source files a doc mentions in `code` (e.g. `core/assist/LaneAssist.ts`,
  * `cluster/lanes/`), as repository paths. Docs leave out the `src/` prefix.
  */

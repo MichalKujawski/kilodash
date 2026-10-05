@@ -1,6 +1,13 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { REPO_URL } from '../site';
-import { parseInline, parseMarkdown, sourcePaths, type Block, type ListItem } from './markdown';
+import {
+  parseInline,
+  parseMarkdown,
+  repoPathOfLink,
+  sourcePaths,
+  type Block,
+  type ListItem,
+} from './markdown';
 
 const DOCS = import.meta.glob(
   ['../../../docs/features/*.md', '../../../docs/adr/*.md', '../../../docs/PRIVACY.md'],
@@ -23,7 +30,15 @@ const KICKER = (id: string): string =>
 const repoLink = (path: string): string =>
   `${REPO_URL}/${path.endsWith('/') ? 'tree' : 'blob'}/main/${path}`;
 
+/** Repository path of the doc being shown, so its relative links can point at the repository. */
+const DocFile = createContext('');
+
 function Inline({ text }: { text: string }) {
+  const docFile = useContext(DocFile);
+  const href = (h: string): string => {
+    const path = repoPathOfLink(h, docFile);
+    return path === null ? h : repoLink(path);
+  };
   return (
     <>
       {parseInline(text).map((p, i) =>
@@ -32,7 +47,7 @@ function Inline({ text }: { text: string }) {
         ) : p.t === 'code' ? (
           <code key={i}>{p.v}</code>
         ) : p.t === 'link' ? (
-          <a key={i} href={p.href} target="_blank" rel="noreferrer">
+          <a key={i} href={href(p.href)} target="_blank" rel="noreferrer">
             {p.v}
           </a>
         ) : (
@@ -148,7 +163,9 @@ export function HowItWorks({ doc, onClose }: { doc: string; onClose: () => void 
       {md === null ? (
         <p className="hiw-loading">Loading…</p>
       ) : (
-        <div className="hiw-body">{parseMarkdown(md).map(renderBlock)}</div>
+        <DocFile.Provider value={`docs/${docPath(doc)}.md`}>
+          <div className="hiw-body">{parseMarkdown(md).map(renderBlock)}</div>
+        </DocFile.Provider>
       )}
       {files.length > 0 && (
         <section className="hiw-files">

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseInline, parseMarkdown, sourcePaths } from './markdown';
+import { parseInline, parseMarkdown, repoPathOfLink, sourcePaths } from './markdown';
 
 describe('feature-doc Markdown', () => {
   it('parses headings, paragraphs, nested lists, tables and code', () => {
@@ -49,5 +49,14 @@ describe('feature-doc Markdown', () => {
         'See `core/assist/LaneAssist.ts`, `cluster/lanes/`, `src/app/App.tsx` and `step`.',
       ),
     ).toEqual(['src/core/assist/LaneAssist.ts', 'src/cluster/lanes/', 'src/app/App.tsx']);
+  });
+
+  it('turns relative doc links into repository paths, leaves URLs alone', () => {
+    const doc = 'docs/features/views.md';
+    expect(repoPathOfLink('drive-modes.md', doc)).toBe('docs/features/drive-modes.md');
+    expect(repoPathOfLink('../THEMES.md#schema', doc)).toBe('docs/THEMES.md#schema');
+    expect(repoPathOfLink('../../DISCLAIMER.md', doc)).toBe('DISCLAIMER.md');
+    expect(repoPathOfLink('https://example.org/a.md', doc)).toBeNull();
+    expect(repoPathOfLink('#thresholds', doc)).toBeNull();
   });
 });
