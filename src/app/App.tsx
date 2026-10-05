@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ClusterRenderer } from '@/cluster/renderer/ClusterRenderer';
 import { classic } from '@/cluster/layouts/classic';
 import { DEFAULT_THEME, THEMES, THEME_BY_ID } from '@/cluster/themes';
@@ -8,14 +8,12 @@ import { AudioEngine } from './audio/AudioEngine';
 import { useClusterAudio } from './audio/useClusterAudio';
 import { ClusterView } from './ClusterView';
 import { ControlBus } from './controls/ControlBus';
-import { ControlPanel } from './controls/ControlPanel';
 import { canRunCluster } from '@/cluster/renderer/compat';
 import { track } from './analytics';
-import { DriveDock } from './dock/DriveDock';
-import { EngineerPanel } from './engineer/EngineerPanel';
-import { HowItWorks } from './engineer/HowItWorks';
 import { useEventLog } from './engineer/useEventLog';
+// The landing stays eager: on phones its headline is on the first screen (largest paint).
 import { Landing } from './landing/Landing';
+import { ControlPanel, DriveDock, EngineerPanel, HowItWorks, ThemeEditor } from './lazy';
 import { Director } from './director/Director';
 import { useDirector } from './director/useDirector';
 import { WatchPanel } from './director/WatchPanel';
@@ -27,7 +25,6 @@ import { useDevice } from './shell/device';
 import { shouldPlayIntro, useIntro } from './shell/intro';
 import { Stage } from './shell/Stage';
 import './shell/shell.css';
-import { ThemeEditor } from './ThemeEditor';
 import {
   loadSelectedThemeId,
   loadUserThemes,
@@ -204,7 +201,8 @@ export function App() {
     else if (introHold) return;
     else if (begun.current !== director) {
       if (CHAPTER) director.goto(CHAPTER);
-      else director.start(0);
+      // The car is already rolling onto the ramp (startRolling): take it from there.
+      else director.adopt(0);
     } else if (!director.playing) director.start(director.index);
     if (!handsOn) begun.current = director;
   }, [director, handsOn, introHold]);
@@ -320,92 +318,100 @@ export function App() {
           modes={modes}
         />
       )}
-      <Stage
-        session={session}
-        cluster={cluster}
-        side={mode === 'engineer' && wide ? ENGINEER_SIDEBAR : 0}
-      >
-        {mode === 'watch' && director && directorState && (
-          <WatchPanel
-            director={director}
-            state={directorState}
-            onTakeWheel={() => {
-              track('Take the wheel', { chapter: directorState.chapter.id });
-              setMode('drive');
-            }}
-            onHowItWorks={setHowDoc}
-            canDrive={!device.phone}
-            portrait={device.phone && device.portrait}
-          />
-        )}
-        {mode === 'drive' && session && bus && (
-          <DriveDock
-            bus={bus}
-            source={session.source}
-            store={session.store}
-            moreOpen={moreOpen}
-            onMore={() => setMoreOpen((o) => !o)}
-          />
-        )}
-        {mode === 'engineer' && session && bus && engineerDriving && (
-          <DriveDock
-            bus={bus}
-            source={session.source}
-            store={session.store}
-            moreOpen={moreOpen}
-            onMore={() => setMoreOpen((o) => !o)}
-          />
-        )}
-        {mode === 'engineer' && (
-          <button
-            className="more-toggle eng-drive-toggle"
-            aria-expanded={engineerDriving}
-            onClick={() => setEngineerDriving((d) => !d)}
+      <main>
+        <Suspense fallback={null}>
+          <Stage
+            session={session}
+            cluster={cluster}
+            side={mode === 'engineer' && wide ? ENGINEER_SIDEBAR : 0}
           >
-            {engineerDriving ? 'Hand back to the demo ▾' : 'Drive controls ▴'}
-          </button>
-        )}
-        {mode === 'watch' && <span className="scroll-hint">SCROLL TO LEARN MORE ↓</span>}
-      </Stage>
+            {mode === 'watch' && director && directorState && (
+              <WatchPanel
+                director={director}
+                state={directorState}
+                onTakeWheel={() => {
+                  track('Take the wheel', { chapter: directorState.chapter.id });
+                  setMode('drive');
+                }}
+                onHowItWorks={setHowDoc}
+                canDrive={!device.phone}
+                portrait={device.phone && device.portrait}
+              />
+            )}
+            {mode === 'drive' && session && bus && (
+              <DriveDock
+                bus={bus}
+                source={session.source}
+                store={session.store}
+                moreOpen={moreOpen}
+                onMore={() => setMoreOpen((o) => !o)}
+              />
+            )}
+            {mode === 'engineer' && session && bus && engineerDriving && (
+              <DriveDock
+                bus={bus}
+                source={session.source}
+                store={session.store}
+                moreOpen={moreOpen}
+                onMore={() => setMoreOpen((o) => !o)}
+              />
+            )}
+            {mode === 'engineer' && (
+              <button
+                className="more-toggle eng-drive-toggle"
+                aria-expanded={engineerDriving}
+                onClick={() => setEngineerDriving((d) => !d)}
+              >
+                {engineerDriving ? 'Hand back to the demo ▾' : 'Drive controls ▴'}
+              </button>
+            )}
+            {mode === 'watch' && <span className="scroll-hint">SCROLL TO LEARN MORE ↓</span>}
+          </Stage>
 
-      {handsOn && moreOpen && session && bus && (
-        <div className="more-sheet">
-          <ControlPanel bus={bus} source={session.source} />
-        </div>
-      )}
-      {mode === 'engineer' && session && (
-        <EngineerPanel
-          simple={!device.engineerFull}
-          session={session}
-          renderer={renderer}
-          log={log}
-          perf={{ fps, frameMs, dropped }}
-          profileId={profileId}
-          onProfile={setProfileId}
-          sound={sound}
-          onSound={setSound}
-          onHow={setHowDoc}
-        />
-      )}
-      {mode !== 'engineer' && !RECORD && (
-        <Landing
-          session={session}
-          fps={fps}
-          onShowMe={(chapter) => {
-            track('Show me', { chapter });
-            director?.goto(chapter);
-            setMode('watch');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }}
-          onDoc={setHowDoc}
-        />
-      )}
+          {handsOn && moreOpen && session && bus && (
+            <div className="more-sheet">
+              <ControlPanel bus={bus} source={session.source} />
+            </div>
+          )}
+          {mode === 'engineer' && session && (
+            <EngineerPanel
+              simple={!device.engineerFull}
+              session={session}
+              renderer={renderer}
+              log={log}
+              perf={{ fps, frameMs, dropped }}
+              profileId={profileId}
+              onProfile={setProfileId}
+              sound={sound}
+              onSound={setSound}
+              onHow={setHowDoc}
+            />
+          )}
+          {mode !== 'engineer' && !RECORD && (
+            <Landing
+              session={session}
+              fps={fps}
+              onShowMe={(chapter) => {
+                track('Show me', { chapter });
+                director?.goto(chapter);
+                setMode('watch');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              onDoc={setHowDoc}
+            />
+          )}
+        </Suspense>
+      </main>
       {intro.phase !== 'done' && (
         <button className="intro-skip" onClick={intro.skip}>
           Skip intro
         </button>
       )}
-      {howDoc && <HowItWorks doc={howDoc} onClose={() => setHowDoc(null)} />}
+      {howDoc && (
+        <Suspense fallback={null}>
+          <HowItWorks doc={howDoc} onClose={() => setHowDoc(null)} />
+        </Suspense>
+      )}
 
       {DEV && (
         <section className="theme-chooser more-sheet" aria-label="Themes (experimental)">
@@ -428,12 +434,14 @@ export function App() {
             </button>
           </div>
           {editing && (
-            <ThemeEditor
-              theme={theme}
-              onChange={(t) => setTheme(t, false)}
-              onSave={saveTheme}
-              onDelete={deleteTheme}
-            />
+            <Suspense fallback={null}>
+              <ThemeEditor
+                theme={theme}
+                onChange={(t) => setTheme(t, false)}
+                onSave={saveTheme}
+                onDelete={deleteTheme}
+              />
+            </Suspense>
           )}
           <p className="te-note">Experimental — these themes are not contract-complete.</p>
         </section>

@@ -5,7 +5,8 @@
   --hairline: rgba(255, 255, 255, 0.08);
   --text-1: rgba(255, 255, 255, 0.92);
   --text-2: rgba(255, 255, 255, 0.64);
-  --text-3: rgba(255, 255, 255, 0.4);
+  /* ≥ 4.5:1 on --page (WCAG AA for small text). */
+  --text-3: rgba(255, 255, 255, 0.5);
   --brand: #ff4436;
   --on: #22d36b;
   --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
@@ -291,6 +292,10 @@ body {
     min-height: 0;
     padding-bottom: 40px;
   }
+  /* Room for the captions before they appear, so the page below doesn't jump (layout shift). */
+  .site[data-mode='watch'] .bottom-slot {
+    min-height: 150px;
+  }
   /* The stage is only as tall as its content, so the hint follows it instead of overlapping. */
   .scroll-hint {
     position: static;
@@ -345,13 +350,13 @@ body {
   margin: 0 auto;
 }
 
+/* Same columns as the chapter bar below: the number over the play/next buttons,
+   the text starting where the chapter segments start. */
 .caption {
   display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 22px;
+  grid-template-columns: 78px 1fr;
+  gap: 20px;
   align-items: baseline;
-  max-width: 880px;
-  margin: 0 auto;
   min-height: 92px;
   animation: caption-in 500ms var(--ease);
 }
@@ -449,7 +454,9 @@ body {
 
 .chapter {
   flex-basis: 0;
-  min-width: 0;
+  /* At least a 24 px touch target, even for the short Start-up chapter. */
+  min-width: 24px;
+  min-height: 24px;
   padding: 10px 0 0;
   border: 0;
   background: none;
@@ -519,7 +526,8 @@ body {
 
 @media (max-width: 599px), (max-height: 499px) {
   .caption {
-    gap: 12px;
+    grid-template-columns: 66px 1fr;
+    gap: 10px;
     min-height: 0;
   }
   .chapter-number {

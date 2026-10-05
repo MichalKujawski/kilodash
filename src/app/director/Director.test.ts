@@ -178,6 +178,21 @@ describe('Director', () => {
     }
   });
 
+  it('adopt: the first chapter on load takes the rolling car as it is (no re-placing)', () => {
+    const src = new SimulatorSource(DEFAULT_PROFILE, { startOff: true }, () => 0);
+    src.startRolling();
+    src.fastForward(1);
+    const s = src.world.ego.s;
+    const d = new Director(src, () => null);
+    d.adopt(0);
+    expect(src.world.ego.s).toBe(s);
+    expect(d.chapter.id).toBe('startup');
+    d.tick(0.1);
+    src.fastForward(0.1);
+    expect(d.playing).toBe(true);
+    expect(src.world.ego.s).toBeGreaterThan(s);
+  });
+
   it('pausing freezes the simulation; taking the wheel hands over control', () => {
     const src = new SimulatorSource(DEFAULT_PROFILE, { startOff: true }, () => 0);
     const d = new Director(src, () => null);

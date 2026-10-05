@@ -176,7 +176,7 @@ _Last updated: 2026-10-04_
 | 8 | Responsive behaviour and fallbacks (laptop, tablet, phone portrait/landscape, old browsers) | done |
 | 9 | Recording pipeline, clips, README media, OG images | done |
 | 10 | Analytics (off by default), privacy, UX testing kit, self-hosted fonts | done |
-| 11 | Final rubric polish, Lighthouse | next |
+| 11 | Final rubric polish, Lighthouse | done |
 
 - `node scripts/site-shots.mjs docs/design/progress name=query@WxH` screenshots the site and reports
   time-to-moving, fps and dropped frames (`@WxH+s` waits s extra seconds). Step screenshots live in
@@ -219,6 +219,30 @@ _Last updated: 2026-10-04_
 - Step 7: `src/app/landing/` (doc `docs/features/landing.md`), six ADRs in `docs/adr/`, `docs/PRIVACY.md`.
   - **Owner to fill in** `ABOUT` in `src/app/site.ts`: name spelling (Michal / Michał), the bio line,
     LinkedIn and CV links. Empty links are hidden.
+- Step 11 (final polish):
+  - **Lighthouse** (production build):
+    - Desktop: performance 99–100, accessibility 100, best practices 100, SEO 100 (Watch, Drive and
+      Engineer).
+    - Mobile: accessibility 100, best practices 100, SEO 100; performance 83–94 across runs (median ≈ 88,
+      target 90). See known issues.
+  - **Accessibility and SEO fixes:**
+    - `--text-3` raised to 4.5:1 contrast.
+    - Chapter segments labelled, with 24 px targets.
+    - A `<main>` landmark and a `robots.txt`.
+    - Space reserved for the captions on portrait screens, so the page no longer shifts (CLS 0).
+  - **Speed:**
+    - Off-screen UI loads on demand (Engineer, the doc sheet, the Drive dock, More controls, the theme
+      editor).
+    - The route builds 2× faster: adaptive sub-steps, at most 6.5 mm off the old geometry.
+    - The first chapter adopts the already-rolling car instead of rebuilding the world (`Director.adopt`).
+    - The cockpit now moves after 0.5–0.7 s on the dev server (was ≈ 1.1 s).
+  - **Design checklist** (1440×900, 1920×1080, phone): passes.
+    - Squint test: the cluster dominates; the green "Take the wheel" is the only accent.
+    - Controls: ≤ 8 groups in Drive.
+    - Alignment fixed: captions now share the chapter bar's columns.
+    - One accent colour.
+    - Contrast meets AA.
+    - No overflow at any tested size.
 - Step 10: `src/app/analytics.ts` (doc `docs/features/analytics.md`), `docs/PRIVACY.md`,
   `docs/UX_TESTING.md`, `.env.example`.
   - Fonts are self-hosted now (Google Fonts shared visitors' IPs); a visit contacts no other host.
@@ -237,6 +261,14 @@ _Last updated: 2026-10-04_
   cockpit.
 
 ## Known issues / open questions
+
+- **Mobile Lighthouse performance 83–94** (target 90). What remains is start-up work on a 4× slower
+  CPU: React mounting the page and the renderer building all widgets in one task (≈ 300 ms throttled).
+  Next steps if needed:
+  - create the renderer in its own task (ClusterView would then hold the renderer in state, not a ref);
+  - build the static dial layers across several frames while the intro still hides the display.
+
+  Desktop is 99–100.
 
 - Entering Engineer drops about one frame (production build: ~50–90 ms task as React mounts the panel and
   the page lays it out). The canvas is no longer resized on mode changes.

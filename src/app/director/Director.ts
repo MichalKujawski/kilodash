@@ -59,12 +59,34 @@ export class Director {
   }
 
   start(index = 0): void {
+    this.begin(index);
+    this.setup(this.chapter);
+    this.afterSetup();
+  }
+
+  /**
+   * First chapter on page load: the car is already rolling where it begins
+   * (SimulatorSource.startRolling), so play its timeline without moving the
+   * car again. Re-placing it would rebuild the world and the map for nothing,
+   * a long task on a phone just as the intro reveals the cockpit.
+   */
+  adopt(index = 0): void {
+    this.begin(index);
+    this.src.demo.cruiseAllowed = true;
+    this.screenPending = true;
+    this.applyScreen();
+    this.afterSetup();
+  }
+
+  private begin(index: number): void {
     this.index = ((index % this.chapters.length) + this.chapters.length) % this.chapters.length;
     this.t = 0;
     this.fired = 0;
     this.liftUntil = -1;
     this.src.demo.scripted = true;
-    this.setup(this.chapter);
+  }
+
+  private afterSetup(): void {
     this.playing = true;
     this.onChapter?.(this.chapter.id);
     this.src.paused = false;

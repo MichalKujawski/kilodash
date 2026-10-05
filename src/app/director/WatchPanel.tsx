@@ -99,6 +99,7 @@ export function WatchPanel({
               key={c.id}
               role="tab"
               aria-selected={i === index}
+              aria-label={c.title}
               className={`chapter ${i < index ? 'done' : ''} ${i === index ? 'current' : ''}`}
               style={{ flexGrow: c.duration }}
               onClick={() => {

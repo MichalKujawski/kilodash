@@ -118,9 +118,12 @@ export class Route {
 
   gradientAt(s: number): number {
     const seg = this.segmentAt(s);
+    return this.gradientIn(seg, s - seg.s0);
+  }
+
+  private gradientIn(seg: Segment, local: number): number {
     const g = seg.gradient;
     if (!g || g.length === 0) return 0;
-    const local = s - seg.s0;
     if (local <= g[0]![0]) return g[0]![1];
     for (let i = 1; i < g.length; i++) {
       const [x1, y1] = g[i]!;
@@ -214,19 +217,17 @@ export class Route {
     };
   }
 
-  /** Exact heading at s: the sum of curvature × arc length covered so far. */
-  private headingAt(s: number): number {
+  /** Exact heading in a segment: the sum of curvature × arc length covered so far. */
+  private headingIn(seg: Segment, local: number): number {
     if (!this.segmentHeadings) {
       this.segmentHeadings = [];
       let h = 0;
-      for (const seg of this.segments) {
+      for (const sg of this.segments) {
         this.segmentHeadings.push(h);
-        for (const a of seg.arcs ?? [])
-          h += a.curvature * Math.max(0, Math.min(a.length, seg.length - a.at));
+        for (const a of sg.arcs ?? [])
+          h += a.curvature * Math.max(0, Math.min(a.length, sg.length - a.at));
       }
     }
-    const seg = this.segmentAt(s);
-    const local = s - seg.s0;
     let h = this.segmentHeadings[seg.index]!;
     for (const a of seg.arcs ?? [])
       h += a.curvature * Math.max(0, Math.min(a.length, local - a.at));
@@ -240,27 +241,51 @@ export class Route {
     let x = 0;
     let y = 0;
     let elevation = 210;
-    // Integrate in 0.25 m sub-steps (tight 10 m junction radii need it), sample every STEP.
-    const SUB = 0.25;
-    const perSample = Math.round(STEP / SUB);
+    // Sub-steps small enough that the heading turns at most MAX_TURN per sub-step: 0.25 m in a
+    // tight 10 m junction radius, one step on a straight. Same accuracy everywhere, far less work.
+    const MAX_TURN = 0.025;
+    const MIN_SUB = 0.25;
+    const clampS = (v: number): number => Math.min(v, this.length - 0.001);
+    // s only grows, so walk the segments in order instead of searching for each sub-step.
+    let si = 0;
+    const segFor = (v: number): Segment => {
+      if (v < this.segments[si]!.s0) si = this.segmentAt(v).index;
+      while (si + 1 < this.segments.length && this.segments[si + 1]!.s0 <= v) si++;
+      return this.segments[si]!;
+    };
+    const curvatureIn = (seg: Segment, local: number): number => {
+      let c = 0;
+      for (const a of seg.arcs ?? []) if (local >= a.at && local < a.at + a.length) c += a.curvature;
+      return c;
+    };
     for (let s = 0; s <= this.length + STEP; s += STEP) {
-      const clampS = (v: number): number => Math.min(v, this.length - 0.001);
-      const heading = this.headingAt(clampS(s));
+      const s0 = clampS(s);
+      const at = segFor(s0);
       pts.push({
         s,
         x,
         y,
-        heading,
-        curvature: this.curvatureAt(clampS(s)),
-        gradient: this.gradientAt(clampS(s)),
+        heading: this.headingIn(at, s0 - at.s0),
+        curvature: curvatureIn(at, s0 - at.s0),
+        gradient: this.gradientIn(at, s0 - at.s0),
         elevation,
       });
-      for (let i = 0; i < perSample; i++) {
-        const sm = clampS(s + (i + 0.5) * SUB);
-        const hm = this.headingAt(sm);
-        x += Math.cos(hm) * SUB;
-        y += Math.sin(hm) * SUB;
-        elevation += this.gradientAt(sm) * SUB;
+      // Tightest curvature anywhere in this step (arcs start and end inside steps).
+      let k = 0;
+      for (const f of [0, 0.25, 0.5, 0.75, 1]) {
+        const v = clampS(s + f * STEP);
+        const sg = segFor(v);
+        k = Math.max(k, Math.abs(curvatureIn(sg, v - sg.s0)));
+      }
+      const n = k === 0 ? 1 : Math.ceil(STEP / Math.max(MIN_SUB, Math.min(STEP, MAX_TURN / k)));
+      const sub = STEP / n;
+      for (let i = 0; i < n; i++) {
+        const sm = clampS(s + (i + 0.5) * sub);
+        const seg = segFor(sm);
+        const hm = this.headingIn(seg, sm - seg.s0);
+        x += Math.cos(hm) * sub;
+        y += Math.sin(hm) * sub;
+        elevation += this.gradientIn(seg, sm - seg.s0) * sub;
       }
     }
     return pts;
