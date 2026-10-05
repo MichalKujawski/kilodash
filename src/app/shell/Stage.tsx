@@ -84,6 +84,8 @@ export function Stage({ session, cluster, children, compact, side = 0 }: Props) 
     >
       <div className="stage-glow" aria-hidden />
       <div className="display" ref={display}>
+        {/* First-visit intro: the light that comes up over the hood as the car wakes. */}
+        <div className="intro-light" aria-hidden />
         <svg className="hood" viewBox="0 0 1600 140" preserveAspectRatio="none" aria-hidden>
           <defs>
             <linearGradient id="hood-fill" x1="0" y1="0" x2="0" y2="1">

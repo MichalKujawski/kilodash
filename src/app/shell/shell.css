@@ -292,7 +292,8 @@ body {
   .mode-thumb,
   .stage-glow,
   .display,
-  .bottom-slot {
+  .bottom-slot,
+  .intro-light {
     transition: none;
   }
 }
@@ -524,6 +525,41 @@ body {
 .site:is([data-intro='dark'], [data-intro='hood'], [data-intro='display'])
   :is(.site-header, .bottom-slot) {
   opacity: 0;
+}
+
+/* A cool light comes up over the hood, peaks, then settles as the display wakes. */
+.intro-light {
+  position: absolute;
+  left: 4%;
+  right: 4%;
+  top: -26%;
+  height: 52%;
+  pointer-events: none;
+  opacity: 0;
+  background:
+    radial-gradient(42% 34% at 50% 50%, rgba(185, 210, 255, 0.26), transparent 72%),
+    radial-gradient(70% 50% at 50% 50%, rgba(var(--glow), 0.14), transparent 78%);
+  transition: opacity 900ms var(--ease);
+}
+
+.site[data-intro='hood'] .intro-light {
+  opacity: 1;
+}
+
+.site[data-intro='display'] .intro-light {
+  opacity: 0.25;
+  transition-duration: 1600ms;
+}
+
+/* The hood's edge catches the light. */
+.site[data-intro='hood'] .hood {
+  filter: drop-shadow(0 -3px 14px rgba(170, 200, 255, 0.4));
+}
+
+.site[data-intro] .hood {
+  transition:
+    opacity 700ms var(--ease),
+    filter 1200ms var(--ease);
 }
 
 /* The light runs along the hood's edge as it wakes. */
