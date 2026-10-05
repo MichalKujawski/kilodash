@@ -28,6 +28,9 @@ export const HIGHLIGHT = [
   ['shutdown', 3, 9],
 ];
 
+/** Clean shots (card loops, README, share image): no caption spotlight. */
+const CLEAN = '&spotlight=0';
+
 /** Landing-card loops: the cluster only, 6 s each. */
 const LOOPS = [
   ['motorway', 18, 24],
@@ -64,6 +67,7 @@ if (want('loops')) {
       format: '169',
       crop: 'screen',
       scale: '960x360',
+      query: CLEAN,
       out: src,
     });
     // Small enough for a card: no audio, modest quality, web-optimised.
@@ -97,6 +101,18 @@ if (want('loops')) {
       '-an',
       `public/media/loops/${chapter}.webm`,
     );
+    // Poster = the loop's first frame, so a card doesn't jump when its video starts.
+    ff(
+      '-i',
+      src,
+      '-frames:v',
+      '1',
+      '-c:v',
+      'libwebp',
+      '-q:v',
+      '82',
+      `public/media/posters/${chapter}.webp`,
+    );
   }
 }
 
@@ -113,13 +129,14 @@ if (want('readme')) {
     format: '169',
     crop: 'screen',
     scale: '960x360',
+    query: CLEAN,
     out: src,
   });
   ff('-i', src, '-c:v', 'libwebp', '-q:v', '60', '-loop', '0', '-an', 'docs/media/highlight.webp');
 }
 
 if (want('og')) {
-  await stills({ chapter: 'motorway', times: [6], out: TMP });
+  await stills({ chapter: 'motorway', times: [6], query: CLEAN, out: TMP });
   // 1920×1008 is 1.905:1 like 1200×630.
   ff(
     '-i',

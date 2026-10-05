@@ -77,7 +77,7 @@ function encoder(out, fps, scale, fade, seconds) {
 }
 
 /** Opens the demo at a chapter on paused fake time (nothing in the app runs on real time). */
-async function openChapter({ chapter, w, h, format }) {
+async function openChapter({ chapter, w, h, format, query = '' }) {
   const browser = await chromium.launch({
     channel: 'chrome',
     args: [
@@ -90,7 +90,7 @@ async function openChapter({ chapter, w, h, format }) {
   const page = await browser.newPage({ viewport: { width: w, height: h }, deviceScaleFactor: 1 });
   await page.clock.install({ time: 0 });
   await page.clock.pauseAt(1000);
-  await page.goto(`${BASE}/?record=1&format=${format}&chapter=${chapter}`);
+  await page.goto(`${BASE}/?record=1&format=${format}&chapter=${chapter}${query}`);
   await page.evaluate(() => document.fonts.ready);
   await page.waitForSelector('canvas.cluster-canvas');
   // The page-load start-up sweep plays first; then restart the chapter cleanly.
@@ -118,9 +118,18 @@ async function clipFor(page, crop) {
 }
 
 /** Single frames at chapter times (seconds), for choosing cuts and for posters. */
-export async function stills({ chapter, times, w = 1920, h = 1080, format = '169', crop, out }) {
+export async function stills({
+  chapter,
+  times,
+  w = 1920,
+  h = 1080,
+  format = '169',
+  crop,
+  query,
+  out,
+}) {
   mkdirSync(out, { recursive: true });
-  const { browser, page } = await openChapter({ chapter, w, h, format });
+  const { browser, page } = await openChapter({ chapter, w, h, format, query });
   const clip = await clipFor(page, crop);
   let t = 0;
   for (const at of times) {

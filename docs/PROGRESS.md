@@ -1,8 +1,36 @@
 # Progress
 
-_Last updated: 2026-10-04_
+_Last updated: 2026-10-05_
 
-## Current work
+## Status: complete
+
+Realism v2 and the UX and website phase are finished. The UX brief's acceptance checklist (§14):
+
+| Item                                                                                       | State                                                             |
+| ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------- |
+| Owner approved one of three concepts before implementation                                 | ✅ Concept A, with B's spoke buttons and C's wider cluster        |
+| Opens in Watch, cockpit moving within ~1.5 s, no control panel                             | ✅ 0.25–0.5 s on the production build                             |
+| Header auto-hides in Watch; mode switch updates the URL                                    | ✅                                                                |
+| Glow follows drive mode; premium hood presentation                                         | ✅                                                                |
+| Chapters play, loop, jump, share via URL; captions never overlap the cluster               | ✅ plus the caption spotlight (§5.4)                              |
+| Take the wheel continues from the current world state                                      | ✅ unit and browser tests                                         |
+| Drive: ≤ 8 controls at rest, car-like, contextual groups, More controls, coach once        | ✅                                                                |
+| Engineer: state machines, signals, events, view model, Workshop, performance; How it works | ✅                                                                |
+| Landing sections with Show me and real clips                                               | ✅                                                                |
+| Responsive incl. phone portrait/landscape and the old-browser fallback                     | ✅                                                                |
+| Highlight, full and LinkedIn videos, loops, README media, OG image                         | ✅ `node scripts/make-media.mjs`                                  |
+| Analytics off by default and documented; UX testing kit; video script                      | ✅                                                                |
+| Design rubric on every screen; Lighthouse targets                                          | ✅ desktop 99–100; mobile perf 90–97, a11y/best practices/SEO 100 |
+
+Deliberate difference from the brief: the chapter bar has play/pause and next only (no previous or
+restart buttons), as in the approved concept; ← goes back.
+
+**Owner to do:** About details and the repository URL in `src/app/site.ts`; after deploying, the live
+link in the README and an absolute `og:image` URL; optional analytics via `.env.local`; five test visitors
+with `docs/UX_TESTING.md`. CI (`.github/workflows/ci.yml`) publishes to GitHub Pages from `main` once
+Pages is set to "GitHub Actions".
+
+## History
 
 **Realism v2** (`docs/briefs/realism-v2.md`), approved with these decisions:
 
@@ -25,7 +53,7 @@ _Last updated: 2026-10-04_
 | 6    | Speed-limit recognition / ISA                                                                        | done  |
 | 7    | Lane keeping/centering, hands-off staging, Driver Assistance view                                    | done  |
 | 8    | Collision warning/AEB, blind spot, rear cross traffic                                                | done  |
-| 9    | Start-stop, Auto Hold, gear recommendation, shift lights, diesel DPF/AdBlue                          | done  |
+| 9    | Start-stop, Auto Hold, gear recommendation, shift lights, diesel DPF/exhaust fluid                   | done  |
 | 10   | Warnings catalogue, seatbelt escalation, TPMS, service                                               | done  |
 | 11   | Fatigue, parking sensors + camera, auto high beam, lights/body/wipers                                | done  |
 | 12   | Views (Classic, Navigation, Reduced, Driver Assistance, Sport, Auto view)                            | done  |
@@ -163,20 +191,20 @@ _Last updated: 2026-10-04_
 
 ## UX and website phase (`docs/briefs/` → UX prompt; design in `docs/design/`)
 
-| Step | | State |
-| --- | --- | --- |
-| 0 | Audit, 3 concepts, owner chose A (+ wider cluster, calm chapters, spoke buttons) | done |
-| 1 | Shell: header with Watch/Drive/Engineer, stage (light, hood, feathered display, glow by drive mode, reflection), rolling start at midday, larger cluster text | done |
-| 2 | 3D map (tilted, extruded buildings, labels, glowing route) | done |
-| 3 | Demo Director: 9 chapters (2:36), captions, chapter bar, Space/←/→, `?chapter=`, Take the wheel | done |
-| 4 | Drive dock (wheel with spoke buttons, stalk, lever, pedals, contextual cruise, "?" overlay, coach marks) | done |
-| 5 | Engineer mode (6 tabs, live state diagrams, event timeline, How it works sheet) | done |
-| 6 | Cinematic intro (≤ 4 s, skippable, first visit only) | done |
-| 7 | Landing sections (pitch, highlights, live data path, ADRs, about, footer) | done |
-| 8 | Responsive behaviour and fallbacks (laptop, tablet, phone portrait/landscape, old browsers) | done |
-| 9 | Recording pipeline, clips, README media, OG images | done |
-| 10 | Analytics (off by default), privacy, UX testing kit, self-hosted fonts | done |
-| 11 | Final rubric polish, Lighthouse | done |
+| Step |                                                                                                                                                               | State |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- |
+| 0    | Audit, 3 concepts, owner chose A (+ wider cluster, calm chapters, spoke buttons)                                                                              | done  |
+| 1    | Shell: header with Watch/Drive/Engineer, stage (light, hood, feathered display, glow by drive mode, reflection), rolling start at midday, larger cluster text | done  |
+| 2    | 3D map (tilted, extruded buildings, labels, glowing route)                                                                                                    | done  |
+| 3    | Demo Director: 9 chapters (2:36), captions, chapter bar, Space/←/→, `?chapter=`, Take the wheel                                                               | done  |
+| 4    | Drive dock (wheel with spoke buttons, stalk, lever, pedals, contextual cruise, "?" overlay, coach marks)                                                      | done  |
+| 5    | Engineer mode (6 tabs, live state diagrams, event timeline, How it works sheet)                                                                               | done  |
+| 6    | Cinematic intro (≤ 4 s, skippable, first visit only)                                                                                                          | done  |
+| 7    | Landing sections (pitch, highlights, live data path, ADRs, about, footer)                                                                                     | done  |
+| 8    | Responsive behaviour and fallbacks (laptop, tablet, phone portrait/landscape, old browsers)                                                                   | done  |
+| 9    | Recording pipeline, clips, README media, OG images                                                                                                            | done  |
+| 10   | Analytics (off by default), privacy, UX testing kit, self-hosted fonts                                                                                        | done  |
+| 11   | Final rubric polish, Lighthouse                                                                                                                               | done  |
 
 - `node scripts/site-shots.mjs docs/design/progress name=query@WxH` screenshots the site and reports
   time-to-moving, fps and dropped frames (`@WxH+s` waits s extra seconds). Step screenshots live in
@@ -203,6 +231,7 @@ _Last updated: 2026-10-04_
      then "Emergency braking", which replaces it at once. After AEB, the driver drops back gently
      (improved-IDM braking limit) instead of braking hard to 24 km/h. Tests: `Director.test.ts`,
      `CollisionAssist.test.ts`.
+
   2. **Clean handover mid-chapter.** Verified in unit and e2e tests: same place and speed, demo
      driver off, no script state left, and cruise stays as it was.
   3. **Muted autoplay.** Fixed: the first click anywhere unlocked audio at full volume although the
@@ -270,10 +299,8 @@ _Last updated: 2026-10-04_
 
 ## Known issues / open questions
 
-
 - Entering Engineer drops about one frame (production build: ~50–90 ms task as React mounts the panel and
   the page lays it out). The canvas is no longer resized on mode changes.
-
 
 - Rare single dropped frame (about 1 in 30 pose runs). Partly explained in step 9: traffic's
   O(n²) leader search cost 0.4 ms per simulation step in the roadworks queue. It now uses a sorted

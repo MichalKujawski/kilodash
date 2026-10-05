@@ -66,11 +66,16 @@ flowchart LR
 | `cluster/renderer/startup.ts`             | Ignition choreography: needle sweep, bulb check, trip summary.                         |
 | `cluster/layouts/classic.ts`              | Layout as data: slots, rects, candidate widgets, telltale positions.                   |
 | `cluster/themes/midnight.ts`              | Every colour, size and effect strength as tokens.                                      |
-| `app/director/`                           | Watch: chapters as data; `Director` fires their events into the live simulator.       |
+| `app/director/`                           | Watch: chapters as data; `Director` fires their events into the live simulator.        |
 | `app/dock/`                               | Drive: stalk, wheel, selector, pedals over `ControlBus`; moving parts animate via rAF. |
-| `app/engineer/`                           | Engineer: live state diagrams, event log, view model, How it works sheet.             |
-| `app/landing/`                            | Sections under the cockpit; copy as data in `content.ts`.                               |
-| `app/controls/ControlBus.ts`              | Any input (key, pointer, pad) → car action with real tap/hold semantics.              |
+| `app/engineer/`                           | Engineer: live state diagrams, event log, view model, How it works sheet.              |
+| `app/landing/`                            | Sections under the cockpit; copy as data in `content.ts`.                              |
+| `app/controls/ControlBus.ts`              | Any input (key, pointer, pad) → car action with real tap/hold semantics.               |
+| `app/shell/`                              | Header, stage (hood, glow, display fit), intro, device classes (phone/tablet/laptop).  |
+| `app/lazy.ts`                             | Off-screen UI loaded on demand (Engineer, doc sheet, dock, More controls).             |
+| `app/analytics.ts`                        | Optional cookieless analytics; off unless configured; DNT/GPC respected.               |
+| `cluster/lanes/egoCar.ts`                 | Our car in the lane view, drawn with the lane camera's projection.                     |
+| `scripts/record-video.mjs`                | Deterministic video capture: fake clock, one frame per screenshot, piped to ffmpeg.    |
 
 ## How to add things
 
