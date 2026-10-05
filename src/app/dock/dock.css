@@ -193,9 +193,12 @@
   z-index: 3;
 }
 
-.hb:hover::after {
-  opacity: 1;
-  transition-delay: 300ms;
+/* Only where there is a real hover (a tap would leave the hint stuck on touch screens). */
+@media (hover: hover) {
+  .hb:hover::after {
+    opacity: 1;
+    transition-delay: 300ms;
+  }
 }
 
 .hb[aria-disabled='true']::after {
@@ -534,6 +537,16 @@
     system-ui,
     sans-serif;
   text-align: center;
+}
+
+/* Laptops: the dock compacts; labels move into tooltips (title on each group). */
+@media (max-width: 1279px) {
+  .dock-item figcaption {
+    display: none;
+  }
+  .dock-row {
+    gap: 18px;
+  }
 }
 
 @media (max-width: 900px) {

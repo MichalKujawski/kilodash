@@ -173,8 +173,9 @@ _Last updated: 2026-10-04_
 | 5 | Engineer mode (6 tabs, live state diagrams, event timeline, How it works sheet) | done |
 | 6 | Cinematic intro (≤ 4 s, skippable, first visit only) | done |
 | 7 | Landing sections (pitch, highlights, live data path, ADRs, about, footer) | done |
-| 8 | Responsive behaviour and fallbacks | next |
-| 9–11 | Recording, analytics, polish | |
+| 8 | Responsive behaviour and fallbacks (laptop, tablet, phone portrait/landscape, old browsers) | done |
+| 9 | Recording pipeline, clips, README media, OG images | next |
+| 10–11 | Analytics, polish | |
 
 - `node scripts/site-shots.mjs docs/design/progress name=query@WxH` screenshots the site and reports
   time-to-moving, fps and dropped frames (`@WxH+s` waits s extra seconds). Step screenshots live in
@@ -217,7 +218,9 @@ _Last updated: 2026-10-04_
 - Step 7: `src/app/landing/` (doc `docs/features/landing.md`), six ADRs in `docs/adr/`, `docs/PRIVACY.md`.
   - **Owner to fill in** `ABOUT` in `src/app/site.ts`: name spelling (Michal / Michał), the bio line,
     LinkedIn and CV links. Empty links are hidden.
-  - Step 8 must fix the phone header (wordmark and mode switch overlap at 390 px).
+- Step 8: `src/app/shell/device.ts`, `src/cluster/renderer/compat.ts` (doc `docs/features/responsive.md`).
+  Phones have no Drive (Watch + Engineer); portrait screens no longer leave an empty screen under the
+  cockpit.
 
 ## Known issues / open questions
 

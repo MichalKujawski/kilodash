@@ -56,3 +56,10 @@ One entry per finished feature, for building a guided demo. Keep each entry shor
   the demo jumps to the Safety chapter. Further down, the How it works boxes show the car's live values.
 - **Caption:** "Every highlight is live: click it and watch it happen."
 - **Duration:** ~10 s
+
+### Any screen
+
+- **Demo:** open the site on a phone held upright: the cockpit fits the width and suggests turning the
+  phone. Turned sideways, it fills the screen with the chapter bar underneath.
+- **Caption:** "The same cockpit on any screen, down to a phone."
+- **Duration:** ~8 s

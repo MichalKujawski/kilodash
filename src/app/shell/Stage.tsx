@@ -39,7 +39,7 @@ function useSideFit(side: number) {
   const [vw, setVw] = useState(() => window.innerWidth);
   useEffect(() => {
     const el = display.current;
-    if (!el) return;
+    if (!el || typeof ResizeObserver !== 'function') return;
     const ro = new ResizeObserver(([e]) => {
       if (e) setBox({ w: e.contentRect.width, h: e.contentRect.height });
     });

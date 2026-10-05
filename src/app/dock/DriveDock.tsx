@@ -88,21 +88,21 @@ export function DriveDock({ bus, source, store, moreOpen, onMore }: Props) {
       </div>
 
       <div className="dock-row">
-        <figure className="dock-item dock-stalk">
+        <figure className="dock-item dock-stalk" title="Turn signal">
           {coach && <span className="coach">Tap to signal</span>}
           <Stalk bus={bus} source={source} store={store} />
           <figcaption>Turn signal</figcaption>
         </figure>
-        <figure className="dock-item dock-wheel">
+        <figure className="dock-item dock-wheel" title="Steering wheel">
           {coach && <span className="coach">Pages, OK and View</span>}
           <Wheel bus={bus} source={source} cruiseLit={lit} />
           <figcaption>Steering wheel</figcaption>
         </figure>
-        <figure className="dock-item dock-lever">
+        <figure className="dock-item dock-lever" title="Gear and drive mode">
           <GearLever bus={bus} source={source} />
           <figcaption>Gear · drive mode</figcaption>
         </figure>
-        <figure className="dock-item dock-pedals">
+        <figure className="dock-item dock-pedals" title="Brake and accelerator">
           {coach && <span className="coach">Hold to drive</span>}
           <Pedals bus={bus} source={source} />
           <figcaption>

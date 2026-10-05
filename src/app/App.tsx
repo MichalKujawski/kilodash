@@ -9,6 +9,7 @@ import { useClusterAudio } from './audio/useClusterAudio';
 import { ClusterView } from './ClusterView';
 import { ControlBus } from './controls/ControlBus';
 import { ControlPanel } from './controls/ControlPanel';
+import { canRunCluster } from '@/cluster/renderer/compat';
 import { DriveDock } from './dock/DriveDock';
 import { EngineerPanel } from './engineer/EngineerPanel';
 import { HowItWorks } from './engineer/HowItWorks';
@@ -21,6 +22,7 @@ import { useControlInputs } from './controls/useControlInputs';
 import { applyPose, poseFromUrl } from './poses';
 import { ClusterSession } from './session';
 import { Header, SITE_MODES, type SiteMode } from './shell/Header';
+import { useDevice } from './shell/device';
 import { shouldPlayIntro, useIntro } from './shell/intro';
 import { Stage } from './shell/Stage';
 import './shell/shell.css';
@@ -40,24 +42,13 @@ const DEV = params.get('dev') === '1';
 const POSE = poseFromUrl();
 /** `?chapter=<id>` opens the guided demo at that chapter. */
 const CHAPTER = params.get('chapter');
+/** Very old browsers get a short note instead of a blank cockpit. */
+const CLUSTER_OK = canRunCluster();
 /** First plain visit only (not deep links, recordings, kiosk or reduced motion). */
 const PLAY_INTRO = shouldPlayIntro(params);
 
 /** Engineer sidebar width on wide screens (narrower screens get a bottom panel), px. */
 const ENGINEER_SIDEBAR = 440;
-const WIDE = '(min-width: 1280px)';
-
-function useMediaQuery(q: string): boolean {
-  const [on, setOn] = useState(() => window.matchMedia(q).matches);
-  useEffect(() => {
-    const m = window.matchMedia(q);
-    const change = (): void => setOn(m.matches);
-    m.addEventListener('change', change);
-    return () => m.removeEventListener('change', change);
-  }, [q]);
-  return on;
-}
-
 function initialTheme(userThemes: Theme[]): Theme {
   // The public demo is the Midnight experience only.
   if (!DEV) return DEFAULT_THEME;
@@ -81,8 +72,13 @@ export function App() {
   const [dropped, setDropped] = useState(0);
   // Autoplay is muted; the header's sound button switches the cockpit audio on.
   const [sound, setSound] = useState({ muted: true, engine: false });
-  const [mode, setModeState] = useState<SiteMode>(initialMode);
-  const wide = useMediaQuery(WIDE);
+  const [chosenMode, setModeState] = useState<SiteMode>(initialMode);
+  const device = useDevice();
+  const wide = device.wide;
+  // Phones watch (and can look under the hood); driving needs a bigger screen.
+  const modes = device.phone ? SITE_MODES.filter((m) => m !== 'drive') : SITE_MODES;
+  // A shared Drive link opened on a phone shows Watch instead.
+  const mode: SiteMode = modes.includes(chosenMode) ? chosenMode : 'watch';
   const intro = useIntro(PLAY_INTRO);
   // The demo waits in the dark; it starts (with the start-up sweep) as the display lights up.
   const introHold = intro.phase === 'dark' || intro.phase === 'hood';
@@ -254,7 +250,11 @@ export function App() {
     setRenderer(r);
   }, []);
 
-  const cluster = session ? (
+  const cluster = !CLUSTER_OK ? (
+    <p className="unsupported">
+      This browser can't draw the cluster. Try a current Chrome, Edge, Firefox or Safari.
+    </p>
+  ) : session ? (
     <ClusterView
       session={session}
       layout={classic}
@@ -294,6 +294,7 @@ export function App() {
         muted={sound.muted}
         onMute={toggleSound}
         awake={intro.phase === 'done'}
+        modes={modes}
       />
       <Stage
         session={session}
@@ -306,6 +307,8 @@ export function App() {
             state={directorState}
             onTakeWheel={() => setMode('drive')}
             onHowItWorks={setHowDoc}
+            canDrive={!device.phone}
+            portrait={device.phone && device.portrait}
           />
         )}
         {mode === 'drive' && session && bus && (
@@ -345,6 +348,7 @@ export function App() {
       )}
       {mode === 'engineer' && session && (
         <EngineerPanel
+          simple={!device.engineerFull}
           session={session}
           renderer={renderer}
           log={log}

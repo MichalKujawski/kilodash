@@ -9,12 +9,23 @@ interface Props {
   director: Director;
   state: DirectorState;
   onTakeWheel: () => void;
-  /** Opens Engineer mode on that feature's explanation. */
+  /** Opens the feature's explanation. */
   onHowItWorks: (doc: string) => void;
+  /** False on phones: no Drive there, so a note replaces "Take the wheel". */
+  canDrive?: boolean;
+  /** Phone held upright: suggest turning it. */
+  portrait?: boolean;
 }
 
 /** Watch mode lower third: chapter caption, chapter bar, "Take the wheel". */
-export function WatchPanel({ director, state, onTakeWheel, onHowItWorks }: Props) {
+export function WatchPanel({
+  director,
+  state,
+  onTakeWheel,
+  onHowItWorks,
+  canDrive = true,
+  portrait = false,
+}: Props) {
   const { chapter, caption, index, playing } = state;
   const chapters = director.chapters;
 
@@ -93,10 +104,20 @@ export function WatchPanel({ director, state, onTakeWheel, onHowItWorks }: Props
         <span className="time">
           {clock(director.elapsed)} / {clock(TOTAL_S)}
         </span>
-        <button className="take-wheel" onClick={onTakeWheel}>
-          Take the wheel →
-        </button>
+        {canDrive ? (
+          <button className="take-wheel" onClick={onTakeWheel}>
+            Take the wheel →
+          </button>
+        ) : (
+          !portrait && <span className="device-note">Best on desktop to drive</span>
+        )}
       </div>
+      {!canDrive && portrait && (
+        <p className="device-note">
+          <span>Rotate for a bigger view.</span>
+          <span>Best on desktop to take the wheel.</span>
+        </p>
+      )}
     </div>
   );
 }

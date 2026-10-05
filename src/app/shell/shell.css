@@ -55,7 +55,7 @@ body {
 .mode-switch {
   position: relative;
   display: grid;
-  grid-template-columns: repeat(3, 96px);
+  grid-template-columns: repeat(var(--modes, 3), 96px);
   padding: 4px;
   border-radius: 999px;
   background: var(--surface);
@@ -276,14 +276,48 @@ body {
     padding: 0 14px;
   }
   .mode-switch {
-    grid-template-columns: repeat(3, 76px);
+    grid-template-columns: repeat(var(--modes, 3), 76px);
   }
   .mode-thumb {
     width: 76px;
   }
+}
+
+/* Portrait screens (tablets, phones): the cockpit takes the width; the page continues below it. */
+@media (orientation: portrait) and (max-width: 1279px) {
   .stage {
-    --w: min(94vw, calc((100vh - 170px) * 2.667));
-    padding-top: calc(var(--header-h) + 8px);
+    --w: 94vw;
+    height: auto;
+    min-height: 0;
+    padding-bottom: 40px;
+  }
+  /* The stage is only as tall as its content, so the hint follows it instead of overlapping. */
+  .scroll-hint {
+    position: static;
+    display: block;
+    margin-top: 28px;
+    transform: none;
+    text-align: center;
+  }
+}
+
+/* Phones in landscape: every pixel of height counts. */
+@media (max-height: 499px) {
+  .stage {
+    --w: min(96vw, calc((100vh - var(--header-h) - 96px) * 2.667));
+    padding-top: calc(var(--header-h) + 4px);
+  }
+  .bottom-slot {
+    margin-top: 6px;
+  }
+  .scroll-hint {
+    display: none;
+  }
+}
+
+@media (max-width: 420px) {
+  .wordmark {
+    font-size: 13px;
   }
 }
 
@@ -483,7 +517,7 @@ body {
   filter: brightness(1.08);
 }
 
-@media (max-width: 900px) {
+@media (max-width: 599px), (max-height: 499px) {
   .caption {
     gap: 12px;
     min-height: 0;
@@ -507,7 +541,7 @@ body {
   .chapter-bar {
     margin-top: 6px;
     gap: 10px;
-    grid-template-columns: auto 1fr;
+    grid-template-columns: auto 1fr auto;
   }
   .round {
     width: 30px;
@@ -519,6 +553,24 @@ body {
   .caption {
     animation: none;
   }
+}
+
+/* Phones: why there is no Drive, and a hint to turn the phone. */
+.device-note {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 10px;
+  margin: 14px 0 0;
+  font-size: 12px;
+  color: var(--text-3);
+  text-align: center;
+}
+
+/* Landscape phones: the note takes the place of "Take the wheel" at the end of the chapter bar. */
+.chapter-bar .device-note {
+  margin: 0;
+  white-space: nowrap;
 }
 
 /* ---- First-visit intro: black → hood lights up → display wakes → header and captions ---- */
@@ -599,4 +651,15 @@ body {
 
 .intro-skip:hover {
   color: var(--text-1);
+}
+
+.unsupported {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  margin: 0;
+  padding: 24px;
+  color: var(--text-2);
+  font-size: 15px;
+  text-align: center;
 }

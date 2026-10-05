@@ -12,6 +12,8 @@ interface Props {
   onMute: () => void;
   /** False during the intro: the auto-hide timer starts once the visitor can see the header. */
   awake?: boolean;
+  /** Modes offered on this device (phones have no Drive). */
+  modes?: SiteMode[];
 }
 
 /**
@@ -19,7 +21,7 @@ interface Props {
  * source links. In Watch it fades out after 3 s without pointer movement and
  * returns on movement or keyboard focus (cinema feel).
  */
-export function Header({ mode, onMode, muted, onMute, awake = true }: Props) {
+export function Header({ mode, onMode, muted, onMute, awake = true, modes = SITE_MODES }: Props) {
   const [idle, setIdle] = useState(false);
   useEffect(() => {
     if (mode !== 'watch' || !awake) return;
@@ -46,7 +48,7 @@ export function Header({ mode, onMode, muted, onMute, awake = true }: Props) {
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
-  const index = SITE_MODES.indexOf(mode);
+  const index = modes.indexOf(mode);
   return (
     <header
       className={`site-header ${idle && mode === 'watch' && !scrolled ? 'is-idle' : ''} ${scrolled ? 'is-scrolled' : ''}`}
@@ -54,13 +56,17 @@ export function Header({ mode, onMode, muted, onMute, awake = true }: Props) {
       <a className="wordmark" href="./" aria-label="OpenCluster home">
         OpenCluster
       </a>
-      <nav className="mode-switch" aria-label="Mode">
+      <nav
+        className="mode-switch"
+        aria-label="Mode"
+        style={{ ['--modes' as string]: modes.length }}
+      >
         <span
           className="mode-thumb"
           style={{ transform: `translateX(${index * 100}%)` }}
           aria-hidden
         />
-        {SITE_MODES.map((m) => (
+        {modes.map((m) => (
           <button
             key={m}
             className={m === mode ? 'is-on' : ''}

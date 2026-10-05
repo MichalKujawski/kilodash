@@ -21,6 +21,8 @@ export interface Perf {
 }
 
 interface Props {
+  /** Tablets and phones: Signals and States only. */
+  simple?: boolean;
   session: ClusterSession;
   renderer: ClusterRenderer | null;
   log: EventLog;
@@ -34,11 +36,13 @@ interface Props {
 
 /** Engineer mode: the cockpit's internals, live, IDE-style. */
 export function EngineerPanel(props: Props) {
-  const [tab, setTab] = useState<Tab>('States');
+  const [chosen, setTab] = useState<Tab>('States');
+  const tabs: readonly Tab[] = props.simple ? ['Signals', 'States'] : TABS;
+  const tab = tabs.includes(chosen) ? chosen : 'States';
   return (
     <section className="eng" aria-label="Engineer">
       <div className="eng-tabs" role="tablist">
-        {TABS.map((t) => (
+        {tabs.map((t) => (
           <button
             key={t}
             role="tab"

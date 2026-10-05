@@ -207,3 +207,33 @@ test('landing: Show me jumps the demo to the chapter; decisions and privacy open
   await page.getByRole('button', { name: 'Privacy' }).click();
   await expect(page.getByRole('dialog', { name: 'Privacy' })).toContainText('No cookies');
 });
+
+test('a browser that cannot run the cluster gets a short note, not a blank page', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.addInitScript(() => {
+    delete (window as unknown as { ResizeObserver?: unknown }).ResizeObserver;
+  });
+  await page.goto('/');
+  await expect(page.getByText("This browser can't draw the cluster")).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test('phones: Watch and Engineer only, a Drive link shows Watch with a note', async ({
+  browser,
+}) => {
+  const page = await browser.newPage({
+    viewport: { width: 390, height: 844 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  await page.addInitScript(() => localStorage.setItem('oc.intro.seen', '1'));
+  await page.goto('/?mode=drive');
+  await expect(page.locator('.site')).toHaveAttribute('data-mode', 'watch');
+  await expect(page.getByRole('button', { name: 'Drive' })).toHaveCount(0);
+  await expect(page.getByText('Rotate for a bigger view.')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Take the wheel →' })).toHaveCount(0);
+  await page.close();
+});

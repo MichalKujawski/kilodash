@@ -370,6 +370,14 @@
   padding-bottom: 28px;
 }
 
+/* Bottom panel (narrower screens): tabs sit together on the left. */
+@media (max-width: 1279px) {
+  .eng-tabs {
+    justify-content: flex-start;
+    gap: 14px;
+  }
+}
+
 @media (min-width: 1280px) {
   .site[data-mode='engineer'] .stage {
     height: 100vh;
