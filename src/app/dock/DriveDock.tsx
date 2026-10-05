@@ -11,7 +11,7 @@ import { Stalk } from './Stalk';
 import { Wheel } from './Wheel';
 import './dock.css';
 
-const COACH_KEY = 'twindial.coach.drive';
+const COACH_KEY = 'kilodash.coach.drive';
 const COACH_S = 8;
 
 function coachSeen(): boolean {

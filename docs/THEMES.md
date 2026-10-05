@@ -85,4 +85,4 @@ Notes on a few tokens:
 On the website, choose **Theme editor**, then **Duplicate & edit** on any theme. The editor
 covers colours, fonts, glow, glass, afterglow, hub size, sweep, needle feel, dial mode, numeral
 orientation, backdrop and chime voice. Every change applies live. User themes are saved in
-`localStorage` (`twindial.userThemes`) and can be exported or imported as JSON.
+`localStorage` (`kilodash.userThemes`) and can be exported or imported as JSON.

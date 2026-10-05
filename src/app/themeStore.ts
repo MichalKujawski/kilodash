@@ -2,8 +2,8 @@ import { THEMES } from '@/cluster/themes';
 import type { Theme } from '@/cluster/themes/types';
 import { parseTheme } from '@/cluster/themes/validate';
 
-const USER_KEY = 'twindial.userThemes';
-const SELECTED_KEY = 'twindial.theme';
+const USER_KEY = 'kilodash.userThemes';
+const SELECTED_KEY = 'kilodash.theme';
 
 export function loadUserThemes(): Theme[] {
   try {

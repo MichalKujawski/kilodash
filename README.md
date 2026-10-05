@@ -1,4 +1,4 @@
-# Twindial
+# Kilodash
 
 ![The cluster on the motorway: a car in the blind spot, then a lane change with lane centering](docs/media/highlight.webp)
 
@@ -42,7 +42,7 @@ screen), `?record=1` (clean frame for video), `?lowpower=1`.
 
 ## Disclaimer
 
-Twindial is not affiliated with any vehicle manufacturer and is not a certified automotive product. It
+Kilodash is not affiliated with any vehicle manufacturer and is not a certified automotive product. It
 is for demonstration only.
 
 ## License

@@ -24,7 +24,7 @@ export interface SessionOptions {
 
 function loadTrip(profileId: string): TripState | undefined {
   try {
-    const raw = localStorage.getItem(`twindial.trip.${profileId}`);
+    const raw = localStorage.getItem(`kilodash.trip.${profileId}`);
     return raw ? (JSON.parse(raw) as TripState) : undefined;
   } catch {
     return undefined;
@@ -33,8 +33,8 @@ function loadTrip(profileId: string): TripState | undefined {
 
 function saveTrip(profileId: string, trip: TripState, history?: HistorySnapshot): void {
   try {
-    localStorage.setItem(`twindial.trip.${profileId}`, JSON.stringify(trip));
-    if (history) localStorage.setItem(`twindial.history.${profileId}`, JSON.stringify(history));
+    localStorage.setItem(`kilodash.trip.${profileId}`, JSON.stringify(trip));
+    if (history) localStorage.setItem(`kilodash.history.${profileId}`, JSON.stringify(history));
   } catch {
     // Storage unavailable (private mode): trips are simply not persisted.
   }
@@ -42,7 +42,7 @@ function saveTrip(profileId: string, trip: TripState, history?: HistorySnapshot)
 
 function loadHistory(profileId: string): HistorySnapshot | undefined {
   try {
-    const raw = localStorage.getItem(`twindial.history.${profileId}`);
+    const raw = localStorage.getItem(`kilodash.history.${profileId}`);
     return raw ? (JSON.parse(raw) as HistorySnapshot) : undefined;
   } catch {
     return undefined;
@@ -57,7 +57,7 @@ interface DriveModeSettings {
 
 function loadDriveModes(profileId: string): DriveModeSettings | undefined {
   try {
-    const raw = localStorage.getItem(`twindial.driveModes.${profileId}`);
+    const raw = localStorage.getItem(`kilodash.driveModes.${profileId}`);
     return raw ? (JSON.parse(raw) as DriveModeSettings) : undefined;
   } catch {
     return undefined;
@@ -66,7 +66,7 @@ function loadDriveModes(profileId: string): DriveModeSettings | undefined {
 
 function saveDriveModes(profileId: string, s: DriveModeSettings): void {
   try {
-    localStorage.setItem(`twindial.driveModes.${profileId}`, JSON.stringify(s));
+    localStorage.setItem(`kilodash.driveModes.${profileId}`, JSON.stringify(s));
   } catch {
     // Not persisted without storage.
   }

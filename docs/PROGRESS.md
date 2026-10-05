@@ -241,7 +241,7 @@ Pages is set to "GitHub Actions".
   - Captions now open the How it works sheet in Watch, without leaving Watch.
   - First click no longer costs ~40 ms: the audio context is only created once sound is switched on.
   - **Owner to confirm:** the repository URL in `src/app/site.ts` (source links and header) is a guess:
-    `github.com/MichalKujawski/twindial`.
+    `github.com/MichalKujawski/kilodash`.
 
 - Step 6: `src/app/shell/intro.ts` (doc `docs/features/intro.md`). `?record=1` already skips it; the
   recording pipeline in step 9 builds on that.
