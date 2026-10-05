@@ -1,8 +1,7 @@
 import { REPO_URL } from '../site';
 import { useEffect, useState } from 'react';
 
-export type SiteMode = 'watch' | 'drive' | 'engineer';
-export const SITE_MODES: SiteMode[] = ['watch', 'drive', 'engineer'];
+import { SITE_MODES, type SiteMode } from './modes';
 const LABEL: Record<SiteMode, string> = { watch: 'Watch', drive: 'Drive', engineer: 'Engineer' };
 
 interface Props {
