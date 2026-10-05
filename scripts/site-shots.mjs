@@ -4,7 +4,7 @@
 import { chromium } from '@playwright/test';
 
 const BASE = process.env.BASE_URL ?? 'http://localhost:5173';
-const [outDir = 'docs/design/progress', ...specs] = process.argv.slice(2);
+const [outDir = 'screenshots/site', ...specs] = process.argv.slice(2);
 const shots = (
   specs.length ? specs : ['watch=mode=watch@1440x900', 'drive=mode=drive@1440x900']
 ).map((s) => {

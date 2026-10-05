@@ -2,7 +2,7 @@
 
 > Condensed copy of the owner's brief (wording shortened, requirements unchanged).
 
-> Based on research of real digital clusters, owner's manuals and manufacturer documentation (mainly VW Group, plus Hyundai/Kia, BMW, Ford, Renault, and the EU General Safety Regulation). Every behavior below describes how real cars do it. Where cars differ, the brief picks one mainstream behavior; document the choice. Never copy a brand's design, icon artwork, menu wording or trademarked feature names.
+> Based on research of real digital clusters, owner's manuals and manufacturer documentation (mainstream European, Korean and American brands, and the EU General Safety Regulation). Every behavior below describes how real cars do it. Where cars differ, the brief picks one mainstream behavior; document the choice. Never copy a brand's design, icon artwork, menu wording or trademarked feature names.
 >
 > Decisions taken with the owner (2026-10-04): default car = new 2022 AWD family SUV; map generated around the world route; lane view/camera in Canvas 2D behind a swappable scene renderer; **German** speed-limit defaults; commit per step.
 
@@ -84,7 +84,7 @@ Cluster: mode button opens a selection popup (scroll, auto-confirm ≈2 s or OK)
 - Gear recommendation arrows (manual cars / M), suppressed in Sport. Shift lights fill toward redline, flash at the shift point.
 - Start-stop: stops when stationary with brake held if conditions met (tach to 0, green auto-stop indicator). Blocking reasons (engine not warm, battery low, climate demand, steep gradient, large steering angle, door/belt/hood, driver intervention) show crossed/grey indicator + reason on vehicle page (not faults; real fault = separate yellow message). Re-enabled at every ignition; button disables for the trip. "Engine start required" if driver must restart.
 - Auto Hold: holds at standstill without pedal; green indicator.
-- Oil temperature on a page. Diesel: glow plug, DPF "keep driving" message, AdBlue range warnings (≈2 400 km yellow, later red, no restart at 0 — approximate). Fuel: low-fuel telltale + chime at reserve (≈7 L), repeated; refuel resets "since refuel".
+- Oil temperature on a page. Diesel: glow plug, DPF "keep driving" message, diesel exhaust fluid range warnings (≈2 400 km yellow, later red, no restart at 0 — approximate). Fuel: low-fuel telltale + chime at reserve (≈7 L), repeated; refuel resets "since refuel".
 
 ## 6. Driver assistance (simulated with the world)
 
@@ -101,7 +101,7 @@ Cluster: mode button opens a selection popup (scroll, auto-confirm ≈2 s or OK)
 
 - Colours: red = stop/danger, yellow = attention, green/blue/white = status.
 - Priority 1 (red, "stop safely", gong ×3, persists) and priority 2 (yellow, single gong, acknowledgeable, returns later). Multiple messages cycle; "Vehicle messages" list.
-- Catalogue (each with telltale, colour, text, sound, condition, repeat): oil pressure, coolant temp/level, brake system, power steering (yellow/red), alternator, hood open, transmission overheated, airbag, ABS, ESC active (flashing)/off, check engine, glow plugs, DPF, AdBlue, low fuel, washer fluid, tyre pressure, brake pads, bulb failure, seatbelt, door/trunk (car graphic), key battery low, parking brake while driving, ice warning (≤≈+4 °C, chime once), assists not available.
+- Catalogue (each with telltale, colour, text, sound, condition, repeat): oil pressure, coolant temp/level, brake system, power steering (yellow/red), alternator, hood open, transmission overheated, airbag, ABS, ESC active (flashing)/off, check engine, glow plugs, DPF, diesel exhaust fluid, low fuel, washer fluid, tyre pressure, brake pads, bulb failure, seatbelt, door/trunk (car graphic), key battery low, parking brake while driving, ice warning (≤≈+4 °C, chime once), assists not available.
 - Seatbelt: rear belt status ≈30 s at start; unbuckled above ≈25 km/h → chime + flashing escalating ≈90 s, then continuous red.
 - Self-test ≈2 s at ignition. TPMS direct (per-wheel pressure + temperature) vs indirect (warn only, "store pressures"). Service countdown (km/days) at ignition when due within 30 days / 1 000 km.
 

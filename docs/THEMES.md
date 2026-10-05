@@ -1,5 +1,10 @@
 # Themes
 
+> **Status: experiment.** The public site shows one finished look, **Midnight**. The other themes and
+> the theme editor are an early experiment kept to show that themes are data (see
+> [ADR 5](adr/0005-layouts-and-themes-as-data.md)). They're reachable only with `?dev=1`, are labelled
+> experimental there, and aren't polished to the same standard.
+
 A theme is plain data (`Theme` in `src/cluster/themes/types.ts`). The renderer contains no
 theme-specific code. Everything visual comes from the tokens below, so a theme can be exported,
 edited by hand and imported again.

@@ -3,7 +3,7 @@
 import { chromium } from '@playwright/test';
 
 const BASE = process.env.BASE_URL ?? 'http://localhost:5173';
-const [outDir = 'docs/screenshots', ...only] = process.argv.slice(2);
+const [outDir = 'screenshots/kiosk', ...only] = process.argv.slice(2);
 const poses = only.length
   ? only
   : [

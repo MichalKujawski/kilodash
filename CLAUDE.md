@@ -1,6 +1,6 @@
 # Kilodash: standing instructions
 
-**Read `docs/PROGRESS.md` first.** It says where the work is and what comes next.
+**Read `docs/process/PROGRESS.md` first.** It says where the work is and what comes next.
 
 ## Goal
 
@@ -23,7 +23,7 @@ something big and rough.
   Autobahn/dual carriageways (130 advisory). Keep limits in a per-country table.
 - **Never copy** a manufacturer's design, icon artwork, menu wording, logos or trademarked feature names.
   Use generic names ("Adaptive cruise control", "Lane centering").
-- Active spec: `docs/briefs/realism-v2.md` (real car behaviour, drive modes, assists, controls, views).
+- Active spec: `docs/process/briefs/realism-v2.md` (real car behaviour, drive modes, assists, controls, views).
 
 ## Architecture rules
 
@@ -54,12 +54,12 @@ something big and rough.
   state diagram, thresholds, and where it appears.
 - **No new visible buttons on the control panel.** Any new control goes into the collapsible
   "More controls" drawer.
-- **Every finished feature gets an entry in `docs/SHOWCASE_MOMENTS.md`:** feature name, how it would
+- **Every finished feature gets an entry in `docs/process/SHOWCASE_MOMENTS.md`:** feature name, how it would
   be shown in a guided demo (what happens in the world, what appears on the cluster), a one-line
   caption for visitors, and roughly how many seconds it needs.
 - **Ask the owner** before large refactors, heavy dependencies, or changes to the public site's
   structure.
-- **End of every task/session:** update `docs/PROGRESS.md` and `docs/WALKTHROUGH.md` if the
+- **End of every task/session:** update `docs/process/PROGRESS.md` and `docs/WALKTHROUGH.md` if the
   architecture changed.
 
 ## Commands
