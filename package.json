@@ -17,6 +17,9 @@
     "format:check": "prettier --check .",
     "test:e2e": "playwright test",
     "stats": "node scripts/stats.mjs",
+    "docs:signals": "node scripts/signals-doc.mjs",
+    "notices": "node scripts/notices.mjs",
+    "docs:check": "node scripts/signals-doc.mjs --check && node scripts/notices.mjs --check",
     "record": "node scripts/make-media.mjs"
   },
   "dependencies": {

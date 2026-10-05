@@ -5,3 +5,6 @@ package-lock.json
 test-results
 playwright-report
 docs/PROJECT_STATS.md
+docs/SIGNALS.md
+THIRD_PARTY_NOTICES.md
+.vitest
