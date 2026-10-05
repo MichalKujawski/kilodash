@@ -129,7 +129,8 @@ stateDiagram-v2
 
 ## Assumptions
 
-- Predictive ACC (slowing for bends, adopting limits on its own) is not built. Adopting the speed
-  limit comes with step 6 (ISA).
+- Predictive ACC (slowing for bends, adopting limits on its own) is not built. The speed limit is
+  recognised and shown ([speed limits](speed-limits.md)), but ACC doesn't adopt it; the Demo driver
+  adjusts the set speed itself.
 - In the simulator the radar sees only the car in the ego lane (the scene's `lead`). Cut-ins appear
   when a car changes into our lane.

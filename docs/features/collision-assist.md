@@ -104,4 +104,4 @@ Results from the tests:
 - The simulator has no crash physics. The last-resort "never drive through the car ahead" clamp in
   `SimulatorSource.step` stays as a safety net.
 - Rear cross traffic only happens in the starting car park, where reversing happens. The rear camera
-  view comes in step 11.
+  view is part of [park assist](parking-lights-fatigue.md).

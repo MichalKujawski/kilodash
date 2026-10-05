@@ -21,6 +21,9 @@ Clearing site data removes all of it.
 Everything comes from the site itself, including the fonts (self-hosted, no font CDN). A browser test
 checks that a visit contacts no other host.
 
+One exception, outside the public experience: in developer mode (`?dev=1`), choosing one of the
+[experimental themes](THEMES.md) loads that theme's font from Google Fonts.
+
 ## Analytics (off by default)
 
 The build can enable a cookieless, privacy-friendly analytics tool (Plausible or Umami), set in

@@ -25,7 +25,7 @@ Mainstream European and Korean cars from about 2015 onwards work alike:
   | Snow       | very soft    | pulls away in 2nd                | medium   | normal  | normal  | gentle, larger gap | blue   |
   | Off-road   | progressive  | holds low gears                  | light    | normal  | normal  | normal             | amber  |
 
-  Steering, damper, sound and ACC settings are carried as data. ACC uses its setting from step 5.
+  Steering, damper, sound and ACC settings are carried as data. ACC uses its setting ([speed assist](speed-assist.md)).
   The others have no physical effect in the simulator yet.
 
 - **Eco coasting (freewheeling)**, a dual-clutch/automatic feature:

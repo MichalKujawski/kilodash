@@ -37,9 +37,10 @@
 | On-screen controls (SVG + buttons, touch)                                   | `app/controls/ControlPanel.tsx`                              |
 | Car-side behaviour (light logic, comfort blink, gear program, start button) | `core/datasource/simulator/vehicle.ts`, `SimulatorSource.ts` |
 
-Drive modes (step 4) and cruise/ACC/limiter (step 5, `docs/features/speed-assist.md`) are live. Lane
-assist, start-stop, Auto Hold, park assist and views arrive in later steps; until then their buttons
-keep state (the LED shows it).
+Each button's function has its own page: [drive modes](drive-modes.md), [speed assist](speed-assist.md),
+[lane assist](lane-assist.md), [start-stop and Auto Hold](powertrain-helpers.md),
+[park assist](parking-lights-fatigue.md) and [views](views.md). Buttons for functions that are on show
+a lamp.
 
 ```mermaid
 stateDiagram-v2

@@ -2,7 +2,7 @@
 
 _Last updated: 2026-10-05_
 
-## Status: complete
+## Status: portfolio release in progress (step 6 of 10 done)
 
 Realism v2 and the UX and website phase are finished. The UX brief's acceptance checklist (§14):
 
@@ -29,6 +29,46 @@ restart buttons), as in the approved concept; ← goes back.
 link in the README and an absolute `og:image` URL; optional analytics via `.env.local`; five test visitors
 with `docs/UX_TESTING.md`. CI (`.github/workflows/ci.yml`) publishes to GitHub Pages from `main` once
 Pages is set to "GitHub Actions".
+
+## Portfolio release phase
+
+Goal: make the repository ready to show employers, with no new features. Work follows the release
+prompt's §13 order; the audit and its decisions are in [RELEASE_AUDIT.md](RELEASE_AUDIT.md).
+
+| Step | What                                                                                      | State |
+| ---- | ----------------------------------------------------------------------------------------- | ----- |
+| 1    | Backup: tag `pre-release-backup`, zip of the working folder outside the repo              | done  |
+| 2    | Audit (repository, IP, licences, quality), owner decisions                                | done  |
+| 3    | IP and hygiene: `autopilot` → `demoDrive`, brand names out of docs, repo config files     | done  |
+| 4    | Process files to `docs/process/`, design story as WebP, old screenshots removed           | done  |
+| 5    | `npm run stats` → `docs/PROJECT_STATS.md` (every README number measured)                  | done  |
+| 6    | README rewrite, docs index, missing docs, CHANGELOG, notices, community files             | done  |
+| 7    | Deployment readiness: 404, `<noscript>`, favicons, canonical, OG image, post-deploy smoke | next  |
+| 8    | `INTERVIEW_PREP.md`, `CV_AND_LINKEDIN.md`                                                 |       |
+| 9    | GitHub presentation, `v1.0.0` prepared locally (push only with owner approval)            |       |
+| 10   | Final QA, `LAUNCH_CHECKLIST.md`                                                           |       |
+
+Owner decisions: clean history (option B: `git filter-repo` on a fresh clone, dropping old screenshot
+blobs and rewriting the email to the GitHub noreply address, just before `v1.0.0`; **needs the noreply
+address and approval of the exact commands**); the OBD branch stays local; experimental themes stay,
+documented; process docs as proposed.
+
+### Notes from step 6
+
+- New docs: `ARCHITECTURE`, `HMI_AND_SAFETY`, `RISKS_AND_LIMITATIONS`, `MENU_SYSTEM`, `CONTROLS`,
+  `SIGNALS`, `FEATURE_INVENTORY`, `DEMO_SCRIPT`, `COMPATIBILITY`, `docs/README.md` (index),
+  `docs/adr/README.md`; at the root `CHANGELOG`, `THIRD_PARTY_NOTICES`, `CONTRIBUTING`, `SECURITY`,
+  `CODE_OF_CONDUCT`, `DISCLAIMER`; issue and PR templates.
+- Generated, checked in CI (`npm run docs:check`): `docs/SIGNALS.md` from the signal catalog (with the
+  OBD-II PID for each signal) and `THIRD_PARTY_NOTICES.md` from the production dependencies with full
+  licence texts.
+- Tests: every relative Markdown link in the repo resolves (`src/docs.test.ts`); `CONTROLS.md` lists every
+  action with its key (`actions.test.ts`).
+- Found and fixed: the "How it works" sheet opened relative doc links against the website (404); they
+  now open the file on GitHub. Feature docs no longer say "comes in step N" for things that exist.
+  `PRIVACY.md` now mentions that experimental themes (`?dev=1`) load Google Fonts.
+- Honest gaps written down rather than hidden: no deep settings menu (Home does nothing), Polish texts
+  without a language switch, no real-device or Safari test yet.
 
 ## History
 

@@ -110,7 +110,7 @@ stateDiagram-v2
 
 ## Assumptions
 
-- The lane view sees cars up to 140 m ahead and 12 m behind. Blind-spot warnings come in step 8.
+- The lane view sees cars up to 140 m ahead and 12 m behind. Blind-spot warnings are part of [collision assist](collision-assist.md).
 - The emergency stop stays in the current lane. Some cars change to the hard shoulder; most stop in
   lane.
 

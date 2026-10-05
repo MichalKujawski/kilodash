@@ -114,6 +114,6 @@ stateDiagram-v2
 
 ## Assumptions
 
-- Hybrids and EVs don't use this start-stop. Hybrids stop their engine on their own (step 4).
+- Hybrids and EVs don't use this start-stop. Hybrids stop their engine on their own ([drive modes](drive-modes.md)).
 - The particulate filter regenerates only above 60 km/h. Real cars also run active regeneration at
   lower speeds with extra fuel.

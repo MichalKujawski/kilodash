@@ -45,7 +45,7 @@ something big and rough.
 - **After every visual change:** run `npm run dev`, then `node scripts/screenshots.mjs <dir>` (GPU, fixed
   poses). Look at the images, critique them against the realism rules, iterate.
 - **Locked 60 fps at 1920×720.** The screenshot script reports fps and dropped frames, which must be 0.
-- **Before committing:** `npm run lint && npm run typecheck && npm test && npm run build && npx playwright test`.
+- **Before committing:** `npm run lint && npm run typecheck && npm test && npm run docs:check && npm run build && npx playwright test`.
 - **Commits:** small, Conventional Commits, one feature per commit where possible. `main` stays
   deployable. End messages with the Co-Authored-By line.
 - **When real-car behaviour is uncertain,** pick what mainstream modern cars do and document the

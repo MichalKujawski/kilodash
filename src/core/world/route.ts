@@ -256,7 +256,8 @@ export class Route {
     };
     const curvatureIn = (seg: Segment, local: number): number => {
       let c = 0;
-      for (const a of seg.arcs ?? []) if (local >= a.at && local < a.at + a.length) c += a.curvature;
+      for (const a of seg.arcs ?? [])
+        if (local >= a.at && local < a.at + a.length) c += a.curvature;
       return c;
     };
     for (let s = 0; s <= this.length + STEP; s += STEP) {

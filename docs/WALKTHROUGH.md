@@ -1,6 +1,7 @@
 # Codebase walkthrough
 
-A guided tour for learning the code. Read it top to bottom once, then use it as a map.
+A guided tour for learning the code. Read it top to bottom once, then use it as a map. For the big
+picture first, see [ARCHITECTURE](ARCHITECTURE.md).
 
 ## The one-sentence version
 
@@ -80,7 +81,7 @@ flowchart LR
 ## How to add things
 
 - **A signal:** add an ID and definition to `core/signals/catalog.ts`, then emit it from the simulator
-  (`SimulatorSource.values()`).
+  (`SimulatorSource.values()`), and run `npm run docs:signals` to update [SIGNALS](SIGNALS.md).
 - **A widget:** implement `Widget` (`draw`, optional `drawStatic`), export a `WidgetFactory`, register it
   in `cluster/widgets/registry.ts`, then place it in a layout's `slots`.
 - **A centre page:** implement `CenterPage` in `cluster/widgets/center/` and add its id to the

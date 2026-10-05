@@ -1,0 +1,23 @@
+name: Real-car behaviour
+description: The cluster does something differently from how real cars behave.
+labels: [realism]
+body:
+  - type: textarea
+    id: kilodash
+    attributes:
+      label: What Kilodash does
+      description: The feature and what you saw, with a link or chapter if possible.
+    validations:
+      required: true
+  - type: textarea
+    id: real
+    attributes:
+      label: What real cars do
+      description: Describe the behaviour in general terms. Please don't paste manufacturer manuals or images.
+    validations:
+      required: true
+  - type: input
+    id: source
+    attributes:
+      label: Source
+      description: A regulation, a test protocol or a public description, if you have one.
