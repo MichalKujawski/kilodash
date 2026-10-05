@@ -172,8 +172,9 @@ _Last updated: 2026-10-04_
 | 4 | Drive dock (wheel with spoke buttons, stalk, lever, pedals, contextual cruise, "?" overlay, coach marks) | done |
 | 5 | Engineer mode (6 tabs, live state diagrams, event timeline, How it works sheet) | done |
 | 6 | Cinematic intro (≤ 4 s, skippable, first visit only) | done |
-| 7 | Landing sections | next |
-| 8–11 | Responsive, recording, analytics, polish | |
+| 7 | Landing sections (pitch, highlights, live data path, ADRs, about, footer) | done |
+| 8 | Responsive behaviour and fallbacks | next |
+| 9–11 | Recording, analytics, polish | |
 
 - `node scripts/site-shots.mjs docs/design/progress name=query@WxH` screenshots the site and reports
   time-to-moving, fps and dropped frames (`@WxH+s` waits s extra seconds). Step screenshots live in
@@ -213,6 +214,10 @@ _Last updated: 2026-10-04_
 
 - Step 6: `src/app/shell/intro.ts` (doc `docs/features/intro.md`). `?record=1` already skips it; the
   recording pipeline in step 9 builds on that.
+- Step 7: `src/app/landing/` (doc `docs/features/landing.md`), six ADRs in `docs/adr/`, `docs/PRIVACY.md`.
+  - **Owner to fill in** `ABOUT` in `src/app/site.ts`: name spelling (Michal / Michał), the bio line,
+    LinkedIn and CV links. Empty links are hidden.
+  - Step 8 must fix the phone header (wordmark and mode switch overlap at 390 px).
 
 ## Known issues / open questions
 

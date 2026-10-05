@@ -74,11 +74,11 @@ describe('feature docs', () => {
   it('every source file a doc names exists (no dead "How it works" links)', async () => {
     const fs = await import('node:fs');
     const { sourcePaths } = await import('./markdown');
-    const dir = 'docs/features';
     const missing: string[] = [];
-    for (const f of fs.readdirSync(dir).filter((n) => n.endsWith('.md')))
-      for (const p of sourcePaths(fs.readFileSync(`${dir}/${f}`, 'utf8')))
-        if (!fs.existsSync(p)) missing.push(`${f}: ${p}`);
+    for (const dir of ['docs/features', 'docs/adr'])
+      for (const f of fs.readdirSync(dir).filter((n) => n.endsWith('.md')))
+        for (const p of sourcePaths(fs.readFileSync(`${dir}/${f}`, 'utf8')))
+          if (!fs.existsSync(p)) missing.push(`${f}: ${p}`);
     expect(missing).toEqual([]);
   });
 });

@@ -69,6 +69,7 @@ flowchart LR
 | `app/director/`                           | Watch: chapters as data; `Director` fires their events into the live simulator.       |
 | `app/dock/`                               | Drive: stalk, wheel, selector, pedals over `ControlBus`; moving parts animate via rAF. |
 | `app/engineer/`                           | Engineer: live state diagrams, event log, view model, How it works sheet.             |
+| `app/landing/`                            | Sections under the cockpit; copy as data in `content.ts`.                               |
 | `app/controls/ControlBus.ts`              | Any input (key, pointer, pad) → car action with real tap/hold semantics.              |
 
 ## How to add things

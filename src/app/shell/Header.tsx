@@ -39,9 +39,18 @@ export function Header({ mode, onMode, muted, onMute, awake = true }: Props) {
       window.removeEventListener('focusin', wake);
     };
   }, [mode, awake]);
+  // Over the landing sections the header needs a backdrop to stay readable.
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const onScroll = (): void => setScrolled(window.scrollY > 24);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
   const index = SITE_MODES.indexOf(mode);
   return (
-    <header className={`site-header ${idle && mode === 'watch' ? 'is-idle' : ''}`}>
+    <header
+      className={`site-header ${idle && mode === 'watch' && !scrolled ? 'is-idle' : ''} ${scrolled ? 'is-scrolled' : ''}`}
+    >
       <a className="wordmark" href="./" aria-label="OpenCluster home">
         OpenCluster
       </a>

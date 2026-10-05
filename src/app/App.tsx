@@ -13,6 +13,7 @@ import { DriveDock } from './dock/DriveDock';
 import { EngineerPanel } from './engineer/EngineerPanel';
 import { HowItWorks } from './engineer/HowItWorks';
 import { useEventLog } from './engineer/useEventLog';
+import { Landing } from './landing/Landing';
 import { Director } from './director/Director';
 import { useDirector } from './director/useDirector';
 import { WatchPanel } from './director/WatchPanel';
@@ -353,6 +354,18 @@ export function App() {
           sound={sound}
           onSound={setSound}
           onHow={setHowDoc}
+        />
+      )}
+      {mode !== 'engineer' && (
+        <Landing
+          session={session}
+          fps={fps}
+          onShowMe={(chapter) => {
+            director?.goto(chapter);
+            setMode('watch');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+          onDoc={setHowDoc}
         />
       )}
       {intro.phase !== 'done' && (

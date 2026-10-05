@@ -1,0 +1,327 @@
+/* Landing sections under the cockpit: quiet, generous spacing, one idea per section. */
+.landing {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 120px 32px 40px;
+  color: var(--text-2);
+}
+
+.landing section {
+  margin-bottom: 140px;
+}
+
+.ld-pitch h2 {
+  max-width: 900px;
+  margin: 0 0 22px;
+  font-size: clamp(32px, 4.4vw, 56px);
+  line-height: 1.08;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: var(--text-1);
+}
+
+.ld-pitch p {
+  max-width: 680px;
+  margin: 0;
+  font-size: 19px;
+  line-height: 1.55;
+}
+
+.ld-kicker {
+  margin: 0 0 28px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+/* Highlights */
+.ld-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 28px;
+}
+
+.ld-card {
+  overflow: hidden;
+  border-radius: 18px;
+  border: 1px solid var(--hairline);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.ld-card img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 960 / 360;
+  background: #000;
+}
+
+.ld-card-body {
+  padding: 18px 22px 22px;
+}
+
+.ld-card h4 {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--text-1);
+}
+
+.ld-card p {
+  margin: 0 0 14px;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.ld-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-1);
+  font:
+    500 14px Inter,
+    system-ui,
+    sans-serif;
+  cursor: pointer;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.ld-link:hover {
+  border-bottom-color: var(--text-2);
+}
+
+/* How it works: the data path with live values */
+.ld-pipe {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 22px;
+  margin-bottom: 36px;
+}
+
+.ld-pipe-step {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+}
+
+.ld-node {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid var(--hairline);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.ld-node strong {
+  color: var(--text-1);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.ld-node span {
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+.ld-node code {
+  margin-top: auto;
+  padding-top: 6px;
+  color: var(--on);
+  font:
+    12px 'JetBrains Mono',
+    ui-monospace,
+    Menlo,
+    monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Data flowing between the boxes. */
+.ld-flow {
+  position: absolute;
+  left: -22px;
+  top: 50%;
+  width: 22px;
+  height: 2px;
+  background: repeating-linear-gradient(90deg, var(--on) 0 4px, transparent 4px 9px);
+  background-size: 9px 2px;
+  opacity: 0.7;
+  animation: ld-flow 0.6s linear infinite;
+}
+
+@keyframes ld-flow {
+  to {
+    background-position: 9px 0;
+  }
+}
+
+.ld-lines {
+  max-width: 760px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ld-lines li {
+  margin: 0 0 12px;
+  padding-left: 18px;
+  position: relative;
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+.ld-lines li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.7em;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-3);
+}
+
+/* Engineering decisions */
+.ld-decisions {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 32px;
+}
+
+.ld-decisions button {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  width: 100%;
+  padding: 16px 0;
+  border: 0;
+  border-bottom: 1px solid var(--hairline);
+  background: none;
+  color: var(--text-1);
+  font:
+    15px Inter,
+    system-ui,
+    sans-serif;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ld-num {
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.ld-arrow {
+  margin-left: auto;
+  color: var(--text-3);
+  transition: transform 200ms var(--ease);
+}
+
+.ld-decisions button:hover .ld-arrow {
+  transform: translateX(4px);
+  color: var(--text-1);
+}
+
+/* Built with */
+.ld-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ld-badges li {
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--hairline);
+  font-size: 13px;
+  color: var(--text-1);
+}
+
+/* About */
+.ld-about p {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+
+.ld-name {
+  color: var(--text-1);
+  font-size: 22px !important;
+}
+
+.ld-about-links {
+  display: flex;
+  gap: 20px;
+  margin-top: 14px !important;
+}
+
+.ld-about a,
+.ld-footer a {
+  color: var(--text-1);
+  text-decoration: none;
+  border-bottom: 1px solid var(--hairline);
+}
+
+/* Footer */
+.ld-footer {
+  padding-top: 28px;
+  border-top: 1px solid var(--hairline);
+  font-size: 13px;
+  color: var(--text-3);
+}
+
+.ld-footer p {
+  margin: 0 0 8px;
+}
+
+.ld-footer .ld-link {
+  font-size: 13px;
+  font-weight: 400;
+}
+
+@media (max-width: 900px) {
+  .landing {
+    padding: 72px 20px 32px;
+  }
+  .landing section {
+    margin-bottom: 88px;
+  }
+  .ld-cards,
+  .ld-decisions {
+    grid-template-columns: 1fr;
+  }
+  .ld-pipe {
+    grid-template-columns: 1fr;
+  }
+  .ld-flow {
+    left: 50%;
+    top: -22px;
+    width: 2px;
+    height: 22px;
+    background: repeating-linear-gradient(180deg, var(--on) 0 4px, transparent 4px 9px);
+    background-size: 2px 9px;
+    animation-name: ld-flow-down;
+  }
+  @keyframes ld-flow-down {
+    to {
+      background-position: 0 9px;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ld-flow {
+    animation: none;
+  }
+}

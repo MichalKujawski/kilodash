@@ -2,15 +2,23 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { REPO_URL } from '../site';
 import { parseInline, parseMarkdown, sourcePaths, type Block, type ListItem } from './markdown';
 
-const DOCS = import.meta.glob('../../../docs/features/*.md', {
-  query: '?raw',
-  import: 'default',
-}) as Record<string, () => Promise<string>>;
+const DOCS = import.meta.glob(
+  ['../../../docs/features/*.md', '../../../docs/adr/*.md', '../../../docs/PRIVACY.md'],
+  { query: '?raw', import: 'default' },
+) as Record<string, () => Promise<string>>;
+
+/** `speed-assist` → features/speed-assist; `adr/0001-…` and `PRIVACY` stay as they are. */
+function docPath(id: string): string {
+  return id.includes('/') || id === 'PRIVACY' ? id : `features/${id}`;
+}
 
 function loadDoc(id: string): Promise<string> | null {
-  const key = Object.keys(DOCS).find((k) => k.endsWith(`/${id}.md`));
+  const key = Object.keys(DOCS).find((k) => k.endsWith(`/docs/${docPath(id)}.md`));
   return key ? DOCS[key]!() : null;
 }
+
+const KICKER = (id: string): string =>
+  id.startsWith('adr/') ? 'Engineering decision' : id === 'PRIVACY' ? 'Privacy' : 'How it works';
 
 const repoLink = (path: string): string =>
   `${REPO_URL}/${path.endsWith('/') ? 'tree' : 'blob'}/main/${path}`;
@@ -130,9 +138,9 @@ export function HowItWorks({ doc, onClose }: { doc: string; onClose: () => void 
   }, [onClose]);
   const files = md ? sourcePaths(md) : [];
   return (
-    <aside className="hiw" role="dialog" aria-label="How it works">
+    <aside className="hiw" role="dialog" aria-label={KICKER(doc)}>
       <div className="hiw-head">
-        <span className="hiw-kicker">How it works</span>
+        <span className="hiw-kicker">{KICKER(doc)}</span>
         <button className="round" aria-label="Close" onClick={onClose}>
           ✕
         </button>
@@ -150,8 +158,8 @@ export function HowItWorks({ doc, onClose }: { doc: string; onClose: () => void 
               {f}
             </a>
           ))}
-          <a href={repoLink(`docs/features/${doc}.md`)} target="_blank" rel="noreferrer">
-            docs/features/{doc}.md
+          <a href={repoLink(`docs/${docPath(doc)}.md`)} target="_blank" rel="noreferrer">
+            docs/{docPath(doc)}.md
           </a>
         </section>
       )}

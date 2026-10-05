@@ -298,6 +298,13 @@ body {
   }
 }
 
+/* Scrolled into the landing sections: a quiet frosted bar. */
+.site-header.is-scrolled {
+  background: rgba(5, 6, 7, 0.72);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--hairline);
+}
+
 /* ---- Watch: captions and chapter bar ---- */
 .watch {
   max-width: 1100px;

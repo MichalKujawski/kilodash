@@ -192,3 +192,18 @@ test('Engineer: six tabs, live state diagrams, "How it works" from diagrams and 
   await expect(page.getByRole('dialog', { name: 'How it works' })).toBeVisible();
   await expect(page.locator('.site')).toHaveAttribute('data-mode', 'watch');
 });
+
+test('landing: Show me jumps the demo to the chapter; decisions and privacy open in the sheet', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Show me ↑' }).nth(1).click();
+  await expect(page.locator('.chapter-title')).toHaveText('Safety');
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeLessThan(10);
+  await page.getByRole('button', { name: /Canvas for the cluster/ }).click();
+  const sheet = page.getByRole('dialog', { name: 'Engineering decision' });
+  await expect(sheet.locator('h2')).toContainText('Canvas');
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Privacy' }).click();
+  await expect(page.getByRole('dialog', { name: 'Privacy' })).toContainText('No cookies');
+});

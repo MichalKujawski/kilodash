@@ -49,3 +49,10 @@ One entry per finished feature, for building a guided demo. Keep each entry shor
   and needle sweep; header and captions fade in as the car joins the motorway.
 - **Caption:** none (it is the opening shot).
 - **Duration:** ~4 s
+
+### Landing: "Show me"
+
+- **Demo:** scroll to Highlights and click "Show me" on Emergency braking. The page glides back up and
+  the demo jumps to the Safety chapter. Further down, the How it works boxes show the car's live values.
+- **Caption:** "Every highlight is live: click it and watch it happen."
+- **Duration:** ~10 s
