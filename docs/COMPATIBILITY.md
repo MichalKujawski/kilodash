@@ -15,8 +15,8 @@ browser lacks the canvas or `ResizeObserver`, the page shows a one-line note ins
 | Firefox (desktop, Linux)    | Playwright browser tests on the production build                       | 16 / 16 pass               | 2026-10-05 |
 | WebKit (Safari's engine)    | Playwright in CI on Ubuntu (can't run on the dev machine)              | runs on the first CI push  | –          |
 | Chrome, phone size          | Playwright with an emulated phone viewport                             | pass                       | 2026-10-05 |
-| Chrome, mobile emulation    | Lighthouse mobile preset (4× CPU slowdown, slow 4G)                    | performance 91, others 100 | 2026-10-05 |
-| Chrome (desktop), GPU       | `scripts/screenshots.mjs` and `npm run stats`: 60 s of the guided demo | 60 fps, 2 dropped frames   | 2026-10-05 |
+| Chrome, mobile emulation    | Lighthouse mobile preset (4× CPU slowdown, slow 4G)                    | performance 90, others 100 | 2026-10-05 |
+| Chrome (desktop), GPU       | `scripts/screenshots.mjs` and `npm run stats`: 60 s of the guided demo | 60 fps, 1 dropped frame    | 2026-10-05 |
 | Real iPhone (Safari)        | –                                                                      | **not tested yet**         | –          |
 | Real Android phone (Chrome) | –                                                                      | **not tested yet**         | –          |
 | Safari on macOS             | –                                                                      | **not tested yet**         | –          |

@@ -43,8 +43,8 @@ Each feature doc lists its own assumptions under **Assumptions** ([features](fea
 
 ## Performance and compatibility
 
-- **Measured, not guaranteed.** On the development machine: 60 fps with 2 dropped frames in 60 s, and a
-  Lighthouse mobile performance score of 91 ([PROJECT_STATS](PROJECT_STATS.md)). Slower devices drop
+- **Measured, not guaranteed.** On the development machine: 60 fps with 1 dropped frame in 60 s, and a
+  Lighthouse mobile performance score of 90 ([PROJECT_STATS](PROJECT_STATS.md)). Slower devices drop
   more; `?lowpower=1` turns off bloom, glass and blur.
 - **Safari and real phones** haven't been tested by hand. WebKit runs only in CI. See
   [COMPATIBILITY](COMPATIBILITY.md).

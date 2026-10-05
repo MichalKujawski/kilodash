@@ -70,12 +70,12 @@ All measured by `npm run stats` ([docs/PROJECT_STATS.md](docs/PROJECT_STATS.md))
 
 | Measure            | Value                                                            |
 | ------------------ | ---------------------------------------------------------------- |
-| Unit tests         | 249 passing (35 files)                                           |
+| Unit tests         | 252 passing (37 files)                                           |
 | Browser tests      | 16 passing (Chromium, Firefox; WebKit in CI)                     |
-| Frame rate         | 60.0 fps, 2 dropped frames in 60 s of the guided demo            |
-| First moving frame | 279 ms (production build, desktop)                               |
+| Frame rate         | 60.0 fps, 1 dropped frame in 60 s of the guided demo             |
+| First moving frame | 322 ms (production build, desktop)                               |
 | First load         | 160 KB gzip (JS + CSS) + 161 KB fonts                            |
-| Lighthouse         | desktop 100 / 100 / 100 / 100; mobile performance 91, others 100 |
+| Lighthouse         | desktop 100 / 100 / 100 / 100; mobile performance 90, others 100 |
 
 ## Run it locally
 
