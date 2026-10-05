@@ -59,8 +59,8 @@ The first public release: a digital instrument cluster that behaves like a moder
 
 ### Project
 
-- Unit tests (Vitest) and browser tests (Playwright) in Chromium, Firefox and WebKit; CI with GitHub
-  Pages deployment.
+- Unit tests (Vitest) and browser tests (Playwright) in Chromium, Firefox and WebKit; CI on GitHub
+  Actions, deployed on Vercel.
 - `npm run stats` measures every number used in the README.
 - Docs: architecture, six decision records, a page per feature, HMI and safety, menu system, controls,
   signals, risks and limitations, compatibility, and a demo script.

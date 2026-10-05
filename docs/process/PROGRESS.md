@@ -48,10 +48,13 @@ prompt's §13 order; the audit and its decisions are in [RELEASE_AUDIT.md](RELEA
 | 9    | GitHub presentation, `v1.0.0` prepared locally (push only with owner approval)            |       |
 | 10   | Final QA, `LAUNCH_CHECKLIST.md`                                                           |       |
 
-Owner decisions: clean history (option B: `git filter-repo` on a fresh clone, dropping old screenshot
-blobs and rewriting the email to the GitHub noreply address, just before `v1.0.0`; **needs the noreply
-address and approval of the exact commands**); the OBD branch stays local; experimental themes stay,
-documented; process docs as proposed.
+Owner decisions: the OBD branch stays local; experimental themes stay, documented; process docs as
+proposed. **Identity:** commits keep the owner's original email (no noreply rewrite). **History:** the
+old screenshot blobs (~245 MB of the 249 MiB pack) can still be dropped with `git filter-repo` before
+the first push; a dry run on a scratch clone gave 4.1 MiB with all commits kept. Waiting for the owner's
+approval of the exact commands. **Hosting:** GitHub repo `MichalKujawski/kilodash`, deployed by
+Vercel's Git integration (`vercel.json`; Node 24, which Vercel supports); the GitHub Pages job is
+removed from CI.
 
 ### Notes from step 6
 

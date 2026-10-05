@@ -125,5 +125,5 @@ every run.
 ## Build and deploy
 
 `npm run build` type-checks and produces a static `dist/` (about 160 KB gzip for the first load). CI
-(`.github/workflows/ci.yml`) runs the same checks as a local commit, the browser tests in three engines,
-and deploys `main` to GitHub Pages.
+(`.github/workflows/ci.yml`) runs the same checks as a local commit and the browser tests in three engines. Vercel builds every push
+from the repository (`vercel.json`): `main` goes to production, other branches get preview URLs.

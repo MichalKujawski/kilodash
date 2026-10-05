@@ -2,9 +2,9 @@
 
 **A digital instrument cluster that behaves like a real car's, in the browser.**
 
-<!-- TODO(owner): confirm the live URL after the first Pages deploy. -->
+<!-- TODO(owner): confirm the live URL after the first Vercel deploy. -->
 
-**[Live demo](https://michalkujawski.github.io/kilodash/)** · [How it's built](docs/ARCHITECTURE.md) ·
+**[Live demo](https://kilodash.vercel.app/)** · [How it's built](docs/ARCHITECTURE.md) ·
 [Features](docs/FEATURE_INVENTORY.md) · [Docs](docs/README.md)
 
 [![CI](https://github.com/MichalKujawski/kilodash/actions/workflows/ci.yml/badge.svg)](https://github.com/MichalKujawski/kilodash/actions/workflows/ci.yml)
@@ -20,7 +20,7 @@ state, on a Canvas at 60 fps.
 
 - **Watch:** the site opens on a guided drive in nine chapters: motorway assists, emergency braking,
   drive modes, the city at a red light, night, menus and parking. Every chapter has its own link, for
-  example [`?chapter=safety`](https://michalkujawski.github.io/kilodash/?chapter=safety).
+  example [`?chapter=safety`](https://kilodash.vercel.app/?chapter=safety).
 - **Drive:** take the wheel. Indicator stalk, steering-wheel buttons, selector and pedals, by mouse,
   touch, keyboard or gamepad. Press `?` for every key.
 - **Engineer:** the internals, live. Signals, state diagrams lighting up as the car drives, an event
@@ -79,7 +79,7 @@ All measured by `npm run stats` ([docs/PROJECT_STATS.md](docs/PROJECT_STATS.md))
 
 ## Run it locally
 
-Needs Node 26 (see `.nvmrc`).
+Needs Node 24 or newer (`.nvmrc`).
 
 ```bash
 npm ci
@@ -94,7 +94,7 @@ URL options: `?mode=watch|drive|engineer`, `?chapter=<id>`, `?kiosk=1` (cluster 
 
 ## Tech
 
-TypeScript, React 18, Canvas 2D, Vite, Vitest, Playwright, GitHub Actions and Pages. At run time only
+TypeScript, React 18, Canvas 2D, Vite, Vitest, Playwright, GitHub Actions, Vercel. At run time only
 React and two self-hosted font packages; no chart, map, 3D or game libraries.
 
 ## How it was made

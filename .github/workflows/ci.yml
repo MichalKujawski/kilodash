@@ -1,6 +1,6 @@
 # Every push and pull request: the same checks as before a commit (see CLAUDE.md), browser tests in
-# Chromium, Firefox and WebKit. Pushes to main also publish the site to GitHub Pages (enable Pages →
-# "GitHub Actions" once).
+# Chromium, Firefox and WebKit. Deployment is Vercel's job: its Git integration builds every push
+# (`vercel.json`), with production from main.
 name: CI
 
 on:
@@ -25,10 +25,6 @@ jobs:
       - run: npm test
       - run: npm run docs:check
       - run: npm run build
-      - uses: actions/upload-pages-artifact@v3
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        with:
-          path: dist
 
   e2e:
     runs-on: ubuntu-latest
@@ -48,17 +44,3 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps ${{ matrix.browser }}
       - run: npx playwright test --browser=${{ matrix.browser }}
-
-  deploy:
-    needs: [check, e2e]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4

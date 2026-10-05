@@ -80,6 +80,9 @@ Fix: write them in steps 5–8, short and accurate; several can be built from ex
 
 ## History strategy (your decision)
 
+> **Update:** the owner keeps the original email on commits (R2 accepted as is). Only the blob cleanup
+> remains to decide.
+
 - **A, keep history as is:** not possible; R1 and R2 are blockers.
 - **B, clean the history (recommended):** on a fresh clone, `git filter-repo` would:
   1. drop the old `docs/screenshots/` and `docs/design/` blobs (the curated images return in one new commit);
