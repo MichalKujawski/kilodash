@@ -698,7 +698,8 @@ body {
 /* 4:5 social cut: the cluster across the width, big captions that work without sound. */
 .record-45 .stage {
   --w: 1040px;
-  padding-top: 230px;
+  /* Cluster (≈ 390 px) and captions (≈ 300 px) centred in the 1350 px frame. */
+  padding-top: 330px;
 }
 
 .record-45 .watch {
