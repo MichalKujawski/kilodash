@@ -238,7 +238,7 @@ export class ControlBus {
         src.pressDriveMode();
         break;
       case 'demo':
-        src.setAutopilot(!src.autopilot);
+        src.setDemoDrive(!src.demoDrive);
         break;
       case 'night':
         this.hooks.renderer()?.cycleNightMode();

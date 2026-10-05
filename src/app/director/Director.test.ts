@@ -161,7 +161,7 @@ describe('Director', () => {
       d.release();
       src.fastForward(0.1);
       expect(src.paused, id).toBe(false);
-      expect(src.autopilot, id).toBe(false);
+      expect(src.demoDrive, id).toBe(false);
       expect(src.demo.scripted, id).toBe(false);
       expect(src.demo.cruiseAllowed, id).toBe(true);
       expect(src.buttons.distracted, id).toBe(false);

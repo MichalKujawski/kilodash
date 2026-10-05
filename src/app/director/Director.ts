@@ -117,7 +117,7 @@ export class Director {
     this.src.buttons.distracted = false;
     this.src.demo.scripted = false;
     this.src.demo.cruiseAllowed = true;
-    this.src.setAutopilot(false);
+    this.src.setDemoDrive(false);
   }
 
   tick(dt: number): void {

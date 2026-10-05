@@ -11,5 +11,8 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['src/**/*.test.ts'],
+    // Node's built-in localStorage is experimental and warns without a backing file; the code
+    // under test guards every storage access, so tests run without it.
+    execArgv: ['--no-experimental-webstorage'],
   },
 });

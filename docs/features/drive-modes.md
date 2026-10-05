@@ -2,7 +2,7 @@
 
 ## Real-world behaviour this models
 
-Mainstream cars from about 2015 onwards (VW group, BMW, Mercedes, Hyundai/Kia, Volvo) work alike:
+Mainstream European and Korean cars from about 2015 onwards work alike:
 
 - **A mode button** on the console opens a list in the cluster (or infotainment). Each further press
   moves the highlight down; the steering-wheel scroll wheel moves it too. The highlighted mode is
@@ -119,7 +119,7 @@ stateDiagram-v2
 
 | What                         | Value                                                           | Why                                          |
 | ---------------------------- | --------------------------------------------------------------- | -------------------------------------------- |
-| Popup auto-confirm           | 2 s                                                             | Typical of current VW/Hyundai/BMW behaviour  |
+| Popup auto-confirm           | 2 s                                                             | Typical of current mainstream cars           |
 | Coasting minimum speed       | 20 km/h                                                         | Below it the gearbox stays engaged for creep |
 | Coasting entry delay         | 0.4 s with pedals off                                           | Avoids flicker when changing pedals          |
 | Coasting max descent         | −4 %                                                            | Engine braking wanted downhill               |

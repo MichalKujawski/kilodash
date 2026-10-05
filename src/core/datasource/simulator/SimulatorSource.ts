@@ -174,7 +174,7 @@ export class SimulatorSource implements DataSource {
   private lastRoad = '';
   private lastIgnition = 2;
   /** Demo drive enabled (resumes after inactivity). */
-  autopilot = true;
+  demoDrive = true;
   /** Freeze the simulation (review poses of short events); the cluster keeps drawing. */
   paused = false;
   readonly buttons: CarButtons = {
@@ -332,7 +332,7 @@ export class SimulatorSource implements DataSource {
     st.coolantC = Math.max(st.coolantC, 86);
     st.oilC = Math.max(st.oilC, 84);
     this.demo.resume(this.sim);
-    this.autopilot = true;
+    this.demoDrive = true;
   }
 
   /** Back to the first bay, ignition off; the Demo drive starts a new day. */
@@ -591,7 +591,7 @@ export class SimulatorSource implements DataSource {
 
   /** Guided demo: the Demo driver takes over again right away (no 10 s wait). */
   resumeDemo(): void {
-    this.autopilot = true;
+    this.demoDrive = true;
     this.manualIdle = DEMO_RESUME_S;
     this.manual.throttle = 0;
     this.manual.brake = 0;
@@ -604,8 +604,8 @@ export class SimulatorSource implements DataSource {
     this.manualIdle = 0;
   }
 
-  setAutopilot(on: boolean): void {
-    this.autopilot = on;
+  setDemoDrive(on: boolean): void {
+    this.demoDrive = on;
   }
 
   refuel(): void {
@@ -621,8 +621,8 @@ export class SimulatorSource implements DataSource {
     this.manualIdle = 0;
   }
 
-  get isAutopilotActive(): boolean {
-    return this.autopilot && this.manualIdle >= DEMO_RESUME_S;
+  get isDemoDriveActive(): boolean {
+    return this.demoDrive && this.manualIdle >= DEMO_RESUME_S;
   }
 
   // --- Simulation loop --------------------------------------------------------
@@ -654,7 +654,7 @@ export class SimulatorSource implements DataSource {
     this.emit(this.clock(), true);
   }
 
-  private wasAutopilot = true;
+  private wasDemoDrive = true;
 
   private step(): void {
     const sim = this.sim;
@@ -664,9 +664,9 @@ export class SimulatorSource implements DataSource {
     scene.driveModes = sim.driveModes.state;
     scene.efficiency = this.efficiency();
     this.lastScene = scene;
-    const auto = this.isAutopilotActive;
+    const auto = this.isDemoDriveActive;
     if (auto) {
-      if (!this.wasAutopilot) this.demo.resume(sim);
+      if (!this.wasDemoDrive) this.demo.resume(sim);
       this.demo.distracted = this.buttons.distracted;
       this.demo.update(sim, world, scene, STEP_S, this.assist);
     } else {
@@ -678,7 +678,7 @@ export class SimulatorSource implements DataSource {
       if (sim.inputs.rightIndicator && world.ego.targetLane === world.ego.lane)
         world.changeLane(-1);
     }
-    this.wasAutopilot = auto;
+    this.wasDemoDrive = auto;
     // The human's own pedals, before any assist adds to them.
     const human = { throttle: sim.inputs.throttle, brake: sim.inputs.brake };
     this.recognize(scene);

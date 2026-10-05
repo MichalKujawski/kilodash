@@ -120,7 +120,7 @@ test('wheel buttons have touch targets of at least 44 px where the spacing allow
 type Oc = {
   session: {
     store: { value(id: string): number };
-    source: { autopilot: boolean; world: { ego: { s: number } } };
+    source: { demoDrive: boolean; world: { ego: { s: number } } };
   };
   audio: { muted: boolean; master: { gain: { value: number } } | null };
 };
@@ -155,17 +155,21 @@ test('Take the wheel mid-chapter: same place and speed, demo driver off, caption
   const before = await page.evaluate(() => ({
     s: (window as unknown as { __oc: Oc }).__oc.session.source.world.ego.s,
     kmh: (window as unknown as { __oc: Oc }).__oc.session.store.value('Vehicle.Speed'),
+    t: performance.now(),
   }));
   await page.getByRole('button', { name: 'Take the wheel →' }).click();
   await page.waitForTimeout(100);
   const after = await page.evaluate(() => ({
     s: (window as unknown as { __oc: Oc }).__oc.session.source.world.ego.s,
     kmh: (window as unknown as { __oc: Oc }).__oc.session.store.value('Vehicle.Speed'),
-    autopilot: (window as unknown as { __oc: Oc }).__oc.session.source.autopilot,
+    demoDrive: (window as unknown as { __oc: Oc }).__oc.session.source.demoDrive,
+    t: performance.now(),
   }));
-  expect(after.autopilot).toBe(false);
+  expect(after.demoDrive).toBe(false);
+  // No jump: the car moved forward only as far as its speed explains (+ 5 m margin).
+  const expected = (before.kmh / 3.6) * ((after.t - before.t) / 1000);
   expect(after.s - before.s).toBeGreaterThan(0);
-  expect(after.s - before.s).toBeLessThan(15);
+  expect(after.s - before.s).toBeLessThan(expected + 5);
   expect(Math.abs(after.kmh - before.kmh)).toBeLessThan(5);
   await expect(page.locator('.caption')).toHaveCount(0);
   await expect(page.locator('.dock')).toBeVisible();

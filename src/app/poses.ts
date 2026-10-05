@@ -51,7 +51,7 @@ export function applyPose(session: ClusterSession, pose: Pose): void {
     case 'idle':
       // Parked in the first bay, engine running, selector in P.
       src.parkAtStart();
-      src.setAutopilot(false);
+      src.setDemoDrive(false);
       src.sim.setIgnition(2);
       src.sim.start();
       session.fastForward(4);
@@ -73,7 +73,7 @@ export function applyPose(session: ClusterSession, pose: Pose): void {
       src.sim.driveModes.select('eco');
       src.jumpTo('rural');
       session.fastForward(40);
-      src.setAutopilot(false);
+      src.setDemoDrive(false);
       src.setManualInput({ throttle: 0, brake: 0 });
       session.fastForward(3);
       break;
@@ -113,7 +113,7 @@ export function applyPose(session: ClusterSession, pose: Pose): void {
     case 'isa':
       // Too fast in town: the speed warning flashes the sign, then chimes.
       src.jumpTo('town');
-      src.setAutopilot(false);
+      src.setDemoDrive(false);
       src.setManualInput({ throttle: 0.45 });
       session.fastForward(9);
       break;
@@ -149,7 +149,7 @@ export function applyPose(session: ClusterSession, pose: Pose): void {
       // A car alongside on the left while we indicate left: zone flashes, chime.
       src.jumpTo('motorway');
       session.fastForward(30);
-      src.setAutopilot(false);
+      src.setDemoDrive(false);
       const w = src.world;
       w.traffic.spawnAt(w.ego.s - 2, w.ego.lane + 1, src.sim.state.speedMs);
       src.setIndicator('left');
@@ -163,7 +163,7 @@ export function applyPose(session: ClusterSession, pose: Pose): void {
       src.jumpTo('roadworks');
       session.fastForward(4);
       src.assist.switchOff();
-      src.setAutopilot(false);
+      src.setDemoDrive(false);
       src.setManualInput({ throttle: 0.35 });
       for (let i = 0; i < 1200 && src.collision.stage !== 'braking'; i++) {
         if (src.assist.state !== 'off') src.assist.switchOff();
@@ -186,7 +186,7 @@ export function applyPose(session: ClusterSession, pose: Pose): void {
       // Manual gear selection, gentle acceleration: "shift up" advice.
       src.jumpTo('rural');
       session.fastForward(10);
-      src.setAutopilot(false);
+      src.setDemoDrive(false);
       src.setGearProgram('M');
       src.setManualInput({ throttle: 0.25 });
       session.fastForward(1);
@@ -200,7 +200,7 @@ export function applyPose(session: ClusterSession, pose: Pose): void {
       src.sim.driveModes.select('sport');
       src.jumpTo('motorway');
       session.fastForward(5);
-      src.setAutopilot(false);
+      src.setDemoDrive(false);
       src.setGearProgram('M');
       const sim = src.sim;
       // A clear lane ahead for the run up to the shift point.
@@ -235,7 +235,7 @@ export function applyPose(session: ClusterSession, pose: Pose): void {
     case 'door':
       // Parked, engine running, driver's door and boot open.
       src.parkAtStart();
-      src.setAutopilot(false);
+      src.setDemoDrive(false);
       src.sim.setIgnition(2);
       src.sim.start();
       session.fastForward(4);
@@ -247,7 +247,7 @@ export function applyPose(session: ClusterSession, pose: Pose): void {
       // Start of the day with a service due soon.
       src.setService('soon');
       src.parkAtStart();
-      src.setAutopilot(false);
+      src.setDemoDrive(false);
       src.sim.setIgnition(2);
       src.sim.start();
       session.fastForward(4);
@@ -278,7 +278,7 @@ export function applyPose(session: ClusterSession, pose: Pose): void {
       break;
     case 'redline': {
       src.jumpTo('motorway');
-      src.setAutopilot(false);
+      src.setDemoDrive(false);
       const sim = src.sim;
       src.setGearProgram('M');
       src.setManualInput({ throttle: 1 });

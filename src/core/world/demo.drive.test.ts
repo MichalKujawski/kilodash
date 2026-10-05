@@ -10,7 +10,6 @@ describe('Demo drive over the whole route', () => {
   it('reverses out, obeys limits and lights, keeps its distance and parks', () => {
     let now = 0;
     const src = new SimulatorSource(DEFAULT_PROFILE, { startOff: true }, () => now);
-    const world = src.world;
     const sim = src.sim;
     let t = 0;
     let minGap = Infinity;
@@ -25,10 +24,6 @@ describe('Demo drive over the whole route', () => {
     let wasStopped = false;
     let lastStage = 'ready';
     let drivingS = 0;
-    let takeovers = 0;
-    let wasTakeover = false;
-    let lastLog = 0;
-    const log: string[] = [];
     while (t < 3000 && src.demo.phase !== 'parked') {
       src.fastForward(0.1);
       now += 100;
@@ -46,8 +41,6 @@ describe('Demo drive over the whole route', () => {
         drivingS += 0.1;
         if (src.recognized.limit === sc.legal.limit) agreeS += 0.1;
       }
-      if (src.assist.out.takeover && !wasTakeover) takeovers++;
-      wasTakeover = src.assist.out.takeover;
       if (sim.state.direction === -1 && kmh > 0.5) reversed = true;
       if (sc.lead && sc.lead.dx < minGap && !sc.ego.inBay) minGap = sc.lead.dx;
       const limit = sc.legal.limit;
@@ -59,30 +52,7 @@ describe('Demo drive over the whole route', () => {
         kmh > 5
       )
         redRun = true;
-      if (t - lastLog >= 60) {
-        lastLog = t;
-        log.push(
-          `${t.toFixed(0)}s s=${sc.ego.s.toFixed(0)} ${sc.road.name} ${kmh.toFixed(0)}km/h lim=${limit} lane=${sc.ego.lane.toFixed(1)} gear=${sim.state.gear} phase=${src.demo.phase}`,
-        );
-      }
     }
-    console.log(log.join('\n'));
-    console.log({
-      t: t.toFixed(0),
-      minGap: minGap.toFixed(1),
-      overLimitS: overLimitS.toFixed(1),
-      maxKmh: maxKmh.toFixed(0),
-      accS: accS.toFixed(0),
-      recognitionAgreement: (agreeS / drivingS).toFixed(3),
-      fcw: JSON.stringify(fcw),
-      autoStops,
-      takeovers,
-      redRun,
-      reversed,
-      phase: src.demo.phase,
-      s: world.ego.s.toFixed(0),
-      length: world.route.length.toFixed(0),
-    });
     expect(reversed).toBe(true);
     expect(src.demo.phase).toBe('parked');
     expect(redRun).toBe(false);

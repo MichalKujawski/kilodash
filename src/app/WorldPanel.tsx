@@ -90,11 +90,11 @@ export function WorldPanel({ session, renderer, sound, onSound }: Props) {
       <div className="dev-row">
         <span className="dev-label">Drive</span>
         <button
-          className={`pill ${src.isAutopilotActive ? 'pill-on' : ''}`}
-          onClick={() => src.setAutopilot(!src.autopilot)}
+          className={`pill ${src.isDemoDriveActive ? 'pill-on' : ''}`}
+          onClick={() => src.setDemoDrive(!src.demoDrive)}
           title={`Demo drive [${keyHint('demo')}]`}
         >
-          Demo drive {src.autopilot ? (src.isAutopilotActive ? 'on' : 'paused (you drive)') : 'off'}
+          Demo drive {src.demoDrive ? (src.isDemoDriveActive ? 'on' : 'paused (you drive)') : 'off'}
         </button>
         {WORLD_PLACES.map((p) => (
           <button key={p.id} className="pill" onClick={() => src.jumpTo(p.id)}>

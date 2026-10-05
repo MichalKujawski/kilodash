@@ -10,9 +10,6 @@ export const EngineerPanel = lazy(() =>
 export const HowItWorks = lazy(() =>
   import('./engineer/HowItWorks').then((m) => ({ default: m.HowItWorks })),
 );
-export const Landing = lazy(() =>
-  import('./landing/Landing').then((m) => ({ default: m.Landing })),
-);
 export const DriveDock = lazy(() =>
   import('./dock/DriveDock').then((m) => ({ default: m.DriveDock })),
 );

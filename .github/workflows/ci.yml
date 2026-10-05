@@ -1,5 +1,6 @@
-# Every push and pull request: the same checks as before a commit (see CLAUDE.md).
-# Pushes to main also publish the site to GitHub Pages (enable Pages → "GitHub Actions" once).
+# Every push and pull request: the same checks as before a commit (see CLAUDE.md), browser tests in
+# Chromium, Firefox and WebKit. Pushes to main also publish the site to GitHub Pages (enable Pages →
+# "GitHub Actions" once).
 name: CI
 
 on:
@@ -12,29 +13,43 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
-    env:
-      # CI machines have no system Chrome: use Playwright's bundled Chromium.
-      PW_CHROME: '0'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version-file: .nvmrc
           cache: npm
       - run: npm ci
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
-      - run: npx playwright install --with-deps chromium
-      - run: npx playwright test
       - uses: actions/upload-pages-artifact@v3
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         with:
           path: dist
 
+  e2e:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    env:
+      # CI machines have no system Chrome: use Playwright's own browsers.
+      PW_CHROME: '0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      - run: npx playwright test --browser=${{ matrix.browser }}
+
   deploy:
-    needs: check
+    needs: [check, e2e]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:

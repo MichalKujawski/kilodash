@@ -1,0 +1,10 @@
+# Normalise line endings; keep generated media out of diffs and merges.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.webp binary
+*.gif binary
+*.mp4 binary
+*.webm binary
+*.woff2 binary
+package-lock.json -diff linguist-generated
