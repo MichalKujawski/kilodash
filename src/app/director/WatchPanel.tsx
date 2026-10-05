@@ -2,6 +2,13 @@ import { useEffect } from 'react';
 import { TOTAL_S } from './chapters';
 import type { Director, DirectorState } from './Director';
 
+/** A chapter the visitor chose goes into the address bar, so the URL shares that moment. */
+function shareChapter(id: string): void {
+  const url = new URL(window.location.href);
+  url.searchParams.set('chapter', id);
+  window.history.replaceState(null, '', url);
+}
+
 const clock = (s: number): string =>
   `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
@@ -33,9 +40,13 @@ export function WatchPanel({
     const down = (e: KeyboardEvent): void => {
       if (e.ctrlKey || e.metaKey || e.altKey || e.target instanceof HTMLInputElement) return;
       if (e.key === ' ') director.toggle();
-      else if (e.key === 'ArrowRight') director.next();
-      else if (e.key === 'ArrowLeft') director.prev();
-      else return;
+      else if (e.key === 'ArrowRight') {
+        director.next();
+        shareChapter(director.chapter.id);
+      } else if (e.key === 'ArrowLeft') {
+        director.prev();
+        shareChapter(director.chapter.id);
+      } else return;
       e.preventDefault();
     };
     window.addEventListener('keydown', down);
@@ -74,7 +85,10 @@ export function WatchPanel({
             className="round"
             aria-label="Next chapter"
             title="Next chapter (→)"
-            onClick={() => director.next()}
+            onClick={() => {
+              director.next();
+              shareChapter(director.chapter.id);
+            }}
           >
             <NextIcon />
           </button>
@@ -87,7 +101,10 @@ export function WatchPanel({
               aria-selected={i === index}
               className={`chapter ${i < index ? 'done' : ''} ${i === index ? 'current' : ''}`}
               style={{ flexGrow: c.duration }}
-              onClick={() => director.start(i)}
+              onClick={() => {
+                director.start(i);
+                shareChapter(c.id);
+              }}
             >
               <span className="track">
                 <span

@@ -174,8 +174,9 @@ _Last updated: 2026-10-04_
 | 6 | Cinematic intro (≤ 4 s, skippable, first visit only) | done |
 | 7 | Landing sections (pitch, highlights, live data path, ADRs, about, footer) | done |
 | 8 | Responsive behaviour and fallbacks (laptop, tablet, phone portrait/landscape, old browsers) | done |
-| 9 | Recording pipeline, clips, README media, OG images | next |
-| 10–11 | Analytics, polish | |
+| 9 | Recording pipeline, clips, README media, OG images | done |
+| 10 | Analytics (off by default), privacy, UX testing kit | next |
+| 11 | Final rubric polish, Lighthouse | |
 
 - `node scripts/site-shots.mjs docs/design/progress name=query@WxH` screenshots the site and reports
   time-to-moving, fps and dropped frames (`@WxH+s` waits s extra seconds). Step screenshots live in
@@ -218,6 +219,12 @@ _Last updated: 2026-10-04_
 - Step 7: `src/app/landing/` (doc `docs/features/landing.md`), six ADRs in `docs/adr/`, `docs/PRIVACY.md`.
   - **Owner to fill in** `ABOUT` in `src/app/site.ts`: name spelling (Michal / Michał), the bio line,
     LinkedIn and CV links. Empty links are hidden.
+- Step 9: `?record=1`, `scripts/record-video.mjs` (fake-clock frame stepping → ffmpeg),
+  `scripts/make-media.mjs`, `docs/VIDEO_SCRIPT.md`, card loops, README WebP, `public/og.png`, share meta.
+  - Recording exposed three chapters that didn't match their captions (Motorway in a busy world, City
+    without a red light, Shutdown not switching off); fixed, with tests.
+  - **Owner:** once deployed, make `og:image` an absolute URL in `index.html` and add the live link to
+    the README. The long videos are in the git-ignored media folder, for uploading.
 - Step 8: `src/app/shell/device.ts`, `src/cluster/renderer/compat.ts` (doc `docs/features/responsive.md`).
   Phones have no Drive (Watch + Engineer); portrait screens no longer leave an empty screen under the
   cockpit.

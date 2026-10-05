@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { ABOUT, REPO_URL } from '../site';
 import { usePoll } from '../useSignal';
 import type { ClusterSession } from '../session';
@@ -29,7 +30,7 @@ export function Landing({ session, fps, onShowMe, onDoc }: Props) {
         <div className="ld-cards">
           {HIGHLIGHTS.map((h) => (
             <article key={h.chapter} className="ld-card">
-              <img src={h.poster} alt="" width={960} height={360} loading="lazy" decoding="async" />
+              <CardLoop poster={h.poster} loop={h.loop} />
               <div className="ld-card-body">
                 <h4>{h.title}</h4>
                 <p>{h.line}</p>
@@ -146,5 +147,39 @@ function Pipeline({ session, fps }: { session: ClusterSession | null; fps: numbe
         </div>
       ))}
     </div>
+  );
+}
+
+/**
+ * A short muted loop of that moment. It plays only while on screen (no decoding
+ * off-screen) and stays a still poster for visitors who prefer reduced motion.
+ */
+function CardLoop({ poster, loop }: { poster: string; loop: string }) {
+  const ref = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    const v = ref.current;
+    if (!v || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const io = new IntersectionObserver(([e]) => {
+      if (e?.isIntersecting) void v.play().catch(() => {});
+      else v.pause();
+    });
+    io.observe(v);
+    return () => io.disconnect();
+  }, []);
+  return (
+    <video
+      ref={ref}
+      poster={poster}
+      muted
+      loop
+      playsInline
+      preload="none"
+      width={960}
+      height={360}
+      aria-hidden
+    >
+      <source src={`${loop}.webm`} type="video/webm" />
+      <source src={`${loop}.mp4`} type="video/mp4" />
+    </video>
   );
 }

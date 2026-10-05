@@ -9,7 +9,7 @@ import { Traffic, type EgoState, type StopLine } from './traffic';
 import type { Feature, Sign } from './types';
 
 /** Traffic light cycle (s): green, amber, red, red+amber (German sequence). */
-const CYCLE = { green: 22, amber: 3, red: 20, redAmber: 1.5 };
+export const CYCLE = { green: 22, amber: 3, red: 20, redAmber: 1.5 };
 const CYCLE_LEN = CYCLE.green + CYCLE.amber + CYCLE.red + CYCLE.redAmber;
 export const LANE_WIDTH = 3.5;
 const EGO_LENGTH = 4.6;

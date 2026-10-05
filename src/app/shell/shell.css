@@ -663,3 +663,62 @@ body {
   font-size: 15px;
   text-align: center;
 }
+
+/* ---- Recording mode: a clean 1920×1080 (or 1080×1350) frame for video ---- */
+.site.is-record {
+  cursor: none;
+}
+
+.is-record .stage {
+  height: 100vh;
+  padding-top: 110px;
+}
+
+.is-record :is(.transport, .take-wheel, .time, .scroll-hint, .how, .intro-skip) {
+  display: none !important;
+}
+
+.is-record .chapter-bar {
+  grid-template-columns: 1fr;
+  pointer-events: none;
+}
+
+.record-169 .stage {
+  --w: 1720px;
+}
+
+.record-169 .caption-line {
+  font-size: 26px;
+}
+
+.record-169 .caption-note {
+  font-size: 17px;
+}
+
+/* 4:5 social cut: the cluster across the width, big captions that work without sound. */
+.record-45 .stage {
+  --w: 1040px;
+  padding-top: 230px;
+}
+
+.record-45 .watch {
+  padding: 0 40px;
+}
+
+.record-45 .caption {
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.record-45 .chapter-number {
+  font-size: 34px;
+}
+
+.record-45 .caption-line {
+  font-size: 40px;
+  line-height: 1.2;
+}
+
+.record-45 .caption-note {
+  font-size: 24px;
+}

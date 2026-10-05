@@ -20,6 +20,13 @@ One entry per finished feature, for building a guided demo. Keep each entry shor
 - **Caption:** "Adaptive cruise keeps the speed and the distance by itself."
 - **Duration:** ~30 s
 
+### Guided demo: City red light
+
+- **Demo:** in town the lights ahead turn amber, then red; the car stops and start-stop switches the
+  engine off ("auto stop" under the rev counter).
+- **Caption:** "At a red light the engine switches itself off."
+- **Duration:** ~12 s
+
 ### Guided demo: Emergency braking
 
 - **Demo:** the driver looks away. Traffic ahead brakes hard. Pre-warning, then a red warning with a brake

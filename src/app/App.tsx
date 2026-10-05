@@ -42,6 +42,13 @@ const DEV = params.get('dev') === '1';
 const POSE = poseFromUrl();
 /** `?chapter=<id>` opens the guided demo at that chapter. */
 const CHAPTER = params.get('chapter');
+/**
+ * Recording mode (`?record=1`, `&format=45` for a 4:5 social cut): cluster,
+ * captions and chapter names only; no header, buttons, landing or cursor.
+ * Frames are stepped by scripts/record-video.mjs.
+ */
+const RECORD = params.has('record');
+const RECORD_FORMAT = params.get('format') === '45' ? '45' : '169';
 /** Very old browsers get a short note instead of a blank cockpit. */
 const CLUSTER_OK = canRunCluster();
 /** First plain visit only (not deep links, recordings, kiosk or reduced motion). */
@@ -67,6 +74,9 @@ export function App() {
   const [bus, setBus] = useState<ControlBus | null>(null);
   const [renderer, setRenderer] = useState<ClusterRenderer | null>(null);
   const [director, setDirector] = useState<Director | null>(null);
+  useEffect(() => {
+    directorRef.current = director;
+  }, [director]);
   const [fps, setFps] = useState(0);
   const [frameMs, setFrameMs] = useState(0);
   const [dropped, setDropped] = useState(0);
@@ -92,6 +102,8 @@ export function App() {
   const [animateTheme, setAnimateTheme] = useState(true);
   const [editing, setEditing] = useState(false);
   const rendererRef = useRef<ClusterRenderer | null>(null);
+  /** For the debug hook (tests, recording). */
+  const directorRef = useRef<Director | null>(null);
   /** The keyboard mute key reaches the sound toggle through this (set below). */
   const toggleSoundRef = useRef<() => void>(() => {});
   const audio = useMemo(() => new AudioEngine(), []);
@@ -150,11 +162,12 @@ export function App() {
         setDirector(new Director(s.source, () => rendererRef.current));
       }
       // Scripting hook for tests and visual review (dev builds or ?debug).
-      if (import.meta.env.DEV || params.has('debug')) {
+      if (import.meta.env.DEV || params.has('debug') || RECORD) {
         (window as unknown as { __oc?: unknown }).__oc = {
           session: s,
           bus: b,
           audio,
+          director: () => directorRef.current,
           renderer: () => rendererRef.current,
         };
       }
@@ -281,21 +294,23 @@ export function App() {
 
   return (
     <div
-      className="site"
+      className={`site ${RECORD ? `is-record record-${RECORD_FORMAT}` : ''}`}
       data-mode={mode}
       data-intro={intro.phase === 'done' ? undefined : intro.phase}
       data-fps={fps.toFixed(0)}
       data-frame-ms={frameMs.toFixed(2)}
       data-dropped={dropped}
     >
-      <Header
-        mode={mode}
-        onMode={setMode}
-        muted={sound.muted}
-        onMute={toggleSound}
-        awake={intro.phase === 'done'}
-        modes={modes}
-      />
+      {!RECORD && (
+        <Header
+          mode={mode}
+          onMode={setMode}
+          muted={sound.muted}
+          onMute={toggleSound}
+          awake={intro.phase === 'done'}
+          modes={modes}
+        />
+      )}
       <Stage
         session={session}
         cluster={cluster}
@@ -360,7 +375,7 @@ export function App() {
           onHow={setHowDoc}
         />
       )}
-      {mode !== 'engineer' && (
+      {mode !== 'engineer' && !RECORD && (
         <Landing
           session={session}
           fps={fps}

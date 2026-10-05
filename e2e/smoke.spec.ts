@@ -237,3 +237,14 @@ test('phones: Watch and Engineer only, a Drive link shows Watch with a note', as
   await expect(page.getByRole('button', { name: 'Take the wheel →' })).toHaveCount(0);
   await page.close();
 });
+
+test('recording mode: cluster and captions only, no header, buttons or landing', async ({
+  page,
+}) => {
+  await page.goto('/?record=1&chapter=safety');
+  await expect(page.locator('.chapter-title')).toHaveText('Safety');
+  await expect(page.locator('.site-header')).toHaveCount(0);
+  await expect(page.locator('.landing')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Take the wheel →' })).toBeHidden();
+  await expect(page.locator('.site')).toHaveCSS('cursor', 'none');
+});

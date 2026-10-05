@@ -1,5 +1,6 @@
 import type { ClusterRenderer } from '@/cluster/renderer/ClusterRenderer';
 import type { SimulatorSource } from '@/core/datasource/simulator/SimulatorSource';
+import { CYCLE } from '@/core/world/World';
 import { CHAPTERS, type Caption, type Chapter, type ChapterEvent } from './chapters';
 
 export interface DirectorState {
@@ -209,8 +210,10 @@ export class Director {
         // A much faster car coming up in the next lane, about to pass us (no limit here).
         const ego = world.ego;
         const lane = Math.round(ego.lane) + 1;
+        // Clear the lane it passes in (behind us and well ahead), so nothing holds it alongside.
         world.traffic.vehicles = world.traffic.vehicles.filter(
-          (x) => x.oncoming || Math.abs(x.lane - lane) > 0.5 || Math.abs(x.s - ego.s) > 120,
+          (x) =>
+            x.oncoming || Math.abs(x.lane - lane) > 0.5 || x.s < ego.s - 120 || x.s > ego.s + 500,
         );
         const v = sim.state.speedMs + 12;
         const car = world.traffic.spawnAt(ego.s - 38, lane, v);
@@ -219,12 +222,14 @@ export class Director {
         break;
       }
       case 'lead': {
+        // The car we follow: a clear road ahead of it (no slow truck to catch up with), and it
+        // stays in its lane for the chapter, so the script's moments happen as written.
         const ego = world.ego;
         world.traffic.vehicles = world.traffic.vehicles.filter(
           (v) =>
-            v.oncoming || Math.abs(v.lane - ego.lane) > 0.5 || v.s < ego.s || v.s > ego.s + 250,
+            v.oncoming || Math.abs(v.lane - ego.lane) > 0.5 || v.s < ego.s || v.s > ego.s + 700,
         );
-        world.traffic.spawnAt(ego.s + e.gap + 4.6, ego.lane, e.kmh / 3.6);
+        world.traffic.spawnAt(ego.s + e.gap + 4.6, ego.lane, e.kmh / 3.6).lcTimer = -60;
         break;
       }
       case 'leadBrake': {
@@ -249,6 +254,17 @@ export class Director {
         src.liftOff();
         this.liftUntil = this.t + e.seconds;
         break;
+      case 'redLight': {
+        // Shift the next light's cycle so it turns amber exactly `in` seconds from now.
+        const ahead = world.route.features.find(
+          (f) => f.kind === 'trafficLight' && f.s > world.ego.s,
+        );
+        if (ahead) {
+          const len = CYCLE.green + CYCLE.amber + CYCLE.red + CYCLE.redAmber;
+          ahead.phase = (((CYCLE.green - world.time - e.in) % len) + len) % len;
+        }
+        break;
+      }
       case 'autoHighBeam':
         sim.body.autoHighBeam = true;
         break;

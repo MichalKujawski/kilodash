@@ -50,6 +50,22 @@ describe('Director', () => {
     expect(src.world.ego.lane).toBe(1);
   });
 
+  it('motorway works the same in a world that has been running (as on the site)', () => {
+    const src = new SimulatorSource(DEFAULT_PROFILE, { startOff: true }, () => 0);
+    src.startRolling();
+    src.fastForward(90); // the site's world has traffic around before the chapter starts
+    const d = new Director(src, () => null);
+    d.goto('motorway');
+    let warned = false;
+    for (let i = 0; i < 299; i++) {
+      d.tick(0.1);
+      src.fastForward(0.1);
+      warned ||= src.blindSpot.left === 'warning';
+    }
+    expect(warned).toBe(true);
+    expect(src.world.ego.lane).toBe(1);
+  });
+
   it('safety: warning stages are each on screen, and braking ends matched to the car ahead', () => {
     const now = 0;
     const src = new SimulatorSource(DEFAULT_PROFILE, { startOff: true }, () => now);
@@ -88,6 +104,20 @@ describe('Director', () => {
     const seen = new Set<string>();
     play('modes', (s) => seen.add(s.sim.driveModes.state.current));
     expect([...seen]).toEqual(expect.arrayContaining(['eco', 'sport']));
+  });
+
+  it('city: the lights turn red as we arrive and start-stop switches the engine off', () => {
+    let stopped = false;
+    play('city', (s) => {
+      stopped ||= s.startStop.state === 'stopped';
+    });
+    expect(stopped).toBe(true);
+  });
+
+  it('shutdown: parks, selects P and switches off within the chapter', () => {
+    const { src } = play('shutdown');
+    expect(src.sim.state.selector).toBe('P');
+    expect(src.sim.state.ignition).toBe(0);
   });
 
   it('parking: reverses out of the bay', () => {

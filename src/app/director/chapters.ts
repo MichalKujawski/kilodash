@@ -23,7 +23,9 @@ export type ChapterEvent =
   | { t: number; do: 'distracted'; on: boolean }
   | { t: number; do: 'lookAway'; seconds: number }
   | { t: number; do: 'lift'; seconds: number }
-  | { t: number; do: 'autoHighBeam' };
+  | { t: number; do: 'autoHighBeam' }
+  /** The next traffic light turns amber in `in` seconds (then red, as the cycle goes). */
+  | { t: number; do: 'redLight'; in: number };
 
 export interface Caption {
   t0: number;
@@ -192,8 +194,9 @@ export const CHAPTERS: Chapter[] = [
     hour: 14.2,
     weather: 'clear',
     temperatureC: 18,
-    start: { place: 'town', kmh: 40 },
-    events: [],
+    // 180 m before the lights on Bahnhofstraße, which turn red as we arrive.
+    start: { segment: 'Bahnhofstraße', at: 200, kmh: 45 },
+    events: [{ t: 0.2, do: 'redLight', in: 9 }],
     captions: [
       {
         t0: 0,
@@ -288,16 +291,17 @@ export const CHAPTERS: Chapter[] = [
   {
     id: 'shutdown',
     title: 'Shutdown',
-    duration: 12,
+    duration: 14,
     hour: 15.5,
     weather: 'clear',
     temperatureC: 18,
-    start: { destination: 22 },
+    // The last metres into the space: park, P, ignition off, trip summary.
+    start: { destination: 10 },
     events: [],
     captions: [
       {
         t0: 0,
-        t1: 12,
+        t1: 14,
         title: 'Parked. A trip summary, then standby.',
         note: 'That is the drive. Take the wheel, or see how it works.',
       },

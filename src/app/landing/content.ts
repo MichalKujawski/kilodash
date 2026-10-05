@@ -10,6 +10,8 @@ export interface Highlight {
   title: string;
   line: string;
   poster: string;
+  /** Loop without extension (.webm and .mp4 exist). */
+  loop: string;
 }
 
 export const HIGHLIGHTS: Highlight[] = [
@@ -18,24 +20,28 @@ export const HIGHLIGHTS: Highlight[] = [
     title: 'Adaptive cruise and lane centering',
     line: 'Follows the car ahead and keeps the lane. A car in the blind spot holds the lane change until it is clear.',
     poster: 'media/posters/motorway.webp',
+    loop: 'media/loops/motorway',
   },
   {
     chapter: 'safety',
     title: 'Emergency braking, stage by stage',
     line: 'Pre-warning, a red warning with a brake jolt, then automatic braking down to the speed of the car ahead.',
     poster: 'media/posters/safety.webp',
+    loop: 'media/loops/safety',
   },
   {
     chapter: 'modes',
     title: 'Drive modes you can feel',
     line: 'Eco lets the car coast; Sport sharpens the throttle and lights the shift lights.',
     poster: 'media/posters/modes.webp',
+    loop: 'media/loops/modes',
   },
   {
     chapter: 'parking',
     title: 'Reversing out of a bay',
     line: 'Sensors, camera guide lines that bend with the wheel, and a brake for the car crossing behind.',
     poster: 'media/posters/parking.webp',
+    loop: 'media/loops/parking',
   },
 ];
 
