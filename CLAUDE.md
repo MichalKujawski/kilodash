@@ -1,4 +1,4 @@
-# OpenCluster: standing instructions
+# Twindial: standing instructions
 
 **Read `docs/PROGRESS.md` first.** It says where the work is and what comes next.
 

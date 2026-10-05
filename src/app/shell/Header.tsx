@@ -52,8 +52,8 @@ export function Header({ mode, onMode, muted, onMute, awake = true, modes = SITE
     <header
       className={`site-header ${idle && mode === 'watch' && !scrolled ? 'is-idle' : ''} ${scrolled ? 'is-scrolled' : ''}`}
     >
-      <a className="wordmark" href="./" aria-label="OpenCluster home">
-        OpenCluster
+      <a className="wordmark" href="./" aria-label="Twindial home">
+        Twindial
       </a>
       <nav
         className="mode-switch"

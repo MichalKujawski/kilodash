@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 // These tests start after the first-visit intro (e2e/intro.spec.ts covers it).
 test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => localStorage.setItem('oc.intro.seen', '1'));
+  await page.addInitScript(() => localStorage.setItem('twindial.intro.seen', '1'));
 });
 
 test('cluster renders and animates without errors', async ({ page }) => {
@@ -229,7 +229,7 @@ test('phones: Watch and Engineer only, a Drive link shows Watch with a note', as
     isMobile: true,
     hasTouch: true,
   });
-  await page.addInitScript(() => localStorage.setItem('oc.intro.seen', '1'));
+  await page.addInitScript(() => localStorage.setItem('twindial.intro.seen', '1'));
   await page.goto('/?mode=drive');
   await expect(page.locator('.site')).toHaveAttribute('data-mode', 'watch');
   await expect(page.getByRole('button', { name: 'Drive' })).toHaveCount(0);

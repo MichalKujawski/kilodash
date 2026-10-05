@@ -49,7 +49,7 @@ export class StartupOverlay implements Widget {
         drawLogo(f.emissive, 960, 318 + lift, 46, th.text.secondary, th.dial.needle.glow);
         f.emissive.globalAlpha = 1;
       }
-      text(ctx, 'OpenCluster', 960, 420 + lift, {
+      text(ctx, 'Twindial', 960, 420 + lift, {
         font: font(400, 34, th.fonts.primary),
         color: th.text.primary,
         align: 'center',

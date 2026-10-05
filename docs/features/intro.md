@@ -29,7 +29,7 @@ stateDiagram-v2
 
 **Choices.**
 
-- **When it plays:** only on a plain first visit (`localStorage` `oc.intro.seen`). Never for deep links
+- **When it plays:** only on a plain first visit (`localStorage` `twindial.intro.seen`). Never for deep links
   (`?chapter`, `?mode`, `?pose`), kiosk, recording (`?record`) or `prefers-reduced-motion`.
 - **The car keeps rolling underneath,** so the cockpit is moving the moment the display lights up.
 - **Cost:** no frames dropped beyond the normal page load (measured: 3 with or without the intro).

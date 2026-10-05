@@ -9,6 +9,9 @@ Only in your browser (`localStorage`), never sent anywhere:
 
 - that you've seen the intro;
 - that you've seen the Drive coach marks;
+- the simulated car's trip computer (distance, averages and their recent history), so the car keeps its
+  trip between visits like a real one;
+- the simulated car's drive-mode settings;
 - in developer mode, your theme choice.
 
 Clearing site data removes all of it.

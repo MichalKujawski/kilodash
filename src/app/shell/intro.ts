@@ -21,7 +21,7 @@ export function introPhase(ms: number): IntroPhase {
   return phase;
 }
 
-const SEEN_KEY = 'oc.intro.seen';
+const SEEN_KEY = 'twindial.intro.seen';
 
 function seen(): boolean {
   try {
