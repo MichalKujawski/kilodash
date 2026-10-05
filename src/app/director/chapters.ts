@@ -36,6 +36,11 @@ export interface Caption {
   note: string;
   /** Feature doc for "How it works" (docs/features/<doc>.md). */
   doc?: string;
+  /**
+   * Cluster element the caption talks about: x, y, radius in the 1920×720 cluster, and an
+   * optional delay (s) for elements that appear a little after the caption (spotlight).
+   */
+  spotlight?: [number, number, number, number?];
 }
 
 export interface Chapter {
@@ -98,6 +103,7 @@ export const CHAPTERS: Chapter[] = [
         title: 'Adaptive cruise keeps the speed and the distance by itself.',
         note: 'It follows the car ahead, braking and accelerating like real radar cruise.',
         doc: 'speed-assist',
+        spotlight: [355, 500, 110, 0.6],
       },
       {
         t0: 9,
@@ -105,6 +111,7 @@ export const CHAPTERS: Chapter[] = [
         title: 'Lane centering keeps the car in the middle of its lane.',
         note: 'Green lines mean the car is steering. This is the driver-assistance view.',
         doc: 'lane-assist',
+        spotlight: [960, 430, 250],
       },
       {
         t0: 18,
@@ -112,6 +119,7 @@ export const CHAPTERS: Chapter[] = [
         title: 'A car in the blind spot: the warning flashes as we indicate.',
         note: 'The car waits until the lane is clear, then moves over.',
         doc: 'collision-assist',
+        spotlight: [800, 440, 170],
       },
     ],
   },
@@ -146,6 +154,7 @@ export const CHAPTERS: Chapter[] = [
         title: 'Traffic ahead brakes hard. Warning, brake jolt, then automatic braking.',
         note: 'Staged by time to collision, as emergency braking systems do.',
         doc: 'collision-assist',
+        spotlight: [960, 280, 240, 2.4],
       },
       {
         t0: 11,
@@ -177,6 +186,7 @@ export const CHAPTERS: Chapter[] = [
         title: 'Eco: the gearbox lets the car roll freely when you lift off.',
         note: 'Coasting: engine at idle, no engine braking, less fuel.',
         doc: 'drive-modes',
+        spotlight: [1565, 600, 85],
       },
       {
         t0: 10,
@@ -204,6 +214,7 @@ export const CHAPTERS: Chapter[] = [
         title: 'In town the speed limit is read from the signs.',
         note: 'Camera and map together, sometimes imperfect, like in real cars.',
         doc: 'speed-limits',
+        spotlight: [690, 46, 60],
       },
       {
         t0: 12,
@@ -211,6 +222,7 @@ export const CHAPTERS: Chapter[] = [
         title: 'At a red light the engine switches itself off.',
         note: 'Start-stop shows why when it has to keep running.',
         doc: 'powertrain-helpers',
+        spotlight: [1565, 530, 95],
       },
     ],
   },
@@ -230,6 +242,7 @@ export const CHAPTERS: Chapter[] = [
         title: 'At night the lights come on by themselves and the display dims.',
         note: 'Auto high beam steps back for other cars.',
         doc: 'parking-lights-fatigue',
+        spotlight: [650, 670, 75],
       },
       {
         t0: 7,
@@ -285,6 +298,7 @@ export const CHAPTERS: Chapter[] = [
         title: 'Reversing out: sensors, camera lines and cross traffic.',
         note: 'The car brakes on its own for the car crossing behind.',
         doc: 'parking-lights-fatigue',
+        spotlight: [960, 320, 280],
       },
     ],
   },

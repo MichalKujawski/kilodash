@@ -731,3 +731,56 @@ body {
 .record-45 .caption-note {
   font-size: 24px;
 }
+
+/* ---- Spotlight: dim the cluster around what the caption talks about ---- */
+.screen {
+  container-type: inline-size;
+}
+
+.spotlight {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at var(--sx) var(--sy),
+    transparent calc(var(--sr) * 0.9),
+    rgba(0, 0, 0, 0.2) calc(var(--sr) * 1.25)
+  );
+  opacity: 0;
+  animation: spotlight 1.9s var(--ease) both;
+}
+
+/* The ring: soft, thin, drawn once around the element. */
+.spotlight::after {
+  content: '';
+  position: absolute;
+  left: var(--sx);
+  top: var(--sy);
+  width: calc(var(--sr) * 2);
+  height: calc(var(--sr) * 2);
+  translate: -50% -50%;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 0 16px rgba(255, 255, 255, 0.12);
+}
+
+@keyframes spotlight {
+  0% {
+    opacity: 0;
+  }
+  18% {
+    opacity: 1;
+  }
+  72% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spotlight {
+    display: none;
+  }
+}

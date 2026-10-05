@@ -2,7 +2,7 @@
   "name": "opencluster",
   "private": true,
   "version": "0.1.0",
-  "description": "Adaptive, themeable virtual instrument cluster with a physics simulator and OBD-II support",
+  "description": "A digital instrument cluster that behaves like a real car, built for the web: simulated car, driver assists and a guided demo",
   "license": "MIT",
   "type": "module",
   "scripts": {

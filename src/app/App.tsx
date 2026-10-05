@@ -17,6 +17,7 @@ import { ControlPanel, DriveDock, EngineerPanel, HowItWorks, ThemeEditor } from 
 import { Director } from './director/Director';
 import { useDirector } from './director/useDirector';
 import { WatchPanel } from './director/WatchPanel';
+import { Spotlight } from './director/Spotlight';
 import { useControlInputs } from './controls/useControlInputs';
 import { applyPose, poseFromUrl } from './poses';
 import { ClusterSession } from './session';
@@ -50,6 +51,8 @@ const RECORD = params.has('record');
 const RECORD_FORMAT = params.get('format') === '45' ? '45' : '169';
 /** Very old browsers get a short note instead of a blank cockpit. */
 const CLUSTER_OK = canRunCluster();
+/** `?spotlight=0` turns the caption spotlight off. */
+const SPOTLIGHT = params.get('spotlight') !== '0';
 /** First plain visit only (not deep links, recordings, kiosk or reduced motion). */
 const PLAY_INTRO = shouldPlayIntro(params);
 
@@ -323,7 +326,12 @@ export function App() {
         <Suspense fallback={null}>
           <Stage
             session={session}
-            cluster={cluster}
+            cluster={
+              <>
+                {cluster}
+                {mode === 'watch' && SPOTLIGHT && <Spotlight state={directorState} />}
+              </>
+            }
             side={mode === 'engineer' && wide ? ENGINEER_SIDEBAR : 0}
           >
             {mode === 'watch' && director && directorState && (

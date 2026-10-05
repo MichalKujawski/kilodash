@@ -29,5 +29,21 @@ stateDiagram-v2
 - Motorway: a car passes at +43 km/h. The scripted lane change waits until the target lane is clear from
   14 m behind to 20 m ahead (mirror and shoulder check).
 
+- The first chapter on page load adopts the car that is already rolling (`Director.adopt`) instead of
+  placing it again; this saves rebuilding the world just as the intro reveals the cockpit.
+- The script's cars keep their lanes on a clear road (the car ahead, the passing car), so the chapter plays
+  the same in a busy world as in a fresh one.
+
+**Spotlight.** When a caption talks about something on the cluster (the set speed, the speed-limit sign,
+the warning card, "auto stop"…), the rest of the cluster dims by about 20 % and a soft ring marks it for
+under 2 s.
+
+- Captions carry the spot in cluster coordinates (`spotlight: [x, y, r, delay]`). The delay covers
+  elements that appear a moment after the caption, such as the warning card.
+- It is pure CSS over the display, so it costs the renderer nothing.
+- It is off with `?spotlight=0` and for visitors who prefer reduced motion.
+- A test keeps every spot inside the cluster and within its caption's time.
+
 **Where it appears.** Watch mode, below the cockpit. Keyboard: Space, ← and →. Tests:
-`src/app/director/Director.test.ts` (each key moment happens) and `e2e/smoke.spec.ts`.
+`src/app/director/Director.test.ts` (each key moment happens), `chapters.test.ts` and
+`e2e/smoke.spec.ts`.
