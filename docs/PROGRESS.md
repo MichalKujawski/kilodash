@@ -171,8 +171,9 @@ _Last updated: 2026-10-04_
 | 3 | Demo Director: 9 chapters (2:36), captions, chapter bar, Space/←/→, `?chapter=`, Take the wheel | done |
 | 4 | Drive dock (wheel with spoke buttons, stalk, lever, pedals, contextual cruise, "?" overlay, coach marks) | done |
 | 5 | Engineer mode (6 tabs, live state diagrams, event timeline, How it works sheet) | done |
-| 6 | Cinematic intro | next |
-| 7–11 | Landing sections, responsive, recording, analytics, polish | |
+| 6 | Cinematic intro (≤ 4 s, skippable, first visit only) | done |
+| 7 | Landing sections | next |
+| 8–11 | Responsive, recording, analytics, polish | |
 
 - `node scripts/site-shots.mjs docs/design/progress name=query@WxH` screenshots the site and reports
   time-to-moving, fps and dropped frames (`@WxH+s` waits s extra seconds). Step screenshots live in
@@ -209,6 +210,9 @@ _Last updated: 2026-10-04_
   - First click no longer costs ~40 ms: the audio context is only created once sound is switched on.
   - **Owner to confirm:** the repository URL in `src/app/site.ts` (source links and header) is a guess:
     `github.com/MichalKujawski/opencluster`.
+
+- Step 6: `src/app/shell/intro.ts` (doc `docs/features/intro.md`). `?record=1` already skips it; the
+  recording pipeline in step 9 builds on that.
 
 ## Known issues / open questions
 

@@ -10,6 +10,8 @@ interface Props {
   onMode: (m: SiteMode) => void;
   muted: boolean;
   onMute: () => void;
+  /** False during the intro: the auto-hide timer starts once the visitor can see the header. */
+  awake?: boolean;
 }
 
 /**
@@ -17,10 +19,10 @@ interface Props {
  * source links. In Watch it fades out after 3 s without pointer movement and
  * returns on movement or keyboard focus (cinema feel).
  */
-export function Header({ mode, onMode, muted, onMute }: Props) {
+export function Header({ mode, onMode, muted, onMute, awake = true }: Props) {
   const [idle, setIdle] = useState(false);
   useEffect(() => {
-    if (mode !== 'watch') return;
+    if (mode !== 'watch' || !awake) return;
     let t = setTimeout(() => setIdle(true), 3000);
     const wake = (): void => {
       setIdle(false);
@@ -36,7 +38,7 @@ export function Header({ mode, onMode, muted, onMute }: Props) {
       window.removeEventListener('keydown', wake);
       window.removeEventListener('focusin', wake);
     };
-  }, [mode]);
+  }, [mode, awake]);
   const index = SITE_MODES.indexOf(mode);
   return (
     <header className={`site-header ${idle && mode === 'watch' ? 'is-idle' : ''}`}>

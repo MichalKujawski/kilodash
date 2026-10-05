@@ -1,5 +1,10 @@
 import { expect, test } from '@playwright/test';
 
+// These tests start after the first-visit intro (e2e/intro.spec.ts covers it).
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('oc.intro.seen', '1'));
+});
+
 test('cluster renders and animates without errors', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));

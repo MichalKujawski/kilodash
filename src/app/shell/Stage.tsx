@@ -102,6 +102,8 @@ export function Stage({ session, cluster, children, compact, side = 0 }: Props) 
             fill="url(#hood-fill)"
           />
           <path
+            className="hood-lip"
+            pathLength={1}
             d="M40 112 C 120 36, 300 10, 800 10 C 1300 10, 1480 36, 1560 112"
             fill="none"
             stroke="url(#hood-lip)"

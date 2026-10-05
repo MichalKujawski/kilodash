@@ -512,3 +512,48 @@ body {
     animation: none;
   }
 }
+
+/* ---- First-visit intro: black → hood lights up → display wakes → header and captions ---- */
+.site[data-intro]
+  :is(.hood, .stage-glow, .screen, .screen-shade, .reflection, .site-header, .bottom-slot) {
+  transition: opacity 700ms var(--ease);
+}
+
+.site[data-intro='dark'] :is(.hood, .stage-glow),
+.site:is([data-intro='dark'], [data-intro='hood']) :is(.screen, .screen-shade, .reflection),
+.site:is([data-intro='dark'], [data-intro='hood'], [data-intro='display'])
+  :is(.site-header, .bottom-slot) {
+  opacity: 0;
+}
+
+/* The light runs along the hood's edge as it wakes. */
+.site[data-intro] .hood-lip {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  transition: stroke-dashoffset 900ms var(--ease);
+}
+
+.site:not([data-intro='dark'])[data-intro] .hood-lip {
+  stroke-dashoffset: 0;
+}
+
+.intro-skip {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 50;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--hairline);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-3);
+  font:
+    12px Inter,
+    system-ui,
+    sans-serif;
+  cursor: pointer;
+}
+
+.intro-skip:hover {
+  color: var(--text-1);
+}

@@ -20,6 +20,7 @@ import { useControlInputs } from './controls/useControlInputs';
 import { applyPose, poseFromUrl } from './poses';
 import { ClusterSession } from './session';
 import { Header, SITE_MODES, type SiteMode } from './shell/Header';
+import { shouldPlayIntro, useIntro } from './shell/intro';
 import { Stage } from './shell/Stage';
 import './shell/shell.css';
 import { ThemeEditor } from './ThemeEditor';
@@ -38,6 +39,8 @@ const DEV = params.get('dev') === '1';
 const POSE = poseFromUrl();
 /** `?chapter=<id>` opens the guided demo at that chapter. */
 const CHAPTER = params.get('chapter');
+/** First plain visit only (not deep links, recordings, kiosk or reduced motion). */
+const PLAY_INTRO = shouldPlayIntro(params);
 
 /** Engineer sidebar width on wide screens (narrower screens get a bottom panel), px. */
 const ENGINEER_SIDEBAR = 440;
@@ -79,6 +82,9 @@ export function App() {
   const [sound, setSound] = useState({ muted: true, engine: false });
   const [mode, setModeState] = useState<SiteMode>(initialMode);
   const wide = useMediaQuery(WIDE);
+  const intro = useIntro(PLAY_INTRO);
+  // The demo waits in the dark; it starts (with the start-up sweep) as the display lights up.
+  const introHold = intro.phase === 'dark' || intro.phase === 'hood';
   const [moreOpen, setMoreOpen] = useState(false);
   /** Feature doc open in the "How it works" sheet. */
   const [howDoc, setHowDoc] = useState<string | null>(null);
@@ -176,12 +182,13 @@ export function App() {
   useEffect(() => {
     if (!director) return;
     if (handsOn) director.release();
+    else if (introHold) return;
     else if (begun.current !== director) {
       if (CHAPTER) director.goto(CHAPTER);
       else director.start(0);
     } else if (!director.playing) director.start(director.index);
     if (!handsOn) begun.current = director;
-  }, [director, handsOn]);
+  }, [director, handsOn, introHold]);
   const log = useEventLog(session);
   useEffect(() => {
     if (renderer && director?.playing) director.rendererChanged();
@@ -275,11 +282,18 @@ export function App() {
     <div
       className="site"
       data-mode={mode}
+      data-intro={intro.phase === 'done' ? undefined : intro.phase}
       data-fps={fps.toFixed(0)}
       data-frame-ms={frameMs.toFixed(2)}
       data-dropped={dropped}
     >
-      <Header mode={mode} onMode={setMode} muted={sound.muted} onMute={toggleSound} />
+      <Header
+        mode={mode}
+        onMode={setMode}
+        muted={sound.muted}
+        onMute={toggleSound}
+        awake={intro.phase === 'done'}
+      />
       <Stage
         session={session}
         cluster={cluster}
@@ -340,6 +354,11 @@ export function App() {
           onSound={setSound}
           onHow={setHowDoc}
         />
+      )}
+      {intro.phase !== 'done' && (
+        <button className="intro-skip" onClick={intro.skip}>
+          Skip intro
+        </button>
       )}
       {howDoc && <HowItWorks doc={howDoc} onClose={() => setHowDoc(null)} />}
 

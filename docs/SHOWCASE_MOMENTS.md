@@ -42,3 +42,10 @@ One entry per finished feature, for building a guided demo. Keep each entry shor
   steps with speed and gap. "How it works" opens the feature doc with links to the source.
 - **Caption:** "Every warning is a small, tested state machine. Here they are, live."
 - **Duration:** ~20 s
+
+### First-visit intro
+
+- **Demo:** black screen; a light runs along the hood's edge; the display wakes with the logo, lamp check
+  and needle sweep; header and captions fade in as the car joins the motorway.
+- **Caption:** none (it is the opening shot).
+- **Duration:** ~4 s
