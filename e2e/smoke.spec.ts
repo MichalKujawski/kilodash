@@ -249,9 +249,7 @@ test('recording mode: cluster and captions only, no header, buttons or landing',
   await expect(page.locator('.site')).toHaveCSS('cursor', 'none');
 });
 
-test('privacy: with analytics unset, the site contacts no one but itself', async ({
-  page,
-}) => {
+test('privacy: with analytics unset, the site contacts no one but itself', async ({ page }) => {
   const hosts = new Set<string>();
   page.on('request', (r) => hosts.add(new URL(r.url()).hostname));
   await page.goto('/');
@@ -261,4 +259,20 @@ test('privacy: with analytics unset, the site contacts no one but itself', async
   const allowed = new Set(['localhost', '127.0.0.1']);
   expect([...hosts].filter((h) => !allowed.has(h))).toEqual([]);
   expect(await page.locator('script[data-domain], script[data-website-id]').count()).toBe(0);
+});
+
+test('media the page needs is part of the build (loops, posters, share image)', async ({
+  request,
+}) => {
+  // In CI this runs on a fresh checkout: it catches files that never made it into git.
+  for (const path of [
+    '/media/loops/motorway.webm',
+    '/media/loops/motorway.mp4',
+    '/media/posters/motorway.webp',
+    '/og.png',
+    '/robots.txt',
+  ]) {
+    const res = await request.get(path);
+    expect(res.status(), path).toBe(200);
+  }
 });

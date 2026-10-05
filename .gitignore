@@ -6,7 +6,7 @@ coverage
 .vite
 test-results
 playwright-report
-media/
+/media/
 .env
 .env.*
 !.env.example
