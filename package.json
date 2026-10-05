@@ -15,7 +15,9 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "stats": "node scripts/stats.mjs",
+    "record": "node scripts/make-media.mjs"
   },
   "dependencies": {
     "@fontsource/barlow-semi-condensed": "^5.3.0",
